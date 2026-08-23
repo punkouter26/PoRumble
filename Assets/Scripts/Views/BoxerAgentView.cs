@@ -35,7 +35,11 @@ namespace PoRumble.Views
                  "sparse to teach any of them.")]
         [SerializeField] private float _aimShapingWeight = 0.6f;
 
-        [Tooltip("Reward per step for holding the distance at which a punch can actually land.")]
+        [Tooltip("Reward per step for closing on the nearest opponent. Scored across the whole " +
+                 "ring, so there is a gradient to follow from anywhere.")]
+        [SerializeField] private float _approachShapingWeight = 0.5f;
+
+        [Tooltip("Extra reward per step for sitting at the distance a punch can actually land.")]
         [SerializeField] private float _rangeShapingWeight = 0.4f;
 
         [Tooltip("Penalty per punch thrown, so flailing is not free.")]
@@ -208,6 +212,13 @@ namespace PoRumble.Views
                 float alignment = Vector2.Dot(_model.Facing.normalized, toOpponent.normalized);
                 AddReward(_aimShapingWeight * alignment / steps);
             }
+
+            // Closing reward, scored over the whole ring. The peaked term below is worth
+            // nothing until the boxers are already nose to nose, so on its own it gives no
+            // gradient to follow from across the arena - which is exactly where they start.
+            float reach = _match.ArenaHalfExtent.magnitude * 2f;
+            float closeness = 1f - Mathf.Clamp01(distance / Mathf.Max(0.01f, reach));
+            AddReward(_approachShapingWeight * closeness / steps);
 
             // Peaks at the separation where a fully extended punch reaches the head.
             float idealRange = _config.ArmReach + _config.HeadOffset;
