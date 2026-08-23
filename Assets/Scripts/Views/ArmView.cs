@@ -26,12 +26,12 @@ namespace PoRumble.Views
         [SerializeField] private HingeJoint2D _wristJoint;
 
         [Header("Shoulder (degrees, relative to torso)")]
-        [SerializeField] private float _shoulderGuardAngle = 18f;
+        [SerializeField] private float _shoulderGuardAngle = 12f;
         [SerializeField] private float _shoulderPunchAngle = 5f;
 
         [Header("Elbow (0 = straight, positive = flexed)")]
         [Tooltip("A human elbow flexes to roughly 145 degrees.")]
-        [SerializeField] private float _elbowGuardAngle = 110f;
+        [SerializeField] private float _elbowGuardAngle = 45f;
         [Tooltip("Never zero: elbows do not hyperextend.")]
         [SerializeField] private float _elbowPunchAngle = 8f;
 
@@ -40,8 +40,8 @@ namespace PoRumble.Views
         [SerializeField] private float _wristPunchAngle = 0f;
 
         [Header("Servo")]
-        [SerializeField] private float _servoGain = 18f;
-        [SerializeField] private float _maxMotorTorque = 400f;
+        [SerializeField] private float _servoGain = 25f;
+        [SerializeField] private float _maxMotorTorque = 600f;
 
         private ArmModel _model;
 
