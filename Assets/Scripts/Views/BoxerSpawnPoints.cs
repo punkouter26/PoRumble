@@ -74,7 +74,11 @@ namespace PoRumble.Views
                 _resolver.InjectGameObject(view.gameObject);
                 view.Bind(boxer);
 
-                if (view.TryGetComponent(out BoxerAgentView agent))
+                // The agent lives on the Torso child, not the prefab root, because its ray
+                // sensor has to rotate with the boxer's facing.
+                BoxerAgentView agent = view.GetComponentInChildren<BoxerAgentView>();
+
+                if (agent != null)
                 {
                     agent.Bind(boxer);
                     agent.SetHumanControlled(boxer.Id == _humanBoxerId);
