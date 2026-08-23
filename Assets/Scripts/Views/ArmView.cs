@@ -26,22 +26,27 @@ namespace PoRumble.Views
         [SerializeField] private HingeJoint2D _wristJoint;
 
         [Header("Shoulder (degrees, relative to torso)")]
-        [SerializeField] private float _shoulderGuardAngle = 12f;
-        [SerializeField] private float _shoulderPunchAngle = 5f;
+        [SerializeField] private float _shoulderGuardAngle = 0f;
+        [SerializeField] private float _shoulderPunchAngle = 0f;
 
         [Header("Elbow (0 = straight, positive = flexed)")]
         [Tooltip("A human elbow flexes to roughly 145 degrees.")]
-        [SerializeField] private float _elbowGuardAngle = 45f;
+        [SerializeField] private float _elbowGuardAngle = 75f;
         [Tooltip("Never zero: elbows do not hyperextend.")]
-        [SerializeField] private float _elbowPunchAngle = 8f;
+        [SerializeField] private float _elbowPunchAngle = 0f;
 
         [Header("Wrist")]
-        [SerializeField] private float _wristGuardAngle = 12f;
+        [SerializeField] private float _wristGuardAngle = 0f;
         [SerializeField] private float _wristPunchAngle = 0f;
 
+        [Tooltip("Mirrors every target angle. The two arms sit on opposite sides of the body, " +
+                 "so the same angle bends one inward and the other outward; the right arm needs " +
+                 "the sign flipped to fold symmetrically.")]
+        [SerializeField] private bool _mirror;
+
         [Header("Servo")]
-        [SerializeField] private float _servoGain = 25f;
-        [SerializeField] private float _maxMotorTorque = 600f;
+        [SerializeField] private float _servoGain = 90f;
+        [SerializeField] private float _maxMotorTorque = 4000f;
 
         private ArmModel _model;
 
@@ -58,10 +63,11 @@ namespace PoRumble.Views
             }
 
             float extension = _model.Extension;
+            float sign = _mirror ? -1f : 1f;
 
-            ServoTo(_shoulderJoint, Mathf.Lerp(_shoulderGuardAngle, _shoulderPunchAngle, extension));
-            ServoTo(_elbowJoint, Mathf.Lerp(_elbowGuardAngle, _elbowPunchAngle, extension));
-            ServoTo(_wristJoint, Mathf.Lerp(_wristGuardAngle, _wristPunchAngle, extension));
+            ServoTo(_shoulderJoint, sign * Mathf.Lerp(_shoulderGuardAngle, _shoulderPunchAngle, extension));
+            ServoTo(_elbowJoint, sign * Mathf.Lerp(_elbowGuardAngle, _elbowPunchAngle, extension));
+            ServoTo(_wristJoint, sign * Mathf.Lerp(_wristGuardAngle, _wristPunchAngle, extension));
         }
 
         /// <summary>Drives a hinge toward a target angle with a proportional motor.</summary>

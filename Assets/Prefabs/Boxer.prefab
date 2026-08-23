@@ -48,8 +48,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.12
-  m_LinearDamping: 16
-  m_AngularDamping: 16
+  m_LinearDamping: 3
+  m_AngularDamping: 3
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -179,7 +179,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 200
+    m_MaximumMotorForce: 1500
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -25
@@ -321,8 +321,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.1
-  m_LinearDamping: 16
-  m_AngularDamping: 16
+  m_LinearDamping: 3
+  m_AngularDamping: 3
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -356,11 +356,11 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 600
+    m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -20
-    m_UpperAngle: 80
+    m_LowerAngle: -80
+    m_UpperAngle: 20
 --- !u!1 &540464607181756986
 GameObject:
   m_ObjectHideFlags: 0
@@ -476,8 +476,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.1
-  m_LinearDamping: 16
-  m_AngularDamping: 16
+  m_LinearDamping: 3
+  m_AngularDamping: 3
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -511,7 +511,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 600
+    m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -20
@@ -654,8 +654,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.12
-  m_LinearDamping: 16
-  m_AngularDamping: 16
+  m_LinearDamping: 3
+  m_AngularDamping: 3
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -785,7 +785,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 200
+    m_MaximumMotorForce: 1500
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -25
@@ -837,8 +837,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.1
-  m_LinearDamping: 16
-  m_AngularDamping: 16
+  m_LinearDamping: 3
+  m_AngularDamping: 3
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -872,11 +872,11 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 600
+    m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: 0
-    m_UpperAngle: 145
+    m_LowerAngle: -145
+    m_UpperAngle: -0
 --- !u!1 &4318542333326462909
 GameObject:
   m_ObjectHideFlags: 0
@@ -930,6 +930,7 @@ MonoBehaviour:
   _elbowPunchAngle: 8
   _wristGuardAngle: 12
   _wristPunchAngle: 0
+  _mirror: 1
   _servoGain: 25
   _maxMotorTorque: 600
 --- !u!1 &5022416625276072061
@@ -1075,6 +1076,7 @@ MonoBehaviour:
   _elbowPunchAngle: 8
   _wristGuardAngle: 12
   _wristPunchAngle: 0
+  _mirror: 0
   _servoGain: 25
   _maxMotorTorque: 600
 --- !u!1 &6652157053363623272
@@ -1681,8 +1683,8 @@ Rigidbody2D:
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
   m_Mass: 0.1
-  m_LinearDamping: 16
-  m_AngularDamping: 16
+  m_LinearDamping: 3
+  m_AngularDamping: 3
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -1716,7 +1718,7 @@ HingeJoint2D:
   m_UseMotor: 1
   m_Motor:
     m_MotorSpeed: 0
-    m_MaximumMotorForce: 600
+    m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: 0

@@ -63,8 +63,12 @@ namespace PoRumble.Systems
         }
 
         /// <summary>
-        /// Throws a punch with the given arm. Returns false when the arm is mid-swing or on
-        /// cooldown, so callers can tell an actual punch from a wasted input.
+        /// Throws a punch. Uses the requested arm when it is ready; if that arm is still
+        /// swinging or recovering, the other one throws instead. Held punch input therefore
+        /// alternates left and right, which is the juggling rhythm of the original.
+        ///
+        /// Returns false only when neither arm can throw, so callers can tell a real punch
+        /// from a wasted input.
         /// </summary>
         public bool Punch(int boxerId, ArmSide side)
         {
@@ -75,15 +79,23 @@ namespace PoRumble.Systems
                 return false;
             }
 
-            ArmModel arm = side == ArmSide.Left ? boxer.LeftArm : boxer.RightArm;
+            ArmModel requested = side == ArmSide.Left ? boxer.LeftArm : boxer.RightArm;
 
-            if (!arm.CanPunch)
+            if (requested.CanPunch)
             {
-                return false;
+                requested.TryPunch();
+                return true;
             }
 
-            arm.TryPunch();
-            return true;
+            ArmModel other = side == ArmSide.Left ? boxer.RightArm : boxer.LeftArm;
+
+            if (other.CanPunch)
+            {
+                other.TryPunch();
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>Advances movement and both arms for every living boxer.</summary>

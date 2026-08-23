@@ -19,9 +19,9 @@ MonoBehaviour:
   _headOffset: 0.89
   _headRadius: 0.8
   _faceArcHalfAngleDegrees: 60
-  _armExtendDuration: 0.12
-  _armRetractDuration: 0.18
-  _armCooldownDuration: 0.15
+  _armExtendDuration: 0.22
+  _armRetractDuration: 0.2
+  _armCooldownDuration: 0.12
   _armReach: 1.6
   _armLateralOffset: 0.53
   _moveSpeed: 5
