@@ -199,8 +199,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerSpawnPoints
   _preplacedBoxers:
-  - {fileID: 1629298350}
-  - {fileID: 317071608}
+  - {fileID: 2012892060}
+  - {fileID: 206452645}
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 317061281}
   _boxerCount: 2
@@ -345,6 +345,83 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!1001 &206452643
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 317061281}
+    m_Modifications:
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -7.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4042561304196917967, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: TeamId
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_Name
+      value: Boxer_01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+--- !u!4 &206452644 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+  m_PrefabInstance: {fileID: 206452643}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &206452645 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+  m_PrefabInstance: {fileID: 206452643}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
 --- !u!1 &267659541
 GameObject:
   m_ObjectHideFlags: 0
@@ -464,95 +541,10 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1629298349}
-  - {fileID: 317071607}
+  - {fileID: 2012892059}
+  - {fileID: 206452644}
   m_Father: {fileID: 1388668899}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &317071606
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 317061281}
-    m_Modifications:
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -7.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 4042561304196917967, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: TeamId
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_Name
-      value: Boxer_01
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
---- !u!4 &317071607 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 317071606}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &317071608 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 317071606}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
 --- !u!1 &356783575
 GameObject:
   m_ObjectHideFlags: 0
@@ -1265,7 +1257,7 @@ Transform:
   - {fileID: 49855660}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1629298348
+--- !u!1001 &2012892058
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1287,7 +1279,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.7071068
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
       propertyPath: m_LocalRotation.x
@@ -1313,14 +1305,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
       propertyPath: m_Name
       value: Boxer_00
@@ -1330,15 +1314,15 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
---- !u!4 &1629298349 stripped
+--- !u!4 &2012892059 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 1629298348}
+  m_PrefabInstance: {fileID: 2012892058}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1629298350 stripped
+--- !u!114 &2012892060 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 1629298348}
+  m_PrefabInstance: {fileID: 2012892058}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
