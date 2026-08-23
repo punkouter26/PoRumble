@@ -5,6 +5,7 @@ using PoRumble.Models;
 using PoRumble.Systems;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Policies;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -78,6 +79,18 @@ namespace PoRumble.Views
         public void SetHumanControlled(bool humanControlled)
         {
             _humanControlled = humanControlled;
+
+            if (!humanControlled)
+            {
+                return;
+            }
+
+            // Force heuristic, otherwise the trained policy would drive the boxer the player
+            // is supposed to be controlling.
+            if (TryGetComponent(out BehaviorParameters parameters))
+            {
+                parameters.BehaviorType = BehaviorType.HeuristicOnly;
+            }
         }
 
         /// <summary>Called by the spawner once this agent's model exists.</summary>
