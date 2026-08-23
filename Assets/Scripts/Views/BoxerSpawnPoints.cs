@@ -22,6 +22,8 @@ namespace PoRumble.Views
         [SerializeField] private Vector2 _arenaHalfExtent = new(20f, 20f);
         [Tooltip("Restart automatically when the match resolves. Required for training.")]
         [SerializeField] private bool _autoRestart;
+        [Tooltip("Boxer id handed to the keyboard. -1 leaves every boxer under AI control.")]
+        [SerializeField] private int _humanBoxerId = -1;
 
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
@@ -75,6 +77,7 @@ namespace PoRumble.Views
                 if (view.TryGetComponent(out BoxerAgentView agent))
                 {
                     agent.Bind(boxer);
+                    agent.SetHumanControlled(boxer.Id == _humanBoxerId);
                     _agents.Add(agent);
                 }
 

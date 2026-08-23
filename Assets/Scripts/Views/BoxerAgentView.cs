@@ -70,6 +70,12 @@ namespace PoRumble.Views
             _eliminatedSubscription = eliminatedSubscriber.Subscribe(OnBoxerEliminated);
         }
 
+        /// <summary>Hands this boxer to the keyboard. Inference only, never during training.</summary>
+        public void SetHumanControlled(bool humanControlled)
+        {
+            _humanControlled = humanControlled;
+        }
+
         /// <summary>Called by the spawner once this agent's model exists.</summary>
         public void Bind(BoxerModel model)
         {
@@ -124,15 +130,16 @@ namespace PoRumble.Views
 
             var discrete = actions.DiscreteActions;
 
-            if (discrete[0] == 1)
+            // Charged only when a punch actually starts. OnActionReceived runs every step, so
+            // billing the intent would cost several points per episode just for holding the
+            // button down while the arms were on cooldown.
+            if (discrete[0] == 1 && _boxerSystem.Punch(_boxerId, ArmSide.Left))
             {
-                _boxerSystem.Punch(_boxerId, ArmSide.Left);
                 AddReward(-_punchCost);
             }
 
-            if (discrete[1] == 1)
+            if (discrete[1] == 1 && _boxerSystem.Punch(_boxerId, ArmSide.Right))
             {
-                _boxerSystem.Punch(_boxerId, ArmSide.Right);
                 AddReward(-_punchCost);
             }
 

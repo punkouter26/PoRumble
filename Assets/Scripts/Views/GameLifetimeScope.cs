@@ -40,6 +40,15 @@ namespace PoRumble.Views
             {
                 container.Resolve<CombatSystem>();
                 container.Resolve<MatchSystem>();
+
+                // The HUD is optional: the training scene deliberately has none, and
+                // RegisterComponentInHierarchy would throw when it is absent.
+                MatchHudView hud = Object.FindAnyObjectByType<MatchHudView>();
+
+                if (hud != null)
+                {
+                    container.Inject(hud);
+                }
             });
         }
     }

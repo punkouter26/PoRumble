@@ -4,28 +4,44 @@ using UnityEngine;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// Renders one arm as a circular fist that slides out from the shoulder on a
-    /// <see cref="SliderJoint2D"/>, with a limb drawn between the two.
+    /// Drives one anatomically jointed arm: torso -> shoulder -> upper arm -> elbow -> forearm
+    /// -> wrist -> glove. Each segment is a fixed-length rigid body held by a
+    /// <see cref="HingeJoint2D"/> with human-like angle limits, so the arm folds and swings
+    /// rather than telescoping.
     ///
-    /// The joint motor is servoed toward the position the model has already decided on, rather
-    /// than the physics deciding how far the punch reached. Combat stays deterministic (which
-    /// reinforcement learning depends on) while the fist is still a real 2D body that can be
-    /// pushed against and collided with.
+    /// The joints are servoed toward the extension the model has already decided on, rather than
+    /// physics deciding how far a punch reached. Combat stays deterministic - which the
+    /// reinforcement learning depends on - while the limb itself is real 2D physics.
+    ///
+    /// Segment lengths sum to BoxerConfig.ArmReach, so at full extension the glove sits where
+    /// CombatMath expects it. Hits only resolve at peak extension, so the drawn arm and the hit
+    /// test agree at the one moment that matters.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ArmView : MonoBehaviour
     {
-        [SerializeField] private SliderJoint2D _fistJoint;
-        [SerializeField] private Transform _fistTransform;
-        [SerializeField] private Transform _limbTransform;
+        [Header("Joints")]
+        [SerializeField] private HingeJoint2D _shoulderJoint;
+        [SerializeField] private HingeJoint2D _elbowJoint;
+        [SerializeField] private HingeJoint2D _wristJoint;
 
-        [SerializeField] private float _reach = 1.4f;
-        [SerializeField] private float _restLength = 0.38f;
-        [SerializeField] private float _limbWidth = 0.12f;
+        [Header("Shoulder (degrees, relative to torso)")]
+        [SerializeField] private float _shoulderGuardAngle = 18f;
+        [SerializeField] private float _shoulderPunchAngle = 5f;
 
-        [Tooltip("How hard the motor chases the model's extension. Higher tracks tighter.")]
-        [SerializeField] private float _servoGain = 30f;
-        [SerializeField] private float _maxMotorForce = 200f;
+        [Header("Elbow (0 = straight, positive = flexed)")]
+        [Tooltip("A human elbow flexes to roughly 145 degrees.")]
+        [SerializeField] private float _elbowGuardAngle = 110f;
+        [Tooltip("Never zero: elbows do not hyperextend.")]
+        [SerializeField] private float _elbowPunchAngle = 8f;
+
+        [Header("Wrist")]
+        [SerializeField] private float _wristGuardAngle = 12f;
+        [SerializeField] private float _wristPunchAngle = 0f;
+
+        [Header("Servo")]
+        [SerializeField] private float _servoGain = 18f;
+        [SerializeField] private float _maxMotorTorque = 400f;
 
         private ArmModel _model;
 
@@ -41,47 +57,27 @@ namespace PoRumble.Views
                 return;
             }
 
-            float target = _restLength + _reach * _model.Extension;
+            float extension = _model.Extension;
 
-            // With a joint assigned the fist is a physics body servoed toward the model's
-            // extension. Without one it is a plain child transform, which is the simpler and
-            // currently the default setup.
-            if (_fistJoint != null)
-            {
-                float error = target - _fistJoint.jointTranslation;
-                JointMotor2D motor = _fistJoint.motor;
-                motor.motorSpeed = error * _servoGain;
-                motor.maxMotorTorque = _maxMotorForce;
-                _fistJoint.motor = motor;
-                return;
-            }
-
-            if (_fistTransform != null)
-            {
-                _fistTransform.localPosition = new Vector3(0f, target, 0f);
-            }
+            ServoTo(_shoulderJoint, Mathf.Lerp(_shoulderGuardAngle, _shoulderPunchAngle, extension));
+            ServoTo(_elbowJoint, Mathf.Lerp(_elbowGuardAngle, _elbowPunchAngle, extension));
+            ServoTo(_wristJoint, Mathf.Lerp(_wristGuardAngle, _wristPunchAngle, extension));
         }
 
-        private void LateUpdate()
+        /// <summary>Drives a hinge toward a target angle with a proportional motor.</summary>
+        private void ServoTo(HingeJoint2D joint, float targetAngle)
         {
-            if (_limbTransform == null || _fistTransform == null)
+            if (joint == null)
             {
                 return;
             }
 
-            // The fist is a jointed sibling, not a child, so measure in world space from the
-            // shoulder (the limb's parent) out to wherever physics has actually put the fist.
-            Transform shoulder = _limbTransform.parent;
+            float error = targetAngle - joint.jointAngle;
 
-            if (shoulder == null)
-            {
-                return;
-            }
-
-            float length = Mathf.Max(0.01f, Vector3.Distance(shoulder.position, _fistTransform.position));
-
-            _limbTransform.localScale = new Vector3(_limbWidth, length, 1f);
-            _limbTransform.localPosition = new Vector3(0f, length * 0.5f, 0f);
+            JointMotor2D motor = joint.motor;
+            motor.motorSpeed = error * _servoGain;
+            motor.maxMotorTorque = _maxMotorTorque;
+            joint.motor = motor;
         }
     }
 }

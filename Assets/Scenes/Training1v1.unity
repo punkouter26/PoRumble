@@ -164,14 +164,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerSpawnPoints
   _preplacedBoxers:
-  - {fileID: 456745624}
-  - {fileID: 661835686}
+  - {fileID: 1812371317}
+  - {fileID: 2065942296}
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 317061281}
   _boxerCount: 2
   _spawnRadius: 7
   _arenaHalfExtent: {x: 8, y: 8}
   _autoRestart: 1
+  _humanBoxerId: -1
 --- !u!1 &199481566
 GameObject:
   m_ObjectHideFlags: 0
@@ -338,8 +339,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 456745623}
-  - {fileID: 661835685}
+  - {fileID: 1812371316}
+  - {fileID: 2065942295}
   m_Father: {fileID: 1388668899}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &401832562
@@ -391,156 +392,6 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _boxerConfig: {fileID: 11400000, guid: 7f8cb346ec2eabd4fb7ef130ab1a38b5, type: 2}
---- !u!1001 &456745622
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 317061281}
-    m_Modifications:
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 7
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: -0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_Name
-      value: Boxer_00
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
---- !u!4 &456745623 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 456745622}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &456745624 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 456745622}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
---- !u!1001 &661835684
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 317061281}
-    m_Modifications:
-    - target: {fileID: 719459257204829337, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: TeamId
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: -7
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0.7071068
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-      propertyPath: m_Name
-      value: Boxer_01
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
---- !u!4 &661835685 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 661835684}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &661835686 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
-  m_PrefabInstance: {fileID: 661835684}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
 --- !u!1 &943257877
 GameObject:
   m_ObjectHideFlags: 0
@@ -1023,6 +874,87 @@ Transform:
   - {fileID: 943257878}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1812371315
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 317061281}
+    m_Modifications:
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_Name
+      value: Boxer_00
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+--- !u!4 &1812371316 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+  m_PrefabInstance: {fileID: 1812371315}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1812371317 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+  m_PrefabInstance: {fileID: 1812371315}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
 --- !u!1 &2015342115
 GameObject:
   m_ObjectHideFlags: 0
@@ -1058,6 +990,91 @@ Transform:
   - {fileID: 199481567}
   m_Father: {fileID: 1388668899}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &2065942294
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 317061281}
+    m_Modifications:
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -7
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4042561304196917967, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: TeamId
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 6988016516539289778, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 7584464026185942082, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+      propertyPath: m_Name
+      value: Boxer_01
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+--- !u!4 &2065942295 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2861719318095235038, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+  m_PrefabInstance: {fileID: 2065942294}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2065942296 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
+  m_PrefabInstance: {fileID: 2065942294}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
 --- !u!1 &2123869978
 GameObject:
   m_ObjectHideFlags: 0

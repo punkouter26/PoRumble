@@ -132,9 +132,16 @@ namespace PoRumble.Tests
             using IObjectResolver container = builder.Build();
             MatchModel match = container.Resolve<MatchModel>();
 
+            // Derived from the config rather than hardcoded, so retuning arm reach cannot
+            // silently move the boxers out of range and turn this into a false failure.
+            BoxerConfig geometry = ScriptableObject.CreateInstance<BoxerConfig>();
+            float lateral = geometry.ArmLateralOffset;
+            float separation = geometry.ArmReach + geometry.HeadOffset;
+            Object.DestroyImmediate(geometry);
+
             // One hit point each, so a single long punch is lethal.
             BoxerModel first = new(0, 1) { Position = new Vector2(0f, 0f), Facing = Vector2.up };
-            BoxerModel second = new(1, 1) { Position = new Vector2(-0.2f, 1.9f), Facing = Vector2.down };
+            BoxerModel second = new(1, 1) { Position = new Vector2(-lateral, separation), Facing = Vector2.down };
             match.AddBoxer(first);
             match.AddBoxer(second);
 

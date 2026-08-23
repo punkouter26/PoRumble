@@ -15,14 +15,14 @@ MonoBehaviour:
   _maxHealth: 30
   _longPunchDamage: 1
   _closePunchDamage: 2
-  _closeRangeThreshold: 1.9
+  _closeRangeThreshold: 1.4
   _headOffset: 0.5
   _headRadius: 0.45
   _faceArcHalfAngleDegrees: 60
   _armExtendDuration: 0.12
   _armRetractDuration: 0.18
   _armCooldownDuration: 0.15
-  _armReach: 1.4
+  _armReach: 0.9
   _armLateralOffset: 0.3
   _moveSpeed: 5
   _bodyRadius: 0.4

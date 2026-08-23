@@ -62,17 +62,28 @@ namespace PoRumble.Systems
             }
         }
 
-        public void Punch(int boxerId, ArmSide side)
+        /// <summary>
+        /// Throws a punch with the given arm. Returns false when the arm is mid-swing or on
+        /// cooldown, so callers can tell an actual punch from a wasted input.
+        /// </summary>
+        public bool Punch(int boxerId, ArmSide side)
         {
             BoxerModel boxer = FindBoxer(boxerId);
 
             if (boxer == null || !boxer.IsAlive.Value)
             {
-                return;
+                return false;
             }
 
             ArmModel arm = side == ArmSide.Left ? boxer.LeftArm : boxer.RightArm;
+
+            if (!arm.CanPunch)
+            {
+                return false;
+            }
+
             arm.TryPunch();
+            return true;
         }
 
         /// <summary>Advances movement and both arms for every living boxer.</summary>

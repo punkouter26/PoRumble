@@ -18,7 +18,7 @@ namespace PoRumble.Models
         [Tooltip("Must sit inside the band of body distances at which a punch can physically " +
                  "land (see BoxerConfigTuningTests). Set below that band, the close-range bonus " +
                  "becomes unreachable and every punch scores 1.")]
-        [SerializeField] private float _closeRangeThreshold = 1.9f;
+        [SerializeField] private float _closeRangeThreshold = 1.4f;
 
         [Header("Hitbox")]
         [SerializeField] private float _headOffset = 0.5f;
@@ -30,7 +30,7 @@ namespace PoRumble.Models
         [SerializeField] private float _armExtendDuration = 0.12f;
         [SerializeField] private float _armRetractDuration = 0.18f;
         [SerializeField] private float _armCooldownDuration = 0.15f;
-        [SerializeField] private float _armReach = 1.4f;
+        [SerializeField] private float _armReach = 0.9f;
         [Tooltip("Sideways distance from the body centre to each shoulder. Must match the " +
                  "prefab, or punches will land where no fist is drawn.")]
         [SerializeField] private float _armLateralOffset = 0.3f;
