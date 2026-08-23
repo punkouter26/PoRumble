@@ -1,0 +1,7 @@
+{
+    "name": "PoRumble.Models",
+    "rootNamespace": "PoRumble.Models",
+    "references": [],
+    "allowUnsafeCode": false,
+    "autoReferenced": true
+}

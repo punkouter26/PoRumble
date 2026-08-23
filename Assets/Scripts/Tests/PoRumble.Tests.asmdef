@@ -1,0 +1,25 @@
+{
+    "name": "PoRumble.Tests",
+    "rootNamespace": "PoRumble.Tests",
+    "references": [
+        "PoRumble.Models",
+        "PoRumble.Systems",
+        "MessagePipe",
+        "MessagePipe.VContainer",
+        "VContainer",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "UniTask"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "allowUnsafeCode": false,
+    "autoReferenced": false
+}

@@ -1,0 +1,12 @@
+{
+    "name": "PoRumble.Systems",
+    "rootNamespace": "PoRumble.Systems",
+    "references": [
+        "PoRumble.Models",
+        "MessagePipe",
+        "VContainer",
+        "UniTask"
+    ],
+    "allowUnsafeCode": false,
+    "autoReferenced": true
+}

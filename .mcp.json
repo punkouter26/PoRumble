@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "unity-pipeline": {
+      "type": "stdio",
+      "command": "unity",
+      "args": [
+        "mcp"
+      ],
+      "env": {}
+    },
+    "coplay-unity": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "mcpforunityserver==10.1.2",
+        "mcp-for-unity",
+        "--transport",
+        "stdio"
+      ],
+      "env": {}
+    }
+  }
+}

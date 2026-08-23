@@ -105,3 +105,34 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# ---------------------------------------------------------------
+# ML-Agents / Python training environment
+# ---------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ML-Agents training output
+/results/
+/summaries/
+/models/
+*.onnx.meta.tmp
+run_logs/
+
+# TensorBoard
+/runs/
+events.out.tfevents.*
+
+# ---------------------------------------------------------------
+# MCP / tooling local state
+# ---------------------------------------------------------------
+.mcp.local.json
+.claude/settings.local.json
+Packages/manifest.json.bak
+
+# ML-Agents examples kept for reference, outside Assets so Unity does not import them
+/Reference/

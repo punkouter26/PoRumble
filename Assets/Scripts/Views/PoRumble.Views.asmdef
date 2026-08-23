@@ -1,0 +1,16 @@
+{
+    "name": "PoRumble.Views",
+    "rootNamespace": "PoRumble.Views",
+    "references": [
+        "PoRumble.Models",
+        "PoRumble.Systems",
+        "MessagePipe",
+        "MessagePipe.VContainer",
+        "VContainer",
+        "UniTask",
+        "Unity.InputSystem",
+        "Unity.ML-Agents"
+    ],
+    "allowUnsafeCode": false,
+    "autoReferenced": true
+}
