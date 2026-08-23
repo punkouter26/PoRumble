@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MessagePipe;
 using PoRumble.Models;
 using PoRumble.Systems;
@@ -27,6 +28,18 @@ namespace PoRumble.Views
         [SerializeField] private float _damageTakenPenalty = 0.02f;
         [SerializeField] private float _eliminationReward = 0.5f;
         [SerializeField] private float _eliminatedPenalty = 1.0f;
+
+        [Header("Dense shaping")]
+        [Tooltip("Reward per step for pointing at the nearest opponent. Without this the agent " +
+                 "must stumble onto move+aim+punch at once, and the terminal reward is far too " +
+                 "sparse to teach any of them.")]
+        [SerializeField] private float _aimShapingWeight = 0.6f;
+
+        [Tooltip("Reward per step for holding the distance at which a punch can actually land.")]
+        [SerializeField] private float _rangeShapingWeight = 0.4f;
+
+        [Tooltip("Penalty per punch thrown, so flailing is not free.")]
+        [SerializeField] private float _punchCost = 0.002f;
 
         [Tooltip("Keyboard control for this boxer instead of a policy. Inference only — " +
                  "never enable during a training run.")]
@@ -114,16 +127,20 @@ namespace PoRumble.Views
             if (discrete[0] == 1)
             {
                 _boxerSystem.Punch(_boxerId, ArmSide.Left);
+                AddReward(-_punchCost);
             }
 
             if (discrete[1] == 1)
             {
                 _boxerSystem.Punch(_boxerId, ArmSide.Right);
+                AddReward(-_punchCost);
             }
 
             // Existential penalty. The ring does not shrink, so without a standing cost for
             // doing nothing, agents reliably learn to run away and stall the match out.
             AddReward(-1f / Mathf.Max(1, MaxStep));
+
+            ApplyShapingRewards();
         }
 
         public override void Heuristic(in ActionBuffers actionsOut)
@@ -160,6 +177,64 @@ namespace PoRumble.Views
 
             discrete[0] = keyboard.jKey.isPressed ? 1 : 0;
             discrete[1] = keyboard.kKey.isPressed ? 1 : 0;
+        }
+
+        /// <summary>
+        /// Rewards the intermediate skills — facing the opponent and holding punching range —
+        /// so the policy has a gradient to climb before it ever lands a first hit.
+        /// </summary>
+        private void ApplyShapingRewards()
+        {
+            BoxerModel nearest = FindNearestLivingOpponent(out float distance);
+
+            if (nearest == null)
+            {
+                return;
+            }
+
+            float steps = Mathf.Max(1, MaxStep);
+            Vector2 toOpponent = nearest.Position - _model.Position;
+
+            if (toOpponent.sqrMagnitude > Mathf.Epsilon)
+            {
+                // 1 when looking straight at them, -1 when looking away.
+                float alignment = Vector2.Dot(_model.Facing.normalized, toOpponent.normalized);
+                AddReward(_aimShapingWeight * alignment / steps);
+            }
+
+            // Peaks at the separation where a fully extended punch reaches the head.
+            float idealRange = _config.ArmReach + _config.HeadOffset;
+            float rangeError = Mathf.Abs(distance - idealRange);
+            float rangeScore = Mathf.Clamp01(1f - rangeError / idealRange);
+            AddReward(_rangeShapingWeight * rangeScore / steps);
+        }
+
+        private BoxerModel FindNearestLivingOpponent(out float distance)
+        {
+            BoxerModel nearest = null;
+            float bestSqr = float.MaxValue;
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+
+            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
+            {
+                BoxerModel other = boxers[boxerIndex];
+
+                if (other.Id == _boxerId || !other.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                float sqr = (other.Position - _model.Position).sqrMagnitude;
+
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = other;
+                }
+            }
+
+            distance = nearest == null ? 0f : Mathf.Sqrt(bestSqr);
+            return nearest;
         }
 
         private void OnPunchLanded(PunchLandedMessage message)

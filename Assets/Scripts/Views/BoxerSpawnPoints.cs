@@ -24,8 +24,9 @@ namespace PoRumble.Views
         [SerializeField] private bool _autoRestart;
 
         private readonly List<BoxerView> _views = new();
-        private IObjectResolver _resolver;
         private readonly List<BoxerAgentView> _agents = new();
+        private IObjectResolver _resolver;
+        private bool _built;
 
         public int BoxerCount => HasPreplacedBoxers ? _preplacedBoxers.Length : _boxerCount;
 
@@ -44,21 +45,30 @@ namespace PoRumble.Views
 
         public void BuildViews(IReadOnlyList<BoxerModel> boxers)
         {
-            if (_boxerPrefab == null)
+            // A second call would spawn a duplicate set of boxers whose agents never get bound.
+            // Those ghosts still receive decisions and feed empty experience to the trainer,
+            // which silently halves the useful data in a run.
+            if (_built)
             {
+                Debug.LogWarning($"[PoRumble] BuildViews called twice on {name}; ignoring.");
                 return;
             }
 
+            _built = true;
             Transform parent = _boxerParent != null ? _boxerParent : transform;
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {
                 BoxerModel boxer = boxers[boxerIndex];
-                BoxerView view = Instantiate(_boxerPrefab, boxer.Position, Quaternion.identity, parent);
-                view.name = $"Boxer_{boxer.Id:00}";
+                BoxerView view = ResolveView(boxerIndex, boxer, parent);
 
-                // Boxers are created after the container is built, so they cannot be found by
-                // RegisterComponentInHierarchy - each instance is injected on spawn instead.
+                if (view == null)
+                {
+                    continue;
+                }
+
+                // Boxers may be created after the container is built, so they cannot be found by
+                // RegisterComponentInHierarchy - each instance is injected here instead.
                 _resolver.InjectGameObject(view.gameObject);
                 view.Bind(boxer);
 
@@ -70,6 +80,27 @@ namespace PoRumble.Views
 
                 _views.Add(view);
             }
+        }
+
+        /// <summary>
+        /// Uses a boxer already placed in the scene when one is assigned, so the ring is visible
+        /// without entering Play mode. Falls back to instantiating the prefab.
+        /// </summary>
+        private BoxerView ResolveView(int boxerIndex, BoxerModel boxer, Transform parent)
+        {
+            if (HasPreplacedBoxers)
+            {
+                return boxerIndex < _preplacedBoxers.Length ? _preplacedBoxers[boxerIndex] : null;
+            }
+
+            if (_boxerPrefab == null)
+            {
+                return null;
+            }
+
+            BoxerView spawned = Instantiate(_boxerPrefab, boxer.Position, Quaternion.identity, parent);
+            spawned.name = $"Boxer_{boxer.Id:00}";
+            return spawned;
         }
     }
 }

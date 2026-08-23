@@ -40,6 +40,7 @@ namespace PoRumble.Models
         [SerializeField] private float _bodyRadius = 0.4f;
 
         public int MaxHealth => _maxHealth;
+        public float HeadOffset => _headOffset;
         public float CloseRangeThreshold => _closeRangeThreshold;
         public float ArmExtendDuration => _armExtendDuration;
         public float ArmRetractDuration => _armRetractDuration;
