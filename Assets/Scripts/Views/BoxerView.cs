@@ -18,8 +18,11 @@ namespace PoRumble.Views
         [SerializeField] private ArmView _rightArmView;
         [SerializeField] private Color _eliminatedColor = new(0.22f, 0.24f, 0.22f, 1f);
 
-        private static readonly Color RlColor = new(0.13f, 0.13f, 0.15f);      // near-black
-        private static readonly Color ScriptedColor = new(0.93f, 0.93f, 0.90f); // bone
+        [Header("Role colours")]
+        [Tooltip("Learning agents.")]
+        [SerializeField] private Color _rlColor = new(0.11f, 0.11f, 0.13f);
+        [Tooltip("The hand-written sparring partner.")]
+        [SerializeField] private Color _scriptedColor = new(0.58f, 0.58f, 0.61f);
 
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =
@@ -57,7 +60,7 @@ namespace PoRumble.Views
         /// </summary>
         public void SetRoleColor(bool isScripted)
         {
-            _aliveColor = isScripted ? ScriptedColor : RlColor;
+            _aliveColor = isScripted ? _scriptedColor : _rlColor;
             Tint(_model == null || _model.IsAlive.Value ? _aliveColor : _eliminatedColor);
         }
 

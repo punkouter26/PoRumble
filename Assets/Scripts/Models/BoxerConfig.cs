@@ -51,6 +51,10 @@ namespace PoRumble.Models
         [SerializeField] private float _punchStaminaCost = 0.035f;
         [Tooltip("Stamina spent per second at full sprint.")]
         [SerializeField] private float _moveStaminaCost = 0.05f;
+        [Tooltip("Speed a landed punch drives the target backwards, per point of damage. " +
+                 "Momentum carries it, so the shove decays rather than teleporting anyone.")]
+        [SerializeField] private float _knockbackPerDamage = 1.6f;
+
         [Tooltip("Stamina spent absorbing a punch on the gloves.")]
         [SerializeField] private float _blockStaminaCost = 0.012f;
         [Tooltip("Stamina recovered per second while not throwing.")]
@@ -79,6 +83,7 @@ namespace PoRumble.Models
         public float MoveStaminaCost => _moveStaminaCost;
         public float StaminaRecovery => _staminaRecovery;
         public float BlockStaminaCost => _blockStaminaCost;
+        public float KnockbackPerDamage => _knockbackPerDamage;
         public float ExhaustedPenalty => _exhaustedPenalty;
 
         public CombatSettings ToCombatSettings()

@@ -63,6 +63,7 @@ namespace PoRumble.Systems
             }
 
             target.ApplyDamage(message.Damage);
+            ApplyKnockback(target, message);
             _damagedPublisher.Publish(new BoxerDamagedMessage(target.Id, target.Health.Value));
 
             if (target.Health.Value > 0)
@@ -76,6 +77,26 @@ namespace PoRumble.Systems
             {
                 _eliminatedPublisher.Publish(new BoxerEliminatedMessage(target.Id, message.AttackerId));
             }
+        }
+
+        /// <summary>
+        /// Drives the target backwards off a landed punch. Added to velocity rather than
+        /// teleporting the position, so momentum and the ring clamp both still apply and the
+        /// shove decays the way the original's "reel back slightly" reads.
+        /// </summary>
+        private void ApplyKnockback(BoxerModel target, PunchLandedMessage message)
+        {
+            BoxerModel attacker = FindBoxer(message.AttackerId);
+            Vector2 direction = attacker != null
+                ? target.Position - attacker.Position
+                : target.Position - message.Position;
+
+            if (direction.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return;
+            }
+
+            target.Velocity += direction.normalized * (_config.KnockbackPerDamage * message.Damage);
         }
 
         private BoxerModel FindBoxer(int boxerId)
