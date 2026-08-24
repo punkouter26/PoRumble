@@ -37,6 +37,23 @@ namespace PoRumble.Models
 
         [Header("Movement")]
         [SerializeField] private float _moveSpeed = 5f;
+        [Tooltip("How quickly a boxer reaches full speed. Lower feels heavier.")]
+        [SerializeField] private float _acceleration = 18f;
+        [Tooltip("How quickly a boxer coasts to a stop.")]
+        [SerializeField] private float _deceleration = 12f;
+        [Tooltip("Degrees per second the boxer can turn. Humans cannot pivot instantly.")]
+        [SerializeField] private float _turnSpeedDegrees = 540f;
+
+        [Header("Stamina")]
+        [Tooltip("Stamina spent per punch thrown.")]
+        [SerializeField] private float _punchStaminaCost = 0.06f;
+        [Tooltip("Stamina spent per second at full sprint.")]
+        [SerializeField] private float _moveStaminaCost = 0.05f;
+        [Tooltip("Stamina recovered per second while not throwing.")]
+        [SerializeField] private float _staminaRecovery = 0.09f;
+        [Tooltip("Speed and damage multiplier when completely spent.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _exhaustedPenalty = 0.45f;
         [SerializeField] private float _bodyRadius = 0.4f;
 
         public int MaxHealth => _maxHealth;
@@ -49,6 +66,13 @@ namespace PoRumble.Models
         public float ArmLateralOffset => _armLateralOffset;
         public float MoveSpeed => _moveSpeed;
         public float BodyRadius => _bodyRadius;
+        public float Acceleration => _acceleration;
+        public float Deceleration => _deceleration;
+        public float TurnSpeedDegrees => _turnSpeedDegrees;
+        public float PunchStaminaCost => _punchStaminaCost;
+        public float MoveStaminaCost => _moveStaminaCost;
+        public float StaminaRecovery => _staminaRecovery;
+        public float ExhaustedPenalty => _exhaustedPenalty;
 
         public CombatSettings ToCombatSettings()
         {

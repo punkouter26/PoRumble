@@ -10,10 +10,44 @@ namespace PoRumble.Models
         public ReactiveProperty<int> Health { get; }
         public ReactiveProperty<bool> IsAlive { get; } = new(true);
 
+        /// <summary>
+        /// 1 = fresh, 0 = spent. Punching and moving drain it, standing off recovers it.
+        /// A tired boxer punches slower, hits softer and moves less, the way a real one fades
+        /// over rounds.
+        /// </summary>
+        public ReactiveProperty<float> Stamina { get; } = new(1f);
+
+        /// <summary>Current velocity, carried between ticks so movement has weight.</summary>
+        public Vector2 Velocity { get; set; }
+
         public Vector2 Position { get; set; }
 
-        /// <summary>Unit vector the boxer faces. The face arc is centred on this.</summary>
-        public Vector2 Facing { get; set; } = Vector2.up;
+        private Vector2 _facing = Vector2.up;
+
+        /// <summary>
+        /// Unit vector the boxer faces; the face arc is centred on this. Assigning it snaps the
+        /// boxer round and cancels any turn in progress, so spawning and tests can place a
+        /// fighter without it immediately rotating away. Use SetAim on the system to request a
+        /// gradual turn instead.
+        /// </summary>
+        public Vector2 Facing
+        {
+            get => _facing;
+            set
+            {
+                _facing = value;
+                DesiredFacing = value;
+            }
+        }
+
+        /// <summary>Heading the boxer is turning toward, reached at a finite turn rate.</summary>
+        public Vector2 DesiredFacing { get; set; } = Vector2.up;
+
+        /// <summary>Advances the current heading without disturbing the requested one.</summary>
+        public void ApplyTurn(Vector2 facing)
+        {
+            _facing = facing;
+        }
 
         public Vector2 MoveInput { get; set; }
 
@@ -42,7 +76,10 @@ namespace PoRumble.Models
         {
             Position = position;
             Facing = facing;
+            DesiredFacing = facing;
             MoveInput = Vector2.zero;
+            Velocity = Vector2.zero;
+            Stamina.Value = 1f;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
             Health.Value = maxHealth;

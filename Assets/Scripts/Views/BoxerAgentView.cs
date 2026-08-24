@@ -114,6 +114,7 @@ namespace PoRumble.Views
                 sensor.AddObservation(0f);                  // right arm extension
                 sensor.AddObservation(0f);                  // right arm ready
                 sensor.AddObservation(0f);                  // boxers remaining
+                sensor.AddObservation(0f);                  // stamina
                 return;
             }
 
@@ -125,6 +126,7 @@ namespace PoRumble.Views
             sensor.AddObservation(_model.RightArm.Extension);
             sensor.AddObservation(_model.RightArm.CanPunch ? 1f : 0f);
             sensor.AddObservation(_match.CountAlive() / (float)Mathf.Max(1, _match.Boxers.Count));
+            sensor.AddObservation(_model.Stamina.Value);
         }
 
         public override void OnActionReceived(ActionBuffers actions)

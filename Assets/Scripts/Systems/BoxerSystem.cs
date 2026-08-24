@@ -58,7 +58,7 @@ namespace PoRumble.Systems
 
             if (aimDirection.sqrMagnitude > Mathf.Epsilon)
             {
-                boxer.Facing = aimDirection.normalized;
+                boxer.DesiredFacing = aimDirection.normalized;
             }
         }
 
@@ -84,6 +84,7 @@ namespace PoRumble.Systems
             if (requested.CanPunch)
             {
                 requested.TryPunch();
+                SpendPunchStamina(boxer);
                 return true;
             }
 
@@ -92,10 +93,16 @@ namespace PoRumble.Systems
             if (other.CanPunch)
             {
                 other.TryPunch();
+                SpendPunchStamina(boxer);
                 return true;
             }
 
             return false;
+        }
+
+        private void SpendPunchStamina(BoxerModel boxer)
+        {
+            boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value - _config.PunchStaminaCost);
         }
 
         /// <summary>Advances movement and both arms for every living boxer.</summary>
@@ -113,12 +120,14 @@ namespace PoRumble.Systems
                     continue;
                 }
 
-                boxer.Position = ClampToArena(
-                    boxer.Position + boxer.MoveInput * (_config.MoveSpeed * deltaTime));
+                TickMovement(boxer, deltaTime);
+                TickStamina(boxer, deltaTime);
 
                 TickArm(boxer, boxer.LeftArm, deltaTime);
                 TickArm(boxer, boxer.RightArm, deltaTime);
             }
+
+            ResolveOverlaps();
 
             for (int hitIndex = 0; hitIndex < _pendingHits.Count; hitIndex++)
             {
@@ -126,6 +135,103 @@ namespace PoRumble.Systems
             }
 
             _pendingHits.Clear();
+        }
+
+        /// <summary>
+        /// Moves a boxer with momentum and a finite turn rate, so it accelerates and pivots
+        /// like a person rather than snapping to a new heading. A tired boxer is slower.
+        /// </summary>
+        private void TickMovement(BoxerModel boxer, float deltaTime)
+        {
+            float effort = StaminaScale(boxer);
+            Vector2 desired = boxer.MoveInput * (_config.MoveSpeed * effort);
+            float rate = desired.sqrMagnitude > Mathf.Epsilon ? _config.Acceleration : _config.Deceleration;
+
+            boxer.Velocity = Vector2.MoveTowards(boxer.Velocity, desired, rate * deltaTime);
+            boxer.Position = ClampToArena(boxer.Position + boxer.Velocity * deltaTime);
+
+            // Turn toward the aim heading at a finite rate; nobody spins on the spot.
+            if (boxer.Facing.sqrMagnitude > Mathf.Epsilon && boxer.DesiredFacing.sqrMagnitude > Mathf.Epsilon)
+            {
+                float maxTurn = _config.TurnSpeedDegrees * effort * deltaTime;
+                float delta = Vector2.SignedAngle(boxer.Facing, boxer.DesiredFacing);
+                float applied = Mathf.Clamp(delta, -maxTurn, maxTurn);
+                boxer.ApplyTurn(Rotate(boxer.Facing.normalized, applied));
+            }
+        }
+
+        private static Vector2 Rotate(Vector2 value, float degrees)
+        {
+            float radians = degrees * Mathf.Deg2Rad;
+            float sin = Mathf.Sin(radians);
+            float cos = Mathf.Cos(radians);
+            return new Vector2(value.x * cos - value.y * sin, value.x * sin + value.y * cos);
+        }
+
+        /// <summary>Drains stamina for effort thrown, and pays it back while standing off.</summary>
+        private void TickStamina(BoxerModel boxer, float deltaTime)
+        {
+            bool working = boxer.LeftArm.Phase != ArmPhase.Idle || boxer.RightArm.Phase != ArmPhase.Idle;
+            float drain = boxer.Velocity.magnitude / Mathf.Max(0.01f, _config.MoveSpeed) * _config.MoveStaminaCost;
+            float delta = working ? -drain : _config.StaminaRecovery - drain;
+
+            boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value + delta * deltaTime);
+        }
+
+        /// <summary>Scales effort by how fresh the boxer is: 1 when rested, less when spent.</summary>
+        private float StaminaScale(BoxerModel boxer)
+        {
+            return Mathf.Lerp(_config.ExhaustedPenalty, 1f, boxer.Stamina.Value);
+        }
+
+        /// <summary>
+        /// Pushes overlapping boxers apart. Bodies are circles of BodyRadius; positions are
+        /// model-driven, so nothing else stops two fighters occupying the same spot.
+        /// </summary>
+        private void ResolveOverlaps()
+        {
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+            float minDistance = _config.BodyRadius * 2f;
+            float minDistanceSqr = minDistance * minDistance;
+
+            for (int firstIndex = 0; firstIndex < boxers.Count; firstIndex++)
+            {
+                BoxerModel first = boxers[firstIndex];
+
+                if (!first.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                for (int secondIndex = firstIndex + 1; secondIndex < boxers.Count; secondIndex++)
+                {
+                    BoxerModel second = boxers[secondIndex];
+
+                    if (!second.IsAlive.Value)
+                    {
+                        continue;
+                    }
+
+                    Vector2 offset = second.Position - first.Position;
+                    float distanceSqr = offset.sqrMagnitude;
+
+                    if (distanceSqr >= minDistanceSqr)
+                    {
+                        continue;
+                    }
+
+                    // Exactly coincident: nudge along a fixed axis so the split is deterministic.
+                    Vector2 direction = distanceSqr > Mathf.Epsilon
+                        ? offset / Mathf.Sqrt(distanceSqr)
+                        : Vector2.right;
+
+                    float overlap = minDistance - Mathf.Sqrt(Mathf.Max(distanceSqr, 0f));
+                    Vector2 push = direction * (overlap * 0.5f);
+
+                    first.Position = ClampToArena(first.Position - push);
+                    second.Position = ClampToArena(second.Position + push);
+                }
+            }
         }
 
         /// <summary>
@@ -184,10 +290,13 @@ namespace PoRumble.Systems
                     continue;
                 }
 
+                // A spent boxer lands softer punches, but never for zero.
+                int damage = Mathf.Max(1, Mathf.RoundToInt(result.Damage * StaminaScale(attacker)));
+
                 _pendingHits.Add(new PunchLandedMessage(
                     attacker.Id,
                     target.Id,
-                    result.Damage,
+                    damage,
                     result.IsCloseRange,
                     glovePosition));
 

@@ -32,7 +32,7 @@ namespace PoRumble.Views
         [Header("Elbow (0 = straight, positive = flexed)")]
         [Tooltip("Resting bend. Kept shallow so the arms sit extended toward the opponent; a " +
                  "human elbow can flex to roughly 145 degrees, which the joint limit allows.")]
-        [SerializeField] private float _elbowGuardAngle = 28f;
+        [SerializeField] private float _elbowGuardAngle = 45f;
         [Tooltip("Never zero: elbows do not hyperextend.")]
         [SerializeField] private float _elbowPunchAngle = 0f;
 
