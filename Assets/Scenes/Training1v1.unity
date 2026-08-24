@@ -208,6 +208,8 @@ MonoBehaviour:
   _arenaHalfExtent: {x: 10, y: 7}
   _autoRestart: 1
   _humanBoxerId: -1
+  _scriptedBoxerIds: 01000000
+  _useRoleColors: 1
 --- !u!1 &199481566
 GameObject:
   m_ObjectHideFlags: 0

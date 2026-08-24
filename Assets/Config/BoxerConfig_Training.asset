@@ -19,10 +19,18 @@ MonoBehaviour:
   _headOffset: 0.89
   _headRadius: 0.8
   _faceArcHalfAngleDegrees: 60
+  _gloveRadius: 0.3
   _armExtendDuration: 0.22
   _armRetractDuration: 0.2
   _armCooldownDuration: 0.12
   _armReach: 1.6
   _armLateralOffset: 0.53
   _moveSpeed: 5
+  _acceleration: 18
+  _deceleration: 12
+  _turnSpeedDegrees: 540
+  _punchStaminaCost: 0.035
+  _moveStaminaCost: 0.05
+  _staminaRecovery: 0.18
+  _exhaustedPenalty: 0.45
   _bodyRadius: 0.71

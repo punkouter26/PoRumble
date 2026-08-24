@@ -29,10 +29,10 @@ namespace PoRumble.Views
                  "way to score, so this is the core objective.")]
         [SerializeField] private float _damageDealtReward = 0.35f;
         [Tooltip("For slipping a punch that nearly landed.")]
-        [SerializeField] private float _evadeReward = 0.08f;
+        [SerializeField] private float _evadeReward = 0.03f;
         [Tooltip("For stopping a punch on the gloves. Less than slipping it: the punch still " +
                  "arrived, it just did not get through.")]
-        [SerializeField] private float _blockReward = 0.04f;
+        [SerializeField] private float _blockReward = 0.015f;
         [SerializeField] private float _damageTakenPenalty = 0.02f;
         [SerializeField] private float _eliminationReward = 0.5f;
         [SerializeField] private float _eliminatedPenalty = 1.0f;

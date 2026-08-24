@@ -26,6 +26,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
             builder.Register<MatchModel>(Lifetime.Singleton);
+            builder.RegisterInstance(ScriptableObject.CreateInstance<BoxerConfig>());
             builder.Register<CombatSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<MatchSystem>(Lifetime.Singleton).AsSelf();
             return builder.Build();
