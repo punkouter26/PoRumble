@@ -1181,7 +1181,6 @@ GameObject:
   - component: {fileID: 4416647789490615639}
   - component: {fileID: 3282016818635141995}
   - component: {fileID: 4042561304196917967}
-  - component: {fileID: 4189473122533528095}
   - component: {fileID: 6402569166224856250}
   - component: {fileID: 2830912935214447116}
   - component: {fileID: 6784481105936320676}
@@ -1305,23 +1304,6 @@ MonoBehaviour:
   m_UseChildActuators: 1
   m_DeterministicInference: 0
   m_ObservableAttributeHandling: 0
---- !u!114 &4189473122533528095
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6652157053363623272}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a4f28859b78a1824589209f1d080d704, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerView
-  _bodyRigidbody: {fileID: 0}
-  _renderers: []
-  _leftArmView: {fileID: 0}
-  _rightArmView: {fileID: 0}
-  _eliminatedColor: {r: 0.22, g: 0.24, b: 0.22, a: 1}
 --- !u!114 &6402569166224856250
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1339,6 +1321,8 @@ MonoBehaviour:
   hasUpgradedFromAgentParameters: 1
   MaxStep: 1500
   _damageDealtReward: 0.2
+  _evadeReward: 0.03
+  _blockReward: 0.015
   _damageTakenPenalty: 0.02
   _eliminationReward: 0.5
   _eliminatedPenalty: 1
@@ -1347,6 +1331,7 @@ MonoBehaviour:
   _rangeShapingWeight: 0.4
   _punchCost: 0.002
   _humanControlled: 0
+  _scriptedBot: 0
 --- !u!114 &2830912935214447116
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1638,6 +1623,8 @@ MonoBehaviour:
   _leftArmView: {fileID: 2749685362711538530}
   _rightArmView: {fileID: 7672527761864111436}
   _eliminatedColor: {r: 0.22, g: 0.24, b: 0.22, a: 1}
+  _rlColor: {r: 0.11, g: 0.11, b: 0.13, a: 1}
+  _scriptedColor: {r: 0.95, g: 0.95, b: 0.93, a: 1}
 --- !u!1 &8057991017000579499
 GameObject:
   m_ObjectHideFlags: 0

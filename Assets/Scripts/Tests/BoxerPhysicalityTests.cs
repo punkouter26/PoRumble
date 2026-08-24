@@ -84,6 +84,42 @@ namespace PoRumble.Tests
         }
 
         [Test]
+        public void LandedPunchDrivesTheTargetBack()
+        {
+            // Drive the exchange through the real systems so knockback comes from a genuine hit.
+            ContainerBuilder builder = new();
+            MessagePipeOptions options = builder.RegisterMessagePipe();
+            builder.RegisterMessageBroker<PunchLandedMessage>(options);
+            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
+            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
+            builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
+            builder.Register<MatchModel>(Lifetime.Singleton);
+            builder.RegisterInstance(_config);
+            builder.Register<CombatSystem>(Lifetime.Singleton).AsSelf();
+
+            using IObjectResolver container = builder.Build();
+            MatchModel match = container.Resolve<MatchModel>();
+            match.AddBoxer(new BoxerModel(0, 30));
+            match.AddBoxer(new BoxerModel(1, 30));
+            CombatSystem combat = container.Resolve<CombatSystem>();
+
+            BoxerModel attacker = match.Boxers[0];
+            BoxerModel target = match.Boxers[1];
+            attacker.Position = Vector2.zero;
+            target.Position = new Vector2(0f, 2f);
+            target.Velocity = Vector2.zero;
+
+            container.Resolve<IPublisher<PunchLandedMessage>>()
+                     .Publish(new PunchLandedMessage(0, 1, 2, true, new Vector2(0f, 1.5f)));
+
+            Assert.That(target.Velocity.y, Is.GreaterThan(0f),
+                "a landed punch should drive the target away from the attacker");
+
+            combat.Dispose();
+        }
+
+        [Test]
         public void MovementAcceleratesRatherThanSnapping()
         {
             _boxerSystem.SetMoveInput(0, Vector2.right);

@@ -22,7 +22,7 @@ namespace PoRumble.Views
         [Tooltip("Learning agents.")]
         [SerializeField] private Color _rlColor = new(0.11f, 0.11f, 0.13f);
         [Tooltip("The hand-written sparring partner.")]
-        [SerializeField] private Color _scriptedColor = new(0.58f, 0.58f, 0.61f);
+        [SerializeField] private Color _scriptedColor = new(0.95f, 0.95f, 0.93f);
 
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =

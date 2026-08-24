@@ -20,8 +20,9 @@ namespace PoRumble.Views
     /// This is a View: it translates actions into system calls and observations out of the
     /// model. It holds no combat logic.
     /// </summary>
+    // No RequireComponent on BoxerView: the view lives on the boxer root while this agent
+    // sits on the Torso, so requiring it here made Unity keep adding a second, unbound view.
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(BoxerView))]
     public sealed class BoxerAgentView : Agent
     {
         [Header("Reward shaping")]
