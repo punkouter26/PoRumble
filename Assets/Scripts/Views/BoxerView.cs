@@ -18,6 +18,9 @@ namespace PoRumble.Views
         [SerializeField] private ArmView _rightArmView;
         [SerializeField] private Color _eliminatedColor = new(0.22f, 0.24f, 0.22f, 1f);
 
+        private static readonly Color RlColor = new(0.13f, 0.13f, 0.15f);      // near-black
+        private static readonly Color ScriptedColor = new(0.93f, 0.93f, 0.90f); // bone
+
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =
         {
@@ -46,6 +49,16 @@ namespace PoRumble.Views
             // MaterialPropertyBlock rather than .material, so tinting never clones the
             // material and every boxer keeps batching against the shared one.
             _propertyBlock = new MaterialPropertyBlock();
+        }
+
+        /// <summary>
+        /// Forces the standard two-tone scheme: learning agents black, the scripted sparring
+        /// partner white, so it is obvious which is which while watching a match.
+        /// </summary>
+        public void SetRoleColor(bool isScripted)
+        {
+            _aliveColor = isScripted ? ScriptedColor : RlColor;
+            Tint(_model == null || _model.IsAlive.Value ? _aliveColor : _eliminatedColor);
         }
 
         /// <summary>Called by the spawner once the model exists.</summary>

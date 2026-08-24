@@ -28,6 +28,8 @@ namespace PoRumble.Tests
             ContainerBuilder builder = new();
             MessagePipeOptions options = builder.RegisterMessagePipe();
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
+            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
+            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
@@ -122,6 +124,8 @@ namespace PoRumble.Tests
             ContainerBuilder builder = new();
             MessagePipeOptions options = builder.RegisterMessagePipe();
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
+            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
+            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
@@ -152,7 +156,12 @@ namespace PoRumble.Tests
             container.Resolve<ISubscriber<MatchEndedMessage>>().Subscribe(m => ended.Add(m));
 
             BoxerConfig config = ScriptableObject.CreateInstance<BoxerConfig>();
-            BoxerSystem boxerSystem = new(match, config, container.Resolve<IPublisher<PunchLandedMessage>>());
+            BoxerSystem boxerSystem = new(
+                match,
+                config,
+                container.Resolve<IPublisher<PunchLandedMessage>>(),
+                container.Resolve<IPublisher<PunchEvadedMessage>>(),
+                container.Resolve<IPublisher<PunchBlockedMessage>>());
 
             // Placed so each glove lands on the other's head centre at full reach.
             boxerSystem.Punch(0, ArmSide.Left);

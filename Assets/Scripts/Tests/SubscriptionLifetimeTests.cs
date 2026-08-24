@@ -20,6 +20,8 @@ namespace PoRumble.Tests
             ContainerBuilder builder = new();
             MessagePipeOptions options = builder.RegisterMessagePipe();
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
+            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
+            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);

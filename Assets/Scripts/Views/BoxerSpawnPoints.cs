@@ -24,6 +24,12 @@ namespace PoRumble.Views
         [SerializeField] private bool _autoRestart;
         [Tooltip("Boxer id handed to the keyboard. -1 leaves every boxer under AI control.")]
         [SerializeField] private int _humanBoxerId = -1;
+        [Tooltip("Boxer ids driven by the hand-written sparring brain rather than a policy. " +
+                 "Gives the learners a competent opponent from the very first episode.")]
+        [SerializeField] private int[] _scriptedBoxerIds = System.Array.Empty<int>();
+        [Tooltip("Colour learning agents black and scripted bots white, instead of the " +
+                 "ten-way palette.")]
+        [SerializeField] private bool _useRoleColors;
 
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
@@ -81,7 +87,16 @@ namespace PoRumble.Views
                 if (agent != null)
                 {
                     agent.Bind(boxer);
+
+                    bool scripted = System.Array.IndexOf(_scriptedBoxerIds, boxer.Id) >= 0;
+                    agent.SetScriptedBot(scripted);
                     agent.SetHumanControlled(boxer.Id == _humanBoxerId);
+
+                    if (_useRoleColors)
+                    {
+                        view.SetRoleColor(scripted);
+                    }
+
                     _agents.Add(agent);
                 }
 

@@ -24,6 +24,8 @@ namespace PoRumble.Tests
             ContainerBuilder builder = new();
             MessagePipeOptions options = builder.RegisterMessagePipe();
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
+            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
+            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             _container = builder.Build();
 
             _config = ScriptableObject.CreateInstance<BoxerConfig>();
@@ -31,7 +33,9 @@ namespace PoRumble.Tests
             _match.AddBoxer(new BoxerModel(0, _config.MaxHealth));
 
             _boxerSystem = new BoxerSystem(_match, _config,
-                _container.Resolve<IPublisher<PunchLandedMessage>>());
+                _container.Resolve<IPublisher<PunchLandedMessage>>(),
+                _container.Resolve<IPublisher<PunchEvadedMessage>>(),
+                _container.Resolve<IPublisher<PunchBlockedMessage>>());
         }
 
         [TearDown]

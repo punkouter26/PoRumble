@@ -17,6 +17,8 @@ namespace PoRumble.Systems
         private readonly MatchModel _match;
         private readonly BoxerConfig _config;
         private readonly IPublisher<PunchLandedMessage> _punchPublisher;
+        private readonly IPublisher<PunchEvadedMessage> _evadedPublisher;
+        private readonly IPublisher<PunchBlockedMessage> _blockedPublisher;
 
         // Hits are buffered for the whole tick so that punches thrown on the same tick all
         // resolve against the state at the start of that tick. Without this, whichever boxer
@@ -28,11 +30,15 @@ namespace PoRumble.Systems
         public BoxerSystem(
             MatchModel match,
             BoxerConfig config,
-            IPublisher<PunchLandedMessage> punchPublisher)
+            IPublisher<PunchLandedMessage> punchPublisher,
+            IPublisher<PunchEvadedMessage> evadedPublisher,
+            IPublisher<PunchBlockedMessage> blockedPublisher)
         {
             _match = match;
             _config = config;
             _punchPublisher = punchPublisher;
+            _evadedPublisher = evadedPublisher;
+            _blockedPublisher = blockedPublisher;
         }
 
         public void SetMoveInput(int boxerId, Vector2 moveInput)
@@ -99,6 +105,8 @@ namespace PoRumble.Systems
 
             return false;
         }
+
+        private const float WORKING_RECOVERY_SCALE = 0.5f;
 
         private void SpendPunchStamina(BoxerModel boxer)
         {
@@ -172,8 +180,11 @@ namespace PoRumble.Systems
         private void TickStamina(BoxerModel boxer, float deltaTime)
         {
             bool working = boxer.LeftArm.Phase != ArmPhase.Idle || boxer.RightArm.Phase != ArmPhase.Idle;
-            float drain = boxer.Velocity.magnitude / Mathf.Max(0.01f, _config.MoveSpeed) * _config.MoveStaminaCost;
-            float delta = working ? -drain : _config.StaminaRecovery - drain;
+            float moveDrain = boxer.Velocity.magnitude / Mathf.Max(0.01f, _config.MoveSpeed) * _config.MoveStaminaCost;
+
+            // Breath comes back even mid-exchange, just far slower than when standing off.
+            float recovery = _config.StaminaRecovery * (working ? WORKING_RECOVERY_SCALE : 1f);
+            float delta = recovery - moveDrain;
 
             boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value + delta * deltaTime);
         }
@@ -249,11 +260,15 @@ namespace PoRumble.Systems
 
         private void TickArm(BoxerModel attacker, ArmModel arm, float deltaTime)
         {
+            // A spent boxer's arms are heavier: every phase stretches out, so the punch rate
+            // falls as stamina does and the two settle at an equilibrium.
+            float slow = 1f / Mathf.Max(0.01f, StaminaScale(attacker));
+
             arm.Tick(
                 deltaTime,
-                _config.ArmExtendDuration,
-                _config.ArmRetractDuration,
-                _config.ArmCooldownDuration);
+                _config.ArmExtendDuration * slow,
+                _config.ArmRetractDuration * slow,
+                _config.ArmCooldownDuration * slow);
 
             if (arm.ReachedPeakThisTick)
             {
@@ -302,7 +317,64 @@ namespace PoRumble.Systems
 
                 return;
             }
+
+            ReportBlockOrNearMiss(attacker, glovePosition);
         }
+
+        /// <summary>
+        /// The punch did not reach a face. Work out whether the defender's gloves stopped it
+        /// (a block) or it simply missed a nearby opponent (an evade), so defence is worth
+        /// learning and not just aggression. A block outranks an evade: the glove is in front
+        /// of the head, so it is checked first.
+        /// </summary>
+        private void ReportBlockOrNearMiss(BoxerModel attacker, Vector2 glovePosition)
+        {
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+            float blockRange = _config.GloveRadius * 2f;
+            float blockRangeSqr = blockRange * blockRange;
+            float nearMiss = _config.HeadRadius * NEAR_MISS_SCALE;
+            float nearMissSqr = nearMiss * nearMiss;
+
+            BoxerModel nearest = null;
+
+            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
+            {
+                BoxerModel target = boxers[boxerIndex];
+
+                if (target.Id == attacker.Id || !target.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                // Blocked: the incoming glove ran into one of the defender's own gloves.
+                Vector2 leftGlove = GetGlovePosition(target, target.LeftArm);
+                Vector2 rightGlove = GetGlovePosition(target, target.RightArm);
+
+                if ((glovePosition - leftGlove).sqrMagnitude <= blockRangeSqr ||
+                    (glovePosition - rightGlove).sqrMagnitude <= blockRangeSqr)
+                {
+                    _blockedPublisher.Publish(new PunchBlockedMessage(attacker.Id, target.Id, glovePosition));
+                    return;
+                }
+
+                if (nearest == null)
+                {
+                    Vector2 headCenter = target.Position + target.Facing.normalized * _config.HeadOffset;
+
+                    if ((glovePosition - headCenter).sqrMagnitude <= nearMissSqr)
+                    {
+                        nearest = target;
+                    }
+                }
+            }
+
+            if (nearest != null)
+            {
+                _evadedPublisher.Publish(new PunchEvadedMessage(attacker.Id, nearest.Id, glovePosition));
+            }
+        }
+
+        private const float NEAR_MISS_SCALE = 2.2f;
 
         /// <summary>Glove tip position for an arm at its current extension.</summary>
         public Vector2 GetGlovePosition(BoxerModel boxer, ArmModel arm)

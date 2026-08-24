@@ -25,7 +25,14 @@ namespace PoRumble.Views
     public sealed class BoxerAgentView : Agent
     {
         [Header("Reward shaping")]
-        [SerializeField] private float _damageDealtReward = 0.20f;
+        [Tooltip("Per point of damage landed on an opponent's face. The face arc is the only " +
+                 "way to score, so this is the core objective.")]
+        [SerializeField] private float _damageDealtReward = 0.35f;
+        [Tooltip("For slipping a punch that nearly landed.")]
+        [SerializeField] private float _evadeReward = 0.08f;
+        [Tooltip("For stopping a punch on the gloves. Less than slipping it: the punch still " +
+                 "arrived, it just did not get through.")]
+        [SerializeField] private float _blockReward = 0.04f;
         [SerializeField] private float _damageTakenPenalty = 0.02f;
         [SerializeField] private float _eliminationReward = 0.5f;
         [SerializeField] private float _eliminatedPenalty = 1.0f;
@@ -50,12 +57,19 @@ namespace PoRumble.Views
                  "never enable during a training run.")]
         [SerializeField] private bool _humanControlled;
 
+        [Tooltip("Drive this boxer with the hand-written sparring brain instead of a policy. " +
+                 "Requires BehaviorType HeuristicOnly, which SetScriptedBot enforces.")]
+        [SerializeField] private bool _scriptedBot;
+
         private BoxerSystem _boxerSystem;
         private MatchModel _match;
         private BoxerConfig _config;
         private BoxerModel _model;
+        private ScriptedBoxerBrain _brain;
 
         private IDisposable _punchSubscription;
+        private IDisposable _evadedSubscription;
+        private IDisposable _blockedSubscription;
         private IDisposable _eliminatedSubscription;
 
         private int _boxerId = -1;
@@ -66,13 +80,37 @@ namespace PoRumble.Views
             MatchModel match,
             BoxerConfig config,
             ISubscriber<PunchLandedMessage> punchSubscriber,
+            ISubscriber<PunchEvadedMessage> evadedSubscriber,
+            ISubscriber<PunchBlockedMessage> blockedSubscriber,
             ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber)
         {
             _boxerSystem = boxerSystem;
             _match = match;
             _config = config;
+            _brain = new ScriptedBoxerBrain(config);
             _punchSubscription = punchSubscriber.Subscribe(OnPunchLanded);
+            _evadedSubscription = evadedSubscriber.Subscribe(OnPunchEvaded);
+            _blockedSubscription = blockedSubscriber.Subscribe(OnPunchBlocked);
             _eliminatedSubscription = eliminatedSubscriber.Subscribe(OnBoxerEliminated);
+        }
+
+        /// <summary>
+        /// Turns this boxer into the hand-written sparring partner. Forces heuristic control,
+        /// since a policy would otherwise override the script.
+        /// </summary>
+        public void SetScriptedBot(bool scripted)
+        {
+            _scriptedBot = scripted;
+
+            if (!scripted)
+            {
+                return;
+            }
+
+            if (TryGetComponent(out BehaviorParameters parameters))
+            {
+                parameters.BehaviorType = BehaviorType.HeuristicOnly;
+            }
         }
 
         /// <summary>Hands this boxer to the keyboard. Inference only, never during training.</summary>
@@ -181,6 +219,18 @@ namespace PoRumble.Views
             discrete[0] = 0;
             discrete[1] = 0;
 
+            if (_scriptedBot)
+            {
+                BoxerIntent intent = _brain.Decide(_match, _boxerId);
+                continuous[0] = intent.Move.x;
+                continuous[1] = intent.Move.y;
+                continuous[2] = intent.Aim.x;
+                continuous[3] = intent.Aim.y;
+                discrete[0] = intent.PunchLeft ? 1 : 0;
+                discrete[1] = intent.PunchRight ? 1 : 0;
+                return;
+            }
+
             if (!_humanControlled)
             {
                 return;
@@ -231,9 +281,9 @@ namespace PoRumble.Views
             float idealRange = _config.ArmReach + _config.HeadOffset;
 
             // Closing reward, scored over the whole ring so there is a gradient to follow from
-            // across the arena. It stops paying once the boxer is already within punching
-            // range: otherwise the cheapest way to farm it is to huddle against a wall with
-            // everyone else, which is exactly what the policy learned to do.
+            // across the arena. It stops paying once inside punching range: otherwise the
+            // cheapest way to farm it is to huddle against a wall with everyone else, which is
+            // exactly what an earlier policy learned to do.
             if (distance > idealRange)
             {
                 float reach = _match.ArenaHalfExtent.magnitude * 2f;
@@ -287,6 +337,24 @@ namespace PoRumble.Views
             }
         }
 
+        /// <summary>Slipping a punch is worth something: defence, not just aggression.</summary>
+        private void OnPunchEvaded(PunchEvadedMessage message)
+        {
+            if (message.EvaderId == _boxerId)
+            {
+                AddReward(_evadeReward);
+            }
+        }
+
+        /// <summary>Keeping the guard up counts, just for less than slipping the punch.</summary>
+        private void OnPunchBlocked(PunchBlockedMessage message)
+        {
+            if (message.BlockerId == _boxerId)
+            {
+                AddReward(_blockReward);
+            }
+        }
+
         private void OnBoxerEliminated(BoxerEliminatedMessage message)
         {
             if (message.BoxerId == _boxerId)
@@ -312,8 +380,12 @@ namespace PoRumble.Views
         {
             base.OnDisable();
             _punchSubscription?.Dispose();
+            _evadedSubscription?.Dispose();
+            _blockedSubscription?.Dispose();
             _eliminatedSubscription?.Dispose();
             _punchSubscription = null;
+            _evadedSubscription = null;
+            _blockedSubscription = null;
             _eliminatedSubscription = null;
         }
     }

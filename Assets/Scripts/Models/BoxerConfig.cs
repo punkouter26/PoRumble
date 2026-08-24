@@ -25,6 +25,8 @@ namespace PoRumble.Models
         [SerializeField] private float _headRadius = 0.45f;
         [Range(0f, 180f)]
         [SerializeField] private float _faceArcHalfAngleDegrees = 60f;
+        [Tooltip("Radius of a glove. Two gloves within twice this counts as a block.")]
+        [SerializeField] private float _gloveRadius = 0.30f;
 
         [Header("Arms")]
         [SerializeField] private float _armExtendDuration = 0.12f;
@@ -46,11 +48,11 @@ namespace PoRumble.Models
 
         [Header("Stamina")]
         [Tooltip("Stamina spent per punch thrown.")]
-        [SerializeField] private float _punchStaminaCost = 0.06f;
+        [SerializeField] private float _punchStaminaCost = 0.035f;
         [Tooltip("Stamina spent per second at full sprint.")]
         [SerializeField] private float _moveStaminaCost = 0.05f;
         [Tooltip("Stamina recovered per second while not throwing.")]
-        [SerializeField] private float _staminaRecovery = 0.09f;
+        [SerializeField] private float _staminaRecovery = 0.18f;
         [Tooltip("Speed and damage multiplier when completely spent.")]
         [Range(0.1f, 1f)]
         [SerializeField] private float _exhaustedPenalty = 0.45f;
@@ -58,6 +60,8 @@ namespace PoRumble.Models
 
         public int MaxHealth => _maxHealth;
         public float HeadOffset => _headOffset;
+        public float GloveRadius => _gloveRadius;
+        public float HeadRadius => _headRadius;
         public float CloseRangeThreshold => _closeRangeThreshold;
         public float ArmExtendDuration => _armExtendDuration;
         public float ArmRetractDuration => _armRetractDuration;

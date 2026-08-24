@@ -20,6 +20,43 @@ namespace PoRumble.Models
         }
     }
 
+    /// <summary>
+    /// A punch was stopped by the defender's gloves instead of reaching the face. Worth
+    /// something to the blocker: keeping the guard up is a real skill, just not as valuable
+    /// as slipping the punch entirely.
+    /// </summary>
+    public readonly struct PunchBlockedMessage
+    {
+        public readonly int AttackerId;
+        public readonly int BlockerId;
+        public readonly Vector2 Position;
+
+        public PunchBlockedMessage(int attackerId, int blockerId, Vector2 position)
+        {
+            AttackerId = attackerId;
+            BlockerId = blockerId;
+            Position = position;
+        }
+    }
+
+    /// <summary>
+    /// A punch came close enough to land but did not. Raised for the boxer who slipped it, so
+    /// evasion can be rewarded rather than only aggression.
+    /// </summary>
+    public readonly struct PunchEvadedMessage
+    {
+        public readonly int AttackerId;
+        public readonly int EvaderId;
+        public readonly Vector2 Position;
+
+        public PunchEvadedMessage(int attackerId, int evaderId, Vector2 position)
+        {
+            AttackerId = attackerId;
+            EvaderId = evaderId;
+            Position = position;
+        }
+    }
+
     public readonly struct BoxerDamagedMessage
     {
         public readonly int BoxerId;

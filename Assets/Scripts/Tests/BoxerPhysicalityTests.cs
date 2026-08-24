@@ -21,6 +21,8 @@ namespace PoRumble.Tests
             ContainerBuilder builder = new();
             MessagePipeOptions options = builder.RegisterMessagePipe();
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
+            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
+            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             _container = builder.Build();
 
             _config = ScriptableObject.CreateInstance<BoxerConfig>();
@@ -28,7 +30,9 @@ namespace PoRumble.Tests
             _match.AddBoxer(new BoxerModel(0, _config.MaxHealth));
             _match.AddBoxer(new BoxerModel(1, _config.MaxHealth));
             _boxerSystem = new BoxerSystem(_match, _config,
-                _container.Resolve<IPublisher<PunchLandedMessage>>());
+                _container.Resolve<IPublisher<PunchLandedMessage>>(),
+                _container.Resolve<IPublisher<PunchEvadedMessage>>(),
+                _container.Resolve<IPublisher<PunchBlockedMessage>>());
         }
 
         [TearDown]
@@ -129,6 +133,50 @@ namespace PoRumble.Tests
 
             Run(4f);
             Assert.That(boxer.Stamina.Value, Is.GreaterThan(spent), "standing off must recover it");
+        }
+
+        [Test]
+        public void SustainedPunchingSettlesAboveEmpty()
+        {
+            // Spamming must tire a boxer without pinning it at zero: as stamina falls the arms
+            // slow down, so drain and recovery meet at an equilibrium.
+            BoxerModel boxer = _match.Boxers[0];
+            _match.Boxers[1].Position = new Vector2(100f, 100f);
+
+            for (int tick = 0; tick < 1500; tick++)
+            {
+                _boxerSystem.Punch(0, ArmSide.Left);
+                _boxerSystem.Tick(0.02f);
+            }
+
+            Assert.That(boxer.Stamina.Value, Is.LessThan(0.95f), "constant punching must tire a boxer");
+            Assert.That(boxer.Stamina.Value, Is.GreaterThan(0.15f),
+                $"stamina settled at {boxer.Stamina.Value}; exhaustion should throttle output "
+                + "into an equilibrium rather than scrape the floor");
+        }
+
+        [Test]
+        public void ExhaustedBoxersPunchSlower()
+        {
+            BoxerModel fresh = _match.Boxers[0];
+            _match.Boxers[1].Position = new Vector2(100f, 100f);
+
+            _boxerSystem.Punch(0, ArmSide.Left);
+            int freshTicks = 0;
+            while (fresh.LeftArm.Phase != ArmPhase.Idle && freshTicks < 500) { _boxerSystem.Tick(0.02f); freshTicks++; }
+
+            fresh.Stamina.Value = 0f;
+            _boxerSystem.Punch(0, ArmSide.Left);
+            int tiredTicks = 0;
+            while (fresh.LeftArm.Phase != ArmPhase.Idle && tiredTicks < 500)
+            {
+                fresh.Stamina.Value = 0f;   // hold it empty
+                _boxerSystem.Tick(0.02f);
+                tiredTicks++;
+            }
+
+            Assert.That(tiredTicks, Is.GreaterThan(freshTicks),
+                "a spent boxer's punch cycle should take longer than a fresh one's");
         }
 
         [Test]
