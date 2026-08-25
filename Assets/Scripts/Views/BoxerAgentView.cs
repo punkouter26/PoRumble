@@ -65,6 +65,7 @@ namespace PoRumble.Views
         private BoxerSystem _boxerSystem;
         private MatchModel _match;
         private MatchFlowModel _flow;
+        private TouchInputModel _touch;
         private BoxerConfig _config;
         private BoxerModel _model;
         private ScriptedBoxerBrain _brain;
@@ -94,6 +95,7 @@ namespace PoRumble.Views
             BoxerSystem boxerSystem,
             MatchModel match,
             MatchFlowModel flow,
+            TouchInputModel touch,
             BoxerConfig config,
             ISubscriber<PunchLandedMessage> punchSubscriber,
             ISubscriber<PunchEvadedMessage> evadedSubscriber,
@@ -103,6 +105,7 @@ namespace PoRumble.Views
             _boxerSystem = boxerSystem;
             _match = match;
             _flow = flow;
+            _touch = touch;
             _config = config;
             _brain = BuildBrain();
             _punchSubscriber = punchSubscriber;
@@ -178,15 +181,22 @@ namespace PoRumble.Views
                 return;
             }
 
-            Keyboard keyboard = Keyboard.current;
+            bool live = _flow == null || _flow.IsFightLive;
+            bool charging = false;
 
-            if (keyboard == null)
+            if (_touch != null && _touch.IsActive)
             {
-                return;
+                charging = _touch.ChargeHeld;
             }
 
-            bool live = _flow == null || _flow.IsFightLive;
-            _boxerSystem.SetCharge(_boxerId, live && keyboard.spaceKey.isPressed);
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null)
+            {
+                charging |= keyboard.spaceKey.isPressed;
+            }
+
+            _boxerSystem.SetCharge(_boxerId, live && charging);
         }
 
         /// <summary>
@@ -381,23 +391,42 @@ namespace PoRumble.Views
                 return;
             }
 
-            Keyboard keyboard = Keyboard.current;
+            // The on-screen stick and the keyboard feed the same four continuous actions, so
+            // a phone and a desk drive the boxer through identical code.
+            float horizontal = 0f;
+            float vertical = 0f;
+            bool punch = false;
 
-            if (keyboard == null)
+            if (_touch != null && _touch.IsActive)
             {
-                return;
+                horizontal = _touch.Move.x;
+                vertical = _touch.Move.y;
+                punch = _touch.PunchHeld;
             }
 
-            float horizontal = (keyboard.dKey.isPressed ? 1f : 0f) - (keyboard.aKey.isPressed ? 1f : 0f);
-            float vertical = (keyboard.wKey.isPressed ? 1f : 0f) - (keyboard.sKey.isPressed ? 1f : 0f);
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null)
+            {
+                horizontal += (keyboard.dKey.isPressed ? 1f : 0f) - (keyboard.aKey.isPressed ? 1f : 0f);
+                vertical += (keyboard.wKey.isPressed ? 1f : 0f) - (keyboard.sKey.isPressed ? 1f : 0f);
+                punch |= keyboard.jKey.isPressed || keyboard.kKey.isPressed;
+            }
+
+            horizontal = Mathf.Clamp(horizontal, -1f, 1f);
+            vertical = Mathf.Clamp(vertical, -1f, 1f);
 
             continuous[0] = horizontal;
             continuous[1] = vertical;
+            // Aim follows movement: there is no second stick, and a boxer that walks one way
+            // while facing another cannot land anything through the face arc anyway.
             continuous[2] = horizontal;
             continuous[3] = vertical;
 
-            discrete[0] = keyboard.jKey.isPressed ? 1 : 0;
-            discrete[1] = keyboard.kKey.isPressed ? 1 : 0;
+            // One request is enough. BoxerSystem falls through to whichever arm is free, and
+            // only one fist may be out at a time, so asking for both would change nothing.
+            discrete[0] = punch ? 1 : 0;
+            discrete[1] = 0;
         }
 
         /// <summary>

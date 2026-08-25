@@ -156,6 +156,12 @@ namespace PoRumble.Views
             _panel = new VisualElement();
             _panel.AddToClassList("panel");
             _panel.AddToClassList("player-hud");
+
+            // The panel's usual home is bottom-left, which is exactly where the virtual stick
+            // lives. On a touch device it moves up out of the way.
+            _panel.EnableInClassList(
+                "player-hud--touch", UnityEngine.InputSystem.Touchscreen.current != null);
+
             _panel.pickingMode = PickingMode.Ignore;
             _root.Add(_panel);
 

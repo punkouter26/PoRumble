@@ -409,6 +409,58 @@ fighters across the four tiers and three on the policy.
 The brain is seeded per boxer from a local xorshift rather than `UnityEngine.Random`, so it
 stays deterministic — training depends on the sparring partner being reproducible.
 
+## Android
+
+Ships as a portrait phone build. `SampleScene` is the only scene in the build list; the two
+training arenas are editor-side tools.
+
+| Setting | Value | Why |
+|---|---|---|
+| Backend | IL2CPP, ARM64 only | Not a preference. Modern devices are arm64-v8a and Mono cannot target 64-bit ARM at all |
+| Orientation | Portrait, autorotate off | |
+| Graphics | Vulkan, then GLES3 | The 2D renderer does a lot of render-texture work for the lights; GLES3 is the slower path |
+| Package | `com.punkouter.porumble` | |
+| Min SDK | 24 | |
+| Panel reference | 1080x1920, match width | The HUD was authored against a landscape canvas; in portrait the reference has to be portrait too |
+
+`adb` ships with the Editor rather than on PATH, under
+`Editor/Data/PlaybackEngines/AndroidPlayer/SDK/platform-tools/`. `Temp/deploy_android.sh`
+installs, launches and dumps the Unity log in one step.
+
+### Things that are easy to get wrong
+
+- **The camera framing rule is orientation-dependent, and has to be.** The ring is square and
+  no screen is. Landscape crops to fill: the camera pulls out only until the view is as wide
+  as the ring, so the fighters stay large and the camera pans over the ring's height. Portrait
+  letterboxes instead - cropping a 0.56 aspect to fill shows barely half the ring's width, so
+  most of a ten-way brawl would be off-screen while the HUD still claimed ten were alive.
+  `SpectatorCameraView.ClampToRing` then keeps the view inside the ropes on whichever axis the
+  ring is larger, and centres it on the axis where it is not.
+- **`_maxOrthographicSize` is deliberately larger than any landscape screen needs (45).** The
+  ring-fit rule is what actually binds; the field only matters as a backstop on very tall
+  displays. Set it back down to ~21 and portrait can no longer pull out far enough to fit the
+  ring.
+- **The build ships as an all-AI exhibition.** `BoxerSpawnPoints._humanBoxerId` is -1, so
+  every boxer is driven by a brain profile or the trained policy and no human UI is built at
+  all: `PlayerStatusHudView` and `TouchControlsView` both check for a human boxer and construct
+  nothing without one. Match-level input still works - a tap anywhere restarts at the results
+  screen, a three-finger tap toggles the diagnostics overlay.
+- **Touch controls exist in code but are not in the scene.** `TouchControlsView` renders a
+  floating stick plus punch and haymaker buttons, and writes `TouchInputModel`, which
+  `BoxerAgentView.Heuristic` reads in the same place it reads the keyboard - so a phone and a
+  desk drive the boxer down one identical path. To switch a human back on: set
+  `_humanBoxerId` to 0 and add a `TouchControls` GameObject with a `UIDocument`
+  (HudPanelSettings, sorting order 5) and a `TouchControlsView` pointed at `porumble.uss`.
+  The stick feeds move and aim together; there is no second stick, and a boxer that walks one
+  way while facing another cannot land anything through the face arc anyway.
+- **`MatchHudView` picks its restart prompt from the devices present,** not from a platform
+  define, so the editor still reads "PRESS R" while a phone reads "TAP".
+- **Two startup log lines are expected and harmless.** `ClassNotFoundException:
+  AssetPackManager` is Unity looking for Play Asset Delivery, which a sideloaded APK does not
+  use. A burst of `NullReferenceException` in `TensorProxy.Finalize` fires once as the first
+  GC collects the inference tensors allocated while loading `PoRumbleBoxer.onnx`; it does not
+  recur, and inference works.
+
 ## Coding Rules
 
 `.claude/rules/` is authoritative. The ones that bite most often:

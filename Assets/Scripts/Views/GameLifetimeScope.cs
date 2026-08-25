@@ -25,6 +25,7 @@ namespace PoRumble.Views
 
             builder.RegisterInstance(_boxerConfig);
             builder.Register<MatchModel>(Lifetime.Singleton);
+            builder.Register<TouchInputModel>(Lifetime.Singleton);
             builder.Register<MatchFlowModel>(Lifetime.Singleton);
 
             builder.Register<BoxerSystem>(Lifetime.Singleton).AsSelf();
@@ -56,6 +57,7 @@ namespace PoRumble.Views
                 InjectOptional<MatchInputView>(container);
                 InjectOptional<RingAtmosphereView>(container);
                 InjectOptional<DiagnosticsHudView>(container);
+                InjectOptional<TouchControlsView>(container);
             });
         }
 

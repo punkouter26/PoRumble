@@ -129,9 +129,7 @@ namespace PoRumble.Views
 
         private void Update()
         {
-            Keyboard keyboard = Keyboard.current;
-
-            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame && _panel != null)
+            if (_panel != null && TogglePressed())
             {
                 _panel.style.display = _panel.style.display == DisplayStyle.None
                     ? DisplayStyle.Flex
@@ -219,6 +217,48 @@ namespace PoRumble.Views
             _worstMs = 0f;
 
             _graph.MarkDirtyRepaint();
+        }
+
+        /// <summary>
+        /// F3, or a three-finger tap where there is no keyboard.
+        ///
+        /// Three fingers rather than a screen-corner hit box: the overlay is a developer tool
+        /// and a corner tap would collide with the tap-anywhere restart.
+        /// </summary>
+        private static bool TogglePressed()
+        {
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard != null && keyboard.f3Key.wasPressedThisFrame)
+            {
+                return true;
+            }
+
+            Touchscreen touchscreen = Touchscreen.current;
+
+            if (touchscreen == null)
+            {
+                return false;
+            }
+
+            int pressed = 0;
+            bool startedThisFrame = false;
+
+            for (int index = 0; index < touchscreen.touches.Count; index++)
+            {
+                var touch = touchscreen.touches[index];
+
+                if (!touch.press.isPressed)
+                {
+                    continue;
+                }
+
+                pressed++;
+                startedThisFrame |= touch.press.wasPressedThisFrame;
+            }
+
+            // Fires once, on the frame the third finger lands.
+            return pressed >= 3 && startedThisFrame;
         }
 
         /// <summary>Reads a recorder, or 0 when the counter is unavailable on this platform.</summary>

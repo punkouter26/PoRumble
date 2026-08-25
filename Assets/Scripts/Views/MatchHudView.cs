@@ -240,9 +240,21 @@ namespace PoRumble.Views
 
                 case MatchFlowPhase.Results:
                     _captionLabel.text = string.Empty;
-                    _promptLabel.text = "PRESS  R  TO FIGHT AGAIN";
+                    _promptLabel.text = RestartPrompt();
                     break;
             }
+        }
+
+        /// <summary>
+        /// Names the input the player actually has. A phone has no R key, and telling someone
+        /// to press one on a touchscreen reads as a dead end.
+        /// </summary>
+        private static string RestartPrompt()
+        {
+            return UnityEngine.InputSystem.Touchscreen.current != null
+                && UnityEngine.InputSystem.Keyboard.current == null
+                    ? "TAP TO FIGHT AGAIN"
+                    : "PRESS  R  TO FIGHT AGAIN";
         }
 
         /// <summary>
