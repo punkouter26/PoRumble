@@ -9,32 +9,43 @@ using VContainer;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// Match HUD: survivor count, per-boxer health bars and the result banner.
-    /// A View — it observes models and messages and never mutates game state.
+    /// Match HUD: survivor count, per-boxer health bars, the countdown to the bell and the
+    /// result banner.
+    ///
+    /// All styling comes from the shared stylesheet. This class assigns class names and the
+    /// handful of values that are genuinely dynamic - a bar's width - and owns no colours,
+    /// paddings or font sizes of its own.
+    ///
+    /// A View: it observes models and messages and never mutates game state.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(UIDocument))]
     public sealed class MatchHudView : MonoBehaviour
     {
-        private static readonly Color HealthyColor = new(0.40f, 0.85f, 0.40f);
-        private static readonly Color HurtColor = new(0.92f, 0.55f, 0.28f);
+        [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
+        [SerializeField] private StyleSheet _styleSheet;
 
         private readonly CompositeDisposable _disposables = new();
         private readonly StringBuilder _builder = new(64);
         private readonly List<VisualElement> _healthFills = new();
 
         private MatchModel _match;
+        private MatchFlowModel _flow;
         private BoxerConfig _config;
         private Label _survivorsLabel;
         private Label _resultLabel;
+        private Label _captionLabel;
+        private Label _promptLabel;
 
         [Inject]
         public void Construct(
             MatchModel match,
+            MatchFlowModel flow,
             BoxerConfig config,
             ISubscriber<MatchEndedMessage> endedSubscriber)
         {
             _match = match;
+            _flow = flow;
             _config = config;
             endedSubscriber.Subscribe(OnMatchEnded).AddTo(_disposables);
         }
@@ -48,35 +59,71 @@ namespace PoRumble.Views
                 return;
             }
 
-            root.style.paddingLeft = 14;
-            root.style.paddingTop = 12;
+            if (_styleSheet != null)
+            {
+                root.styleSheets.Add(_styleSheet);
+            }
 
-            _survivorsLabel = MakeLabel(22, FontStyle.Bold);
-            root.Add(_survivorsLabel);
+            VisualElement panel = new();
+            panel.AddToClassList("match-hud");
+            panel.pickingMode = PickingMode.Ignore;
+            root.Add(panel);
 
-            VisualElement list = new();
-            list.style.marginTop = 8;
-            root.Add(list);
+            _survivorsLabel = MakeLabel("text", "text--lg", "text--bold");
+            panel.Add(_survivorsLabel);
 
-            BuildHealthBars(list);
+            VisualElement roster = new();
+            roster.AddToClassList("match-hud__roster");
+            panel.Add(roster);
 
-            _resultLabel = MakeLabel(34, FontStyle.Bold);
-            _resultLabel.style.marginTop = 16;
-            root.Add(_resultLabel);
+            BuildHealthBars(roster);
 
+            _resultLabel = MakeLabel("text", "text--xl", "text--bold", "result-banner");
+            panel.Add(_resultLabel);
+
+            BuildCenterCaption(root);
             RefreshSurvivors();
+
+            if (_flow != null)
+            {
+                _flow.Phase.Subscribe(OnFlowPhaseChanged).AddTo(_disposables);
+                _flow.CountdownSeconds.Subscribe(OnCountdownChanged).AddTo(_disposables);
+            }
         }
 
-        private static Label MakeLabel(int fontSize, FontStyle style)
+        /// <summary>
+        /// The big middle-of-screen caption: "3 / 2 / 1 / FIGHT!", then the restart prompt.
+        /// Non-picking so it never eats a click, and absolutely positioned so its text changing
+        /// length cannot shift the health bars around.
+        /// </summary>
+        private void BuildCenterCaption(VisualElement root)
+        {
+            VisualElement centre = new();
+            centre.AddToClassList("centre-stage");
+            centre.pickingMode = PickingMode.Ignore;
+            root.Add(centre);
+
+            _captionLabel = MakeLabel("text", "text--display", "text--bold", "centre-stage__caption");
+            centre.Add(_captionLabel);
+
+            _promptLabel = MakeLabel("text", "text--md", "centre-stage__prompt");
+            centre.Add(_promptLabel);
+        }
+
+        private static Label MakeLabel(params string[] classes)
         {
             Label label = new(string.Empty);
-            label.style.color = Color.white;
-            label.style.fontSize = fontSize;
-            label.style.unityFontStyleAndWeight = style;
+            label.pickingMode = PickingMode.Ignore;
+
+            for (int index = 0; index < classes.Length; index++)
+            {
+                label.AddToClassList(classes[index]);
+            }
+
             return label;
         }
 
-        private void BuildHealthBars(VisualElement list)
+        private void BuildHealthBars(VisualElement roster)
         {
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
 
@@ -85,29 +132,24 @@ namespace PoRumble.Views
                 BoxerModel boxer = boxers[boxerIndex];
 
                 VisualElement row = new();
-                row.style.flexDirection = FlexDirection.Row;
-                row.style.alignItems = Align.Center;
-                row.style.marginBottom = 3;
+                row.AddToClassList("match-hud__row");
 
-                Label name = MakeLabel(13, FontStyle.Normal);
+                Label name = MakeLabel("match-hud__name");
                 name.text = $"#{boxer.Id:00}";
-                name.style.width = 32;
                 row.Add(name);
 
                 VisualElement track = new();
-                track.style.width = 130;
-                track.style.height = 10;
-                track.style.backgroundColor = new Color(0f, 0f, 0f, 0.45f);
+                track.AddToClassList("bar");
+                track.AddToClassList("match-hud__bar");
                 row.Add(track);
 
                 VisualElement fill = new();
-                fill.style.height = 10;
-                fill.style.width = Length.Percent(100f);
-                fill.style.backgroundColor = HealthyColor;
+                fill.AddToClassList("bar__fill");
+                fill.AddToClassList("bar__fill--healthy");
                 track.Add(fill);
 
                 _healthFills.Add(fill);
-                list.Add(row);
+                roster.Add(row);
 
                 int index = boxerIndex;
                 boxer.Health.Subscribe(hp => OnHealthChanged(index, hp)).AddTo(_disposables);
@@ -125,8 +167,12 @@ namespace PoRumble.Views
             // Max health comes from the config, not from the first observed value, which would
             // rebase the bar after the boxer had already taken damage.
             float ratio = Mathf.Clamp01(health / (float)Mathf.Max(1, _config.MaxHealth));
-            _healthFills[index].style.width = Length.Percent(ratio * 100f);
-            _healthFills[index].style.backgroundColor = ratio > 0.5f ? HealthyColor : HurtColor;
+            VisualElement fill = _healthFills[index];
+
+            fill.style.width = Length.Percent(ratio * 100f);
+            fill.EnableInClassList("bar__fill--healthy", ratio > 0.5f);
+            fill.EnableInClassList("bar__fill--hurt", ratio <= 0.5f && ratio > 0.2f);
+            fill.EnableInClassList("bar__fill--critical", ratio <= 0.2f);
         }
 
         private void RefreshSurvivors()
@@ -141,7 +187,77 @@ namespace PoRumble.Views
                     .Append(_match.CountAlive())
                     .Append(" / ")
                     .Append(_match.Boxers.Count);
+
+            if (_flow != null && _flow.MatchNumber.Value > 1)
+            {
+                _builder.Append("      MATCH ").Append(_flow.MatchNumber.Value);
+            }
+
             _survivorsLabel.text = _builder.ToString();
+        }
+
+        private void OnCountdownChanged(int seconds)
+        {
+            if (_captionLabel == null || _flow.Phase.Value != MatchFlowPhase.Countdown)
+            {
+                return;
+            }
+
+            _captionLabel.text = seconds > 0 ? seconds.ToString() : string.Empty;
+        }
+
+        private void OnFlowPhaseChanged(MatchFlowPhase phase)
+        {
+            if (_captionLabel == null)
+            {
+                return;
+            }
+
+            switch (phase)
+            {
+                case MatchFlowPhase.Introducing:
+                    // A restart clears the previous result, so the banner does not linger
+                    // over the top of the next fight.
+                    _captionLabel.text = "GET READY";
+                    _promptLabel.text = string.Empty;
+                    _resultLabel.text = string.Empty;
+                    RefreshSurvivors();
+                    break;
+
+                case MatchFlowPhase.Countdown:
+                    _captionLabel.text = _flow.CountdownSeconds.Value.ToString();
+                    break;
+
+                case MatchFlowPhase.Fighting:
+                    _captionLabel.text = "FIGHT!";
+                    _promptLabel.text = string.Empty;
+                    ClearCaptionAfterBell();
+                    break;
+
+                case MatchFlowPhase.KnockoutHold:
+                    _captionLabel.text = string.Empty;
+                    break;
+
+                case MatchFlowPhase.Results:
+                    _captionLabel.text = string.Empty;
+                    _promptLabel.text = "PRESS  R  TO FIGHT AGAIN";
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Wipes "FIGHT!" a beat after the bell. Scheduled on the panel rather than timed in
+        /// Update so it costs nothing on the frames in between.
+        /// </summary>
+        private void ClearCaptionAfterBell()
+        {
+            _captionLabel.schedule.Execute(() =>
+            {
+                if (_flow.Phase.Value == MatchFlowPhase.Fighting)
+                {
+                    _captionLabel.text = string.Empty;
+                }
+            }).StartingIn(700);
         }
 
         private void OnMatchEnded(MatchEndedMessage message)

@@ -1,0 +1,255 @@
+/*
+ * PoRumble HUD design system.
+ *
+ * Both HUDs used to build every element with inline style assignments, each carrying its own
+ * copy of the palette as `static readonly Color` fields. The two panels could drift apart with
+ * nothing to catch it, and there was no shared spacing rhythm at all.
+ *
+ * Everything below the token block is expressed in terms of the tokens, so the whole HUD can
+ * be recoloured or respaced from one place. C# still sets values that are genuinely dynamic -
+ * a bar's width percentage - but never a colour or a padding.
+ */
+
+/* ----------------------------------------------------------------- design tokens */
+:root {
+    /* Surfaces. Deliberately translucent: the ring has to stay readable underneath. */
+    --surface-panel: rgba(8, 9, 14, 0.55);
+    --surface-track: rgba(0, 0, 0, 0.5);
+    --surface-scrim: rgba(0, 0, 0, 0.28);
+
+    /* Text */
+    --text-primary: rgb(244, 246, 250);
+    --text-secondary: rgba(244, 246, 250, 0.62);
+    --text-shadow: rgba(0, 0, 0, 0.85);
+
+    /* Semantic state. These are the only places colour carries meaning. */
+    --state-healthy: rgb(102, 217, 112);
+    --state-hurt: rgb(235, 140, 71);
+    --state-critical: rgb(235, 82, 71);
+    --state-stamina: rgb(115, 184, 242);
+    --state-charge: rgb(250, 199, 64);
+    --state-charge-ready: rgb(255, 107, 51);
+    --state-threat: rgb(255, 96, 84);
+
+    /* Spacing scale. Every margin and padding in the HUD is one of these. */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+
+    /* Type ramp */
+    --text-xs: 11px;
+    --text-sm: 13px;
+    --text-md: 15px;
+    --text-lg: 22px;
+    --text-xl: 34px;
+    --text-display: 90px;
+
+    --radius: 3px;
+}
+
+/* ----------------------------------------------------------------- primitives */
+.text {
+    color: var(--text-primary);
+    -unity-font-style: normal;
+    font-size: var(--text-sm);
+    /* A shadow on every label, because the HUD sits over a bright green canvas and white
+       text on it is otherwise genuinely hard to read. */
+    text-shadow: 1px 1px 2px var(--text-shadow);
+}
+
+.text--muted { color: var(--text-secondary); }
+.text--xs { font-size: var(--text-xs); }
+.text--sm { font-size: var(--text-sm); }
+.text--md { font-size: var(--text-md); }
+.text--lg { font-size: var(--text-lg); }
+.text--xl { font-size: var(--text-xl); }
+.text--display { font-size: var(--text-display); }
+.text--bold { -unity-font-style: bold; }
+
+.panel {
+    background-color: var(--surface-panel);
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+}
+
+.stack > * { margin-bottom: var(--space-1); }
+
+.row {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* ----------------------------------------------------------------- bars */
+.bar {
+    background-color: var(--surface-track);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    overflow: hidden;
+}
+
+.bar__fill {
+    height: 100%;
+    width: 100%;
+    background-color: var(--state-healthy);
+}
+
+.bar__fill--healthy { background-color: var(--state-healthy); }
+.bar__fill--hurt { background-color: var(--state-hurt); }
+.bar__fill--critical { background-color: var(--state-critical); }
+.bar__fill--stamina { background-color: var(--state-stamina); }
+.bar__fill--stamina-low { background-color: var(--state-critical); }
+.bar__fill--charge { background-color: var(--state-charge); }
+.bar__fill--charge-ready { background-color: var(--state-charge-ready); }
+
+.bar__label {
+    width: 62px;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    text-shadow: 1px 1px 2px var(--text-shadow);
+}
+
+/* ----------------------------------------------------------------- match HUD */
+.match-hud {
+    position: absolute;
+    top: var(--space-4);
+    left: var(--space-4);
+}
+
+.match-hud__roster { margin-top: var(--space-2); }
+
+.match-hud__row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: var(--space-1);
+}
+
+.match-hud__name {
+    width: 34px;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    text-shadow: 1px 1px 2px var(--text-shadow);
+}
+
+.match-hud__bar {
+    width: 132px;
+    height: 9px;
+}
+
+/* The result banner and the countdown live dead centre and must never take a click. */
+.centre-stage {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+.centre-stage__caption {
+    -unity-text-align: middle-center;
+    letter-spacing: 4px;
+}
+
+.centre-stage__prompt {
+    margin-top: var(--space-3);
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+}
+
+.result-banner {
+    margin-top: var(--space-4);
+    letter-spacing: 2px;
+}
+
+/* ----------------------------------------------------------------- player HUD */
+.player-hud {
+    position: absolute;
+    left: var(--space-4);
+    bottom: var(--space-4);
+    min-width: 300px;
+}
+
+.player-hud--down { opacity: 0.4; }
+
+.player-hud__title {
+    margin-bottom: var(--space-2);
+    letter-spacing: 2px;
+}
+
+.player-hud__bar-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: var(--space-1);
+}
+
+.player-hud__bar { width: 196px; }
+.player-hud__bar--health { height: 15px; }
+.player-hud__bar--minor { height: 9px; }
+
+.player-hud__counter {
+    margin-top: var(--space-2);
+    color: var(--state-charge-ready);
+    letter-spacing: 1px;
+}
+
+.player-hud__threat {
+    margin-top: var(--space-1);
+    color: var(--state-threat);
+    letter-spacing: 1px;
+}
+
+/* Full-screen damage wash. Painted by the player HUD, alpha driven from C#. */
+.vignette {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background-color: rgba(204, 13, 13, 0);
+}
+
+/* ----------------------------------------------------------------- diagnostics */
+.diag {
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    background-color: var(--surface-panel);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    min-width: 340px;
+}
+
+.diag__title {
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    margin-bottom: var(--space-2);
+}
+
+.diag__graph {
+    height: 46px;
+    background-color: var(--surface-scrim);
+    margin-bottom: var(--space-2);
+}
+
+.diag__readout {
+    color: var(--text-primary);
+    font-size: var(--text-xs);
+    white-space: normal;
+}
+
+.diag__readout--over { color: var(--state-hurt); }

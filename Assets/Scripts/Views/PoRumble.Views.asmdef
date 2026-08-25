@@ -9,7 +9,11 @@
         "VContainer",
         "UniTask",
         "Unity.InputSystem",
-        "Unity.ML-Agents"
+        "Unity.ML-Agents",
+        "Unity.Cinemachine",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.2D.Runtime"
     ],
     "allowUnsafeCode": false,
     "autoReferenced": true

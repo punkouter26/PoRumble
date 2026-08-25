@@ -64,9 +64,14 @@ namespace PoRumble.Views
 
         private BoxerSystem _boxerSystem;
         private MatchModel _match;
+        private MatchFlowModel _flow;
         private BoxerConfig _config;
         private BoxerModel _model;
         private ScriptedBoxerBrain _brain;
+        private BrainProfile _profile;
+
+        /// <summary>Physics ticks between decisions, read off the DecisionRequester.</summary>
+        private int _decisionPeriod = 1;
 
         private IDisposable _punchSubscription;
         private IDisposable _evadedSubscription;
@@ -79,6 +84,7 @@ namespace PoRumble.Views
         public void Construct(
             BoxerSystem boxerSystem,
             MatchModel match,
+            MatchFlowModel flow,
             BoxerConfig config,
             ISubscriber<PunchLandedMessage> punchSubscriber,
             ISubscriber<PunchEvadedMessage> evadedSubscriber,
@@ -87,12 +93,64 @@ namespace PoRumble.Views
         {
             _boxerSystem = boxerSystem;
             _match = match;
+            _flow = flow;
             _config = config;
-            _brain = new ScriptedBoxerBrain(config);
+            _brain = BuildBrain();
             _punchSubscription = punchSubscriber.Subscribe(OnPunchLanded);
             _evadedSubscription = evadedSubscriber.Subscribe(OnPunchEvaded);
             _blockedSubscription = blockedSubscriber.Subscribe(OnPunchBlocked);
             _eliminatedSubscription = eliminatedSubscriber.Subscribe(OnBoxerEliminated);
+        }
+
+        /// <summary>
+        /// Sets the difficulty tier this boxer fights at. Null keeps the brain's original
+        /// built-in tuning, which is what the training scenes expect.
+        /// </summary>
+        public void SetBrainProfile(BrainProfile profile)
+        {
+            _profile = profile;
+
+            // Only rebuildable once the config has been injected; otherwise the brain is
+            // built on first use instead.
+            if (_config != null)
+            {
+                _brain = BuildBrain();
+            }
+        }
+
+        /// <summary>
+        /// Builds the sparring brain, seeded per boxer so two bots on the same tier do not
+        /// make identical decisions on the same tick.
+        /// </summary>
+        private ScriptedBoxerBrain BuildBrain()
+        {
+            BrainSettings settings = _profile != null ? _profile.ToSettings() : BrainSettings.Default;
+            return new ScriptedBoxerBrain(_config, settings, _boxerId + 1);
+        }
+
+        /// <summary>
+        /// Polls the haymaker key every frame for the human boxer.
+        ///
+        /// Read here rather than in Heuristic because Heuristic only runs on decision steps -
+        /// once every DecisionPeriod physics ticks - and a release latency that coarse makes
+        /// the charge feel like it fires late.
+        /// </summary>
+        private void Update()
+        {
+            if (!_humanControlled || _boxerSystem == null || _boxerId < 0)
+            {
+                return;
+            }
+
+            Keyboard keyboard = Keyboard.current;
+
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            bool live = _flow == null || _flow.IsFightLive;
+            _boxerSystem.SetCharge(_boxerId, live && keyboard.spaceKey.isPressed);
         }
 
         /// <summary>
@@ -137,6 +195,20 @@ namespace PoRumble.Views
         {
             _model = model;
             _boxerId = model.Id;
+
+            // Heuristic runs once per decision period, not once per physics tick, so the
+            // brain needs to know the interval it is really deciding over.
+            if (TryGetComponent(out DecisionRequester requester))
+            {
+                _decisionPeriod = Mathf.Max(1, requester.DecisionPeriod);
+            }
+
+            // Rebuilt now that the id is known: the brain is seeded from it, so two bots on
+            // the same tier do not make identical decisions on the same tick.
+            if (_config != null)
+            {
+                _brain = BuildBrain();
+            }
         }
 
         public override void CollectObservations(VectorSensor sensor)
@@ -171,6 +243,13 @@ namespace PoRumble.Views
         public override void OnActionReceived(ActionBuffers actions)
         {
             if (_model == null || !_model.IsAlive.Value)
+            {
+                return;
+            }
+
+            // Nobody throws before the bell. Without this, a punch started during the
+            // countdown sits half-extended until the fight starts and then lands for free.
+            if (_flow != null && !_flow.IsFightLive)
             {
                 return;
             }
@@ -222,13 +301,23 @@ namespace PoRumble.Views
 
             if (_scriptedBot)
             {
-                BoxerIntent intent = _brain.Decide(_match, _boxerId);
+                _brain ??= BuildBrain();
+
+                // Heuristic runs once per decision period, so that is the interval the brain
+                // is actually deciding over - not a single physics tick.
+                float decisionDelta = Time.fixedDeltaTime * _decisionPeriod;
+                BoxerIntent intent = _brain.Decide(_match, _boxerId, decisionDelta);
+
                 continuous[0] = intent.Move.x;
                 continuous[1] = intent.Move.y;
                 continuous[2] = intent.Aim.x;
                 continuous[3] = intent.Aim.y;
                 discrete[0] = intent.PunchLeft ? 1 : 0;
                 discrete[1] = intent.PunchRight ? 1 : 0;
+
+                // Charging rides its own channel rather than a third action branch, so the
+                // trained policy's action vector is left untouched.
+                _boxerSystem.SetCharge(_boxerId, intent.Charge);
                 return;
             }
 

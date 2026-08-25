@@ -45,6 +45,21 @@ namespace PoRumble.Views
                  "the sign flipped to fold symmetrically.")]
         [SerializeField] private bool _mirror;
 
+        [Tooltip("How far past the guard pose the arm cocks back at full haymaker charge, as " +
+                 "a fraction of the guard-to-punch swing. This is the telegraph an opponent " +
+                 "reads: purely visual, since hits still resolve at full extension.")]
+        [Range(0f, 1.5f)]
+        [SerializeField] private float _windupPullback = 0.55f;
+
+        [Tooltip("Optional. Trail streaming off the glove while the punch is travelling, so a " +
+                 "fast exchange leaves a readable arc rather than a blur of fists.")]
+        [SerializeField] private TrailRenderer _gloveTrail;
+
+        [Tooltip("Extension above which the trail emits. Kept off the very start of the swing " +
+                 "so a cocked haymaker does not smear before it has been thrown.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _trailThreshold = 0.35f;
+
         [Header("Servo")]
         [SerializeField] private float _servoGain = 90f;
         [SerializeField] private float _maxMotorTorque = 4000f;
@@ -63,12 +78,23 @@ namespace PoRumble.Views
                 return;
             }
 
-            float extension = _model.Extension;
+            // Winding up drives extension negative, which cocks the arm back behind its
+            // guard pose. LerpUnclamped rather than Lerp: the clamped form would pin the
+            // wind-up at the guard angle and the telegraph would be invisible.
+            float extension = _model.Extension - _model.Windup * _windupPullback;
             float sign = _mirror ? -1f : 1f;
 
-            ServoTo(_shoulderJoint, sign * Mathf.Lerp(_shoulderGuardAngle, _shoulderPunchAngle, extension));
-            ServoTo(_elbowJoint, sign * Mathf.Lerp(_elbowGuardAngle, _elbowPunchAngle, extension));
-            ServoTo(_wristJoint, sign * Mathf.Lerp(_wristGuardAngle, _wristPunchAngle, extension));
+            ServoTo(_shoulderJoint, sign * Mathf.LerpUnclamped(_shoulderGuardAngle, _shoulderPunchAngle, extension));
+            ServoTo(_elbowJoint, sign * Mathf.LerpUnclamped(_elbowGuardAngle, _elbowPunchAngle, extension));
+            ServoTo(_wristJoint, sign * Mathf.LerpUnclamped(_wristGuardAngle, _wristPunchAngle, extension));
+
+            if (_gloveTrail != null)
+            {
+                // Driven off the model's extension rather than the rendered joint angle: the
+                // joints are servoed and lag behind, so a trail keyed to them would start late
+                // and outlive the punch.
+                _gloveTrail.emitting = _model.Extension >= _trailThreshold;
+            }
         }
 
         /// <summary>Drives a hinge toward a target angle with a proportional motor.</summary>

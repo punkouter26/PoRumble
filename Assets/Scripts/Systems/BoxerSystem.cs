@@ -19,6 +19,7 @@ namespace PoRumble.Systems
         private readonly IPublisher<PunchLandedMessage> _punchPublisher;
         private readonly IPublisher<PunchEvadedMessage> _evadedPublisher;
         private readonly IPublisher<PunchBlockedMessage> _blockedPublisher;
+        private readonly IPublisher<HaymakerThrownMessage> _haymakerPublisher;
 
         // Hits are buffered for the whole tick so that punches thrown on the same tick all
         // resolve against the state at the start of that tick. Without this, whichever boxer
@@ -32,13 +33,15 @@ namespace PoRumble.Systems
             BoxerConfig config,
             IPublisher<PunchLandedMessage> punchPublisher,
             IPublisher<PunchEvadedMessage> evadedPublisher,
-            IPublisher<PunchBlockedMessage> blockedPublisher)
+            IPublisher<PunchBlockedMessage> blockedPublisher,
+            IPublisher<HaymakerThrownMessage> haymakerPublisher)
         {
             _match = match;
             _config = config;
             _punchPublisher = punchPublisher;
             _evadedPublisher = evadedPublisher;
             _blockedPublisher = blockedPublisher;
+            _haymakerPublisher = haymakerPublisher;
         }
 
         public void SetMoveInput(int boxerId, Vector2 moveInput)
@@ -69,6 +72,27 @@ namespace PoRumble.Systems
         }
 
         /// <summary>
+        /// Holds or releases the haymaker wind-up.
+        ///
+        /// Deliberately a method of its own rather than a third discrete action branch: the
+        /// trained policy in PoRumbleBoxer.onnx is compiled against exactly four continuous
+        /// and two discrete actions, and growing that vector would stop the model loading at
+        /// all. Charging therefore rides a side channel that human and scripted controllers
+        /// use, and the ML action space is left byte-identical.
+        /// </summary>
+        public void SetCharge(int boxerId, bool held)
+        {
+            BoxerModel boxer = FindBoxer(boxerId);
+
+            if (boxer == null || !boxer.IsAlive.Value)
+            {
+                return;
+            }
+
+            boxer.ChargeInput = held;
+        }
+
+        /// <summary>
         /// Throws a punch. Uses the requested arm when it is ready; if that arm is still
         /// swinging or recovering, the other one throws instead. Held punch input therefore
         /// alternates left and right, which is the juggling rhythm of the original.
@@ -85,11 +109,24 @@ namespace PoRumble.Systems
                 return false;
             }
 
+            // Winding up is a commitment: you cannot keep jabbing out of a cocked haymaker,
+            // otherwise charging would be strictly better than not charging.
+            if (boxer.ChargeInput)
+            {
+                return false;
+            }
+
+            return ThrowPunch(boxer, side, 0f);
+        }
+
+        /// <summary>Starts a swing on the requested arm, or the other one if it is busy.</summary>
+        private bool ThrowPunch(BoxerModel boxer, ArmSide side, float chargeLevel)
+        {
             ArmModel requested = side == ArmSide.Left ? boxer.LeftArm : boxer.RightArm;
 
             if (requested.CanPunch)
             {
-                requested.TryPunch();
+                requested.TryPunch(chargeLevel);
                 SpendPunchStamina(boxer);
                 return true;
             }
@@ -98,7 +135,7 @@ namespace PoRumble.Systems
 
             if (other.CanPunch)
             {
-                other.TryPunch();
+                other.TryPunch(chargeLevel);
                 SpendPunchStamina(boxer);
                 return true;
             }
@@ -130,6 +167,8 @@ namespace PoRumble.Systems
 
                 TickMovement(boxer, deltaTime);
                 TickStamina(boxer, deltaTime);
+                TickCounterWindow(boxer, deltaTime);
+                TickCharge(boxer, deltaTime);
 
                 TickArm(boxer, boxer.LeftArm, deltaTime);
                 TickArm(boxer, boxer.RightArm, deltaTime);
@@ -152,6 +191,14 @@ namespace PoRumble.Systems
         private void TickMovement(BoxerModel boxer, float deltaTime)
         {
             float effort = StaminaScale(boxer);
+
+            // A cocked haymaker plants the feet. Without this cost, charging would be free
+            // and there would be no reason ever to throw an ordinary punch.
+            if (boxer.ChargeInput && boxer.Charge.Value > 0f)
+            {
+                effort *= _config.ChargeMoveScale;
+            }
+
             Vector2 desired = boxer.MoveInput * (_config.MoveSpeed * effort);
             float rate = desired.sqrMagnitude > Mathf.Epsilon ? _config.Acceleration : _config.Deceleration;
 
@@ -193,6 +240,76 @@ namespace PoRumble.Systems
         private float StaminaScale(BoxerModel boxer)
         {
             return Mathf.Lerp(_config.ExhaustedPenalty, 1f, boxer.Stamina.Value);
+        }
+
+        /// <summary>
+        /// Builds the haymaker while the button is held and throws it on release.
+        ///
+        /// A charge that never reached the minimum is released as an ordinary punch rather
+        /// than being thrown away, so holding the button briefly is never worse than tapping
+        /// the punch key.
+        /// </summary>
+        private void TickCharge(BoxerModel boxer, float deltaTime)
+        {
+            if (boxer.ChargeInput)
+            {
+                // Only build while an arm is actually free to deliver it. Charging against
+                // two busy arms would bank power the boxer cannot spend.
+                if (boxer.LeftArm.CanPunch || boxer.RightArm.CanPunch)
+                {
+                    float rate = _config.ChargeDuration <= 0f
+                        ? 1f
+                        : deltaTime / _config.ChargeDuration;
+
+                    boxer.Charge.Value = Mathf.Clamp01(boxer.Charge.Value + rate);
+                }
+
+                boxer.LeftArm.SetWindup(boxer.Charge.Value);
+                boxer.RightArm.SetWindup(boxer.Charge.Value);
+                return;
+            }
+
+            if (boxer.Charge.Value <= 0f)
+            {
+                return;
+            }
+
+            ReleaseCharge(boxer);
+        }
+
+        private void ReleaseCharge(BoxerModel boxer)
+        {
+            float charge = boxer.Charge.Value;
+
+            boxer.Charge.Value = 0f;
+            boxer.LeftArm.SetWindup(0f);
+            boxer.RightArm.SetWindup(0f);
+
+            float level = charge >= _config.MinChargeToRelease ? charge : 0f;
+
+            if (!ThrowPunch(boxer, ArmSide.Right, level))
+            {
+                return;
+            }
+
+            if (level <= 0f)
+            {
+                return;
+            }
+
+            boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value - _config.ChargeStaminaCost * level);
+            _haymakerPublisher.Publish(new HaymakerThrownMessage(boxer.Id, boxer.Position, level));
+        }
+
+        /// <summary>Runs down the window opened by a block.</summary>
+        private static void TickCounterWindow(BoxerModel boxer, float deltaTime)
+        {
+            if (boxer.CounterWindow <= 0f)
+            {
+                return;
+            }
+
+            boxer.CounterWindow = Mathf.Max(0f, boxer.CounterWindow - deltaTime);
         }
 
         /// <summary>
@@ -264,9 +381,13 @@ namespace PoRumble.Systems
             // falls as stamina does and the two settle at an equilibrium.
             float slow = 1f / Mathf.Max(0.01f, StaminaScale(attacker));
 
+            // A charged swing winds up visibly slower. That delay is the counterplay: it is
+            // the window in which an opponent can read the haymaker and step out of it.
+            float windup = 1f + arm.ChargeLevel * (_config.ChargeWindupScale - 1f);
+
             arm.Tick(
                 deltaTime,
-                _config.ArmExtendDuration * slow,
+                _config.ArmExtendDuration * slow * windup,
                 _config.ArmRetractDuration * slow,
                 _config.ArmCooldownDuration * slow);
 
@@ -306,14 +427,29 @@ namespace PoRumble.Systems
                 }
 
                 // A spent boxer lands softer punches, but never for zero.
-                int damage = Mathf.Max(1, Mathf.RoundToInt(result.Damage * StaminaScale(attacker)));
+                float chargeScale = 1f + arm.ChargeLevel * (_config.ChargeDamageMultiplier - 1f);
+                int damage = Mathf.Max(
+                    1,
+                    Mathf.RoundToInt(result.Damage * StaminaScale(attacker) * chargeScale));
+
+                // Cashing in a block. Consumed on the way out so one block buys exactly one
+                // counter, not a free damage bonus for the rest of the window.
+                bool isCounter = attacker.HasCounterWindow;
+
+                if (isCounter)
+                {
+                    damage += _config.CounterDamageBonus;
+                    attacker.CounterWindow = 0f;
+                }
 
                 _pendingHits.Add(new PunchLandedMessage(
                     attacker.Id,
                     target.Id,
                     damage,
                     result.IsCloseRange,
-                    glovePosition));
+                    glovePosition,
+                    isCounter,
+                    arm.ChargeLevel));
 
                 return;
             }
@@ -353,6 +489,11 @@ namespace PoRumble.Systems
                 if ((glovePosition - leftGlove).sqrMagnitude <= blockRangeSqr ||
                     (glovePosition - rightGlove).sqrMagnitude <= blockRangeSqr)
                 {
+                    // Stopping a punch buys a moment in which your own counts for more. This
+                    // is what turns holding a guard up from a way to lose slowly into a way
+                    // to win: block, then fire back before the window closes.
+                    target.CounterWindow = _config.CounterWindowDuration;
+
                     _blockedPublisher.Publish(new PunchBlockedMessage(attacker.Id, target.Id, glovePosition));
                     return;
                 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PoRumble.Models;
 using UnityEngine;
@@ -10,6 +11,22 @@ namespace PoRumble.Views
     [DisallowMultipleComponent]
     public sealed class BoxerSpawnPoints : MonoBehaviour
     {
+        /// <summary>
+        /// A block of scripted opponents cut from the same profile. Several of these make up
+        /// the undercard, so one match can field a pressure fighter, two journeymen and a
+        /// counter-puncher rather than ten copies of a single bot.
+        /// </summary>
+        [Serializable]
+        private sealed class RosterTier
+        {
+            [SerializeField] private BrainProfile _profile;
+            [Min(0)]
+            [SerializeField] private int _count = 1;
+
+            public BrainProfile Profile => _profile;
+            public int Count => _count;
+        }
+
         [Tooltip("Boxers already placed in the scene. When set, these are used instead of " +
                  "instantiating the prefab, so the ring is visible without entering Play mode.")]
         [SerializeField] private BoxerView[] _preplacedBoxers;
@@ -26,7 +43,17 @@ namespace PoRumble.Views
         [SerializeField] private int _humanBoxerId = -1;
         [Tooltip("Boxer ids driven by the hand-written sparring brain rather than a policy. " +
                  "Gives the learners a competent opponent from the very first episode.")]
-        [SerializeField] private int[] _scriptedBoxerIds = System.Array.Empty<int>();
+        [SerializeField] private int[] _scriptedBoxerIds = Array.Empty<int>();
+
+        [Tooltip("Difficulty tiers for the scripted undercard, filled in roster order after " +
+                 "the player. Boxers left over once the tiers run out keep the trained policy, " +
+                 "so a match can mix hand-written opponents with the learned one.")]
+        [SerializeField] private RosterTier[] _rosterTiers = Array.Empty<RosterTier>();
+
+        [Tooltip("Profile used for ids listed in Scripted Boxer Ids that no tier covers. " +
+                 "Leave empty to fall back to the brain's original built-in tuning.")]
+        [SerializeField] private BrainProfile _defaultProfile;
+
         [Tooltip("Colour learning agents black and scripted bots white, instead of the " +
                  "ten-way palette.")]
         [SerializeField] private bool _useRoleColors;
@@ -42,6 +69,9 @@ namespace PoRumble.Views
         public float SpawnRadius => _spawnRadius;
         public Vector2 ArenaHalfExtent => _arenaHalfExtent;
         public bool AutoRestart => _autoRestart;
+
+        /// <summary>Boxer the keyboard drives, or -1. The player HUD needs to know who to watch.</summary>
+        public int HumanBoxerId => _humanBoxerId;
 
         [Inject]
         public void Construct(IObjectResolver resolver)
@@ -64,6 +94,8 @@ namespace PoRumble.Views
 
             _built = true;
             Transform parent = _boxerParent != null ? _boxerParent : transform;
+            int tierIndex = 0;
+            int tierRemaining = 0;
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {
@@ -88,9 +120,25 @@ namespace PoRumble.Views
                 {
                     agent.Bind(boxer);
 
-                    bool scripted = System.Array.IndexOf(_scriptedBoxerIds, boxer.Id) >= 0;
+                    bool isHuman = boxer.Id == _humanBoxerId;
+                    BrainProfile profile = isHuman
+                        ? null
+                        : NextTierProfile(ref tierIndex, ref tierRemaining);
+
+                    bool listedAsScripted = Array.IndexOf(_scriptedBoxerIds, boxer.Id) >= 0;
+
+                    if (listedAsScripted && profile == null)
+                    {
+                        profile = _defaultProfile;
+                    }
+
+                    // A boxer is hand-written if a tier claimed it or the id was listed
+                    // explicitly. Everyone else keeps the trained policy.
+                    bool scripted = !isHuman && (listedAsScripted || profile != null);
+
+                    agent.SetBrainProfile(profile);
                     agent.SetScriptedBot(scripted);
-                    agent.SetHumanControlled(boxer.Id == _humanBoxerId);
+                    agent.SetHumanControlled(isHuman);
 
                     if (_useRoleColors)
                     {
@@ -102,6 +150,42 @@ namespace PoRumble.Views
 
                 _views.Add(view);
             }
+        }
+
+        /// <summary>
+        /// Hands out the next tier's profile, or null once the tiers are exhausted. Tiers with
+        /// no profile assigned are skipped rather than silently turning a policy bot into a
+        /// default-tuned scripted one.
+        /// </summary>
+        private BrainProfile NextTierProfile(ref int tierIndex, ref int tierRemaining)
+        {
+            if (_rosterTiers == null)
+            {
+                return null;
+            }
+
+            while (tierRemaining <= 0)
+            {
+                if (tierIndex >= _rosterTiers.Length)
+                {
+                    return null;
+                }
+
+                RosterTier tier = _rosterTiers[tierIndex];
+                tierIndex++;
+
+                if (tier == null || tier.Profile == null || tier.Count <= 0)
+                {
+                    continue;
+                }
+
+                tierRemaining = tier.Count;
+                tierRemaining--;
+                return tier.Profile;
+            }
+
+            tierRemaining--;
+            return _rosterTiers[tierIndex - 1].Profile;
         }
 
         /// <summary>

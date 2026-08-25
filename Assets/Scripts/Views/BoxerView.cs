@@ -1,5 +1,7 @@
+using MessagePipe;
 using PoRumble.Models;
 using UnityEngine;
+using VContainer;
 
 namespace PoRumble.Views
 {
@@ -24,6 +26,12 @@ namespace PoRumble.Views
         [Tooltip("The hand-written sparring partner.")]
         [SerializeField] private Color _scriptedColor = new(0.95f, 0.95f, 0.93f);
 
+        [Header("Impact")]
+        [Tooltip("Seconds the white hit flash takes to fade.")]
+        [SerializeField] private float _flashSeconds = 0.11f;
+        [Tooltip("Seconds a knocked-out boxer takes to burn away.")]
+        [SerializeField] private float _dissolveSeconds = 0.9f;
+
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =
         {
@@ -40,12 +48,25 @@ namespace PoRumble.Views
         };
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly int FlashAmountId = Shader.PropertyToID("_FlashAmount");
+        private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
 
         private readonly CompositeDisposable _disposables = new();
 
         private BoxerModel _model;
         private MaterialPropertyBlock _propertyBlock;
         private Color _aliveColor = Color.white;
+
+        private float _flashRemaining;
+        private float _dissolveElapsed;
+        private bool _dissolving;
+        private bool _effectsActive;
+
+        [Inject]
+        public void Construct(ISubscriber<BoxerDamagedMessage> damagedSubscriber)
+        {
+            damagedSubscriber.Subscribe(OnBoxerDamaged).AddTo(_disposables);
+        }
 
         private void Awake()
         {
@@ -106,19 +127,100 @@ namespace PoRumble.Views
             transform.SetPositionAndRotation(_model.Position, Quaternion.Euler(0f, 0f, facingDegrees));
         }
 
+        /// <summary>
+        /// Advances the hit flash and the knockout dissolve.
+        ///
+        /// Unscaled, because both hitstop and the knockout hold slow the world right down at
+        /// exactly the moment these are meant to be playing.
+        /// </summary>
+        private void Update()
+        {
+            if (!_effectsActive)
+            {
+                return;
+            }
+
+            float delta = Time.unscaledDeltaTime;
+            bool stillActive = false;
+
+            if (_flashRemaining > 0f)
+            {
+                _flashRemaining = Mathf.Max(0f, _flashRemaining - delta);
+                stillActive = true;
+            }
+
+            if (_dissolving && _dissolveElapsed < _dissolveSeconds)
+            {
+                _dissolveElapsed += delta;
+                stillActive = true;
+            }
+
+            PushEffectProperties();
+
+            if (stillActive)
+            {
+                return;
+            }
+
+            // Nothing left to animate. A property block set on a renderer takes it out of the
+            // shared batch, so it is cleared the moment it stops earning its place - otherwise
+            // ninety renderers would each become their own draw call for the whole match.
+            _effectsActive = _dissolving;
+
+            if (!_dissolving)
+            {
+                ClearEffectProperties();
+            }
+        }
+
+        private void OnBoxerDamaged(BoxerDamagedMessage message)
+        {
+            if (_model == null || message.BoxerId != _model.Id)
+            {
+                return;
+            }
+
+            _flashRemaining = _flashSeconds;
+            _effectsActive = true;
+        }
+
         private void OnAliveChanged(bool isAlive)
         {
             Tint(isAlive ? _aliveColor : _eliminatedColor);
+
+            if (isAlive)
+            {
+                _dissolving = false;
+                _dissolveElapsed = 0f;
+                _flashRemaining = 0f;
+                _effectsActive = false;
+                ClearEffectProperties();
+                return;
+            }
+
+            _dissolving = true;
+            _dissolveElapsed = 0f;
+            _effectsActive = true;
         }
 
-        private void Tint(Color color)
+        /// <summary>
+        /// Writes the current flash and dissolve to every renderer.
+        ///
+        /// The shader clamps both, so a renderer whose material is the stock sprite shader
+        /// simply ignores the properties rather than erroring - which is what keeps this safe
+        /// if a boxer part is ever left on a different material.
+        /// </summary>
+        private void PushEffectProperties()
         {
             if (_renderers == null)
             {
                 return;
             }
 
-            _propertyBlock.SetColor(BaseColorId, color);
+            float flash = _flashSeconds > 0f ? _flashRemaining / _flashSeconds : 0f;
+            float dissolve = _dissolving && _dissolveSeconds > 0f
+                ? Mathf.Clamp01(_dissolveElapsed / _dissolveSeconds)
+                : 0f;
 
             for (int rendererIndex = 0; rendererIndex < _renderers.Length; rendererIndex++)
             {
@@ -129,14 +231,57 @@ namespace PoRumble.Views
                     continue;
                 }
 
-                // Sprite shaders ignore _BaseColor, so the fists are tinted via SpriteRenderer
-                // .color instead. That does not clone the material either, so batching survives.
+                target.GetPropertyBlock(_propertyBlock);
+                _propertyBlock.SetFloat(FlashAmountId, flash);
+                _propertyBlock.SetFloat(DissolveAmountId, dissolve);
+                target.SetPropertyBlock(_propertyBlock);
+            }
+        }
+
+        private void ClearEffectProperties()
+        {
+            if (_renderers == null)
+            {
+                return;
+            }
+
+            for (int rendererIndex = 0; rendererIndex < _renderers.Length; rendererIndex++)
+            {
+                Renderer target = _renderers[rendererIndex];
+
+                if (target != null)
+                {
+                    target.SetPropertyBlock(null);
+                }
+            }
+        }
+
+        private void Tint(Color color)
+        {
+            if (_renderers == null)
+            {
+                return;
+            }
+
+            for (int rendererIndex = 0; rendererIndex < _renderers.Length; rendererIndex++)
+            {
+                Renderer target = _renderers[rendererIndex];
+
+                if (target == null)
+                {
+                    continue;
+                }
+
+                // Sprite shaders ignore _BaseColor, so the parts are tinted via SpriteRenderer
+                // .color instead. That does not clone the material either, and unlike a
+                // property block it does not break the sprite batch.
                 if (target is SpriteRenderer spriteRenderer)
                 {
                     spriteRenderer.color = color;
                     continue;
                 }
 
+                _propertyBlock.SetColor(BaseColorId, color);
                 target.SetPropertyBlock(_propertyBlock);
             }
         }

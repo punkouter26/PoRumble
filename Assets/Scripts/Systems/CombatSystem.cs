@@ -96,7 +96,12 @@ namespace PoRumble.Systems
                 return;
             }
 
-            target.Velocity += direction.normalized * (_config.KnockbackPerDamage * message.Damage);
+            // A haymaker should visibly throw someone, not merely hurt more. The damage is
+            // already scaled by charge, so this is the extra shove on top of that.
+            float chargeScale = 1f + message.ChargeLevel * (_config.ChargeKnockbackMultiplier - 1f);
+
+            target.Velocity += direction.normalized
+                               * (_config.KnockbackPerDamage * message.Damage * chargeScale);
         }
 
         private BoxerModel FindBoxer(int boxerId)

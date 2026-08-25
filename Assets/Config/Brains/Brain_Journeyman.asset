@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b70875ca598929d4ba8bc09020f3d0f0, type: 3}
+  m_Name: Brain_Journeyman
+  m_EditorClassIdentifier: PoRumble.Models::PoRumble.Models.BrainProfile
+  _displayName: Journeyman
+  _aggression: 0.5
+  _engageRangeScale: 0.95
+  _breakRangeScale: 1.35
+  _reactionDelay: 0.2
+  _accuracy: 0.62
+  _punchAlignment: 0
+  _recoverStamina: 0.25
+  _resumeStamina: 0.55
+  _chargeChance: 0.12
+  _counterDiscipline: 0.45

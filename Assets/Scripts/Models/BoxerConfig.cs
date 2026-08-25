@@ -64,6 +64,40 @@ namespace PoRumble.Models
         [SerializeField] private float _exhaustedPenalty = 0.45f;
         [SerializeField] private float _bodyRadius = 0.4f;
 
+        [Header("Charged punch")]
+        [Tooltip("Seconds of holding the charge button to reach a full-power haymaker.")]
+        [SerializeField] private float _chargeDuration = 0.75f;
+        [Tooltip("Releasing below this charge throws an ordinary punch instead, so tapping " +
+                 "the charge button is never worse than tapping punch.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _minChargeToRelease = 0.25f;
+        [Tooltip("Damage multiplier at full charge. The whole risk/reward of the mechanic: " +
+                 "big enough to be worth the wind-up, small enough that whiffing hurts.")]
+        [SerializeField] private float _chargeDamageMultiplier = 3f;
+        [Tooltip("How much longer the swing takes at full charge. This is the telegraph — " +
+                 "the window in which an opponent can see it coming and get out of the way.")]
+        [SerializeField] private float _chargeWindupScale = 2.2f;
+        [Tooltip("Extra knockback multiplier at full charge, so a haymaker visibly throws " +
+                 "the target across the ring.")]
+        [SerializeField] private float _chargeKnockbackMultiplier = 2.5f;
+        [Tooltip("Stamina spent on a full-charge haymaker, on top of the ordinary punch cost.")]
+        [SerializeField] private float _chargeStaminaCost = 0.10f;
+        [Tooltip("Movement multiplier while winding up. Committing to a haymaker should cost " +
+                 "mobility, otherwise there is no reason ever to throw a jab.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _chargeMoveScale = 0.45f;
+        [Tooltip("How far the glove is drawn back at full charge, as a fraction of reach. " +
+                 "Visual telegraph only — hits still resolve at full extension.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _chargePullback = 0.55f;
+
+        [Header("Counter")]
+        [Tooltip("Seconds after blocking a punch during which your next landed punch counts " +
+                 "as a counter. Rewards reading the opponent rather than mashing.")]
+        [SerializeField] private float _counterWindowDuration = 0.45f;
+        [Tooltip("Flat extra damage on a countered punch.")]
+        [SerializeField] private int _counterDamageBonus = 2;
+
         public int MaxHealth => _maxHealth;
         public float HeadOffset => _headOffset;
         public float GloveRadius => _gloveRadius;
@@ -85,6 +119,16 @@ namespace PoRumble.Models
         public float BlockStaminaCost => _blockStaminaCost;
         public float KnockbackPerDamage => _knockbackPerDamage;
         public float ExhaustedPenalty => _exhaustedPenalty;
+        public float ChargeDuration => _chargeDuration;
+        public float MinChargeToRelease => _minChargeToRelease;
+        public float ChargeDamageMultiplier => _chargeDamageMultiplier;
+        public float ChargeWindupScale => _chargeWindupScale;
+        public float ChargeKnockbackMultiplier => _chargeKnockbackMultiplier;
+        public float ChargeStaminaCost => _chargeStaminaCost;
+        public float ChargeMoveScale => _chargeMoveScale;
+        public float ChargePullback => _chargePullback;
+        public float CounterWindowDuration => _counterWindowDuration;
+        public int CounterDamageBonus => _counterDamageBonus;
 
         public CombatSettings ToCombatSettings()
         {

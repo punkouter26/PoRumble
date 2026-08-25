@@ -23,6 +23,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             _container = builder.Build();
 
             _config = ScriptableObject.CreateInstance<BoxerConfig>();
@@ -32,7 +33,8 @@ namespace PoRumble.Tests
             _boxerSystem = new BoxerSystem(_match, _config,
                 _container.Resolve<IPublisher<PunchLandedMessage>>(),
                 _container.Resolve<IPublisher<PunchEvadedMessage>>(),
-                _container.Resolve<IPublisher<PunchBlockedMessage>>());
+                _container.Resolve<IPublisher<PunchBlockedMessage>>(),
+                _container.Resolve<IPublisher<HaymakerThrownMessage>>());
         }
 
         [TearDown]
@@ -92,6 +94,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.Register<MatchModel>(Lifetime.Singleton);

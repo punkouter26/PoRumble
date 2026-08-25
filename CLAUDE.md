@@ -25,10 +25,10 @@ Renderer, so 3D lit materials will not light correctly.
 | Task | How |
 |---|---|
 | Play | Open `Assets/Scenes/SampleScene.unity` → Play. 10 boxers, HUD, boxer #0 on keyboard |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **R** restart at the results screen · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 32 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 84 EditMode tests |
 
 **Two configs on purpose.** `BoxerConfig.asset` (30 HP) is the game.
 `BoxerConfig_Training.asset` (6 HP) is curriculum stage 1: at 30 HP a knockout needs 15–30
@@ -71,6 +71,23 @@ keyboard ──┘   (Agent, Heuristic)     │
 `BoxerAgentView` is the single control path: the policy drives it via `OnActionReceived`,
 a human via `Heuristic`.
 
+Around that sits the presentation loop. `MatchFlowSystem` owns `MatchFlowModel`
+(`Introducing → Countdown → Fighting → KnockoutHold → Results`) and is the only thing that
+decides when combat ticks at all. `CombatFeedbackView`, `MatchHudView`,
+`PlayerStatusHudView` and `SpectatorCameraView` are pure subscribers on top of it and of the
+punch messages that were already being published.
+
+```
+MatchFlowSystem ─► MatchFlowModel.Phase ─┬─► MatchDirector   (gates BoxerSystem.Tick)
+                                         ├─► MatchHudView    (countdown, result, restart prompt)
+                                         └─► CombatFeedbackView (bell, countdown beeps)
+
+PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
+        ├─► BoxerAgentView      (reward shaping — as before)
+        ├─► CombatFeedbackView  (hitstop, impulse shake, particles, audio)
+        └─► PlayerStatusHudView (damage vignette, counter flash)
+```
+
 ### Things that are easy to get wrong
 
 - **Hit detection is pure maths, not physics.** `CombatMath.ResolveHit` is a static function
@@ -88,6 +105,20 @@ a human via `Heuristic`.
 - **`CombatSystem` and `MatchSystem` are resolved eagerly** in `GameLifetimeScope`. They only
   subscribe to messages, so nothing injects them and VContainer would never construct them —
   punches would silently do nothing.
+- **Charging is not an ML action.** The haymaker rides `BoxerSystem.SetCharge`, a side channel
+  human and scripted controllers call directly. Adding a third discrete branch would change
+  the action vector and `PoRumbleBoxer.onnx` would stop loading altogether — see *ML-Agents*.
+- **The flow loop runs on unscaled time.** The knockout hold sets `Time.timeScale`, so a loop
+  timed on scaled time would stretch itself by exactly the factor it just applied.
+  `Time.timeScale` is global and outlives Play mode: `MatchDirector.Dispose` and
+  `CombatFeedbackView.OnDestroy` both restore it, and so must anything else that touches it.
+- **Training bypasses the presentation loop entirely.** `MatchDirector` branches on
+  `BoxerSpawnPoints.AutoRestart`: a training scene jumps straight to `Fighting` and keeps the
+  old per-episode reset. A countdown would burn episode steps on animation.
+- **Sprite world sizes are load-bearing.** The boxer's parts are sized so the drawn glove sits
+  where `CombatMath` expects it. Sprites are authored at a pixels-per-unit equal to their pixel
+  width, so one sprite covers one world unit at scale 1 and the transforms carry over from the
+  quads they replaced. Changing a sprite's PPU silently moves the fists away from the hitboxes.
 
 ---
 
@@ -95,7 +126,7 @@ a human via `Heuristic`.
 
 | Scene | Purpose |
 |---|---|
-| `Assets/Scenes/SampleScene.unity` | The game: 40×40 ring, 10 boxers, HUD |
+| `Assets/Scenes/SampleScene.unity` | The game: 40×40 ring, 10 boxers, HUD, feedback rig, spectator camera |
 | `Assets/Scenes/Training1v1.unity` | Curriculum stage 1: 16×16 ring, 2 boxers at opposite walls, auto-restart |
 
 Boxer prefab (`Assets/Prefabs/Boxer.prefab`) is an anatomical chain:
@@ -119,6 +150,10 @@ than someone's back.
 
 - Behaviour name is **`PoRumbleBoxer`** and must match `BehaviorParameters` exactly.
 - Actions: 4 continuous (`moveX`, `moveY`, `aimX`, `aimY`) + 2 discrete branches (punch L/R).
+  **This vector is frozen.** `PoRumbleBoxer.onnx` is compiled against exactly this shape and
+  against 11 self observations; growing either stops the model loading. The haymaker was
+  therefore built as a side channel (`BoxerSystem.SetCharge`) rather than a third branch, and
+  the counter window needs no action at all. Retrain before changing either.
 - Observations: `RayPerceptionSensorComponent2D` (17 rays) plus 10 self scalars. Rays are
   used because the opponent count shrinks during a match and a fixed vector cannot encode a
   variable-length list.
@@ -172,6 +207,121 @@ unity command eval_file --file "Temp/evals/script.cs"
 
 ---
 
+## Rendering
+
+URP **2D Renderer**. The pieces that are easy to get wrong:
+
+- **Post-processing is enabled on the camera.** `DefaultVolumeProfile` carries Bloom, ACES
+  tonemapping, a colour grade, vignette, chromatic aberration and film grain. That profile
+  was fully authored and completely inert until `m_RenderPostProcessing` was turned on at the
+  Main Camera — the single highest-value flag in the project. Grading runs in HDR;
+  anti-aliasing is SMAA (MSAA does nothing useful for alpha-blended sprites).
+- **Sorting layers are `Floor / Shadow / Default / Boxer / Glove / FX / Overlay`,** in render
+  order. Everything used to share one layer, so nine renderers per boxer fought over
+  order-in-layer and there was nowhere to put shadows or effects.
+- **Every Light2D must target every sorting layer.** A 2D light carries an explicit list of
+  layers it affects. Add a sorting layer without adding it to each light's
+  `m_ApplyToSortingLayers` and the fighters go unlit — silently, with no warning.
+- **Shadows are the most expensive thing in the scene.** Measured live: disabling the key
+  light's shadows dropped SetPass calls from 69 to 37. Only the key light casts (the renderer
+  budgets a single shadow render texture) and only the fighters have `ShadowCaster2D` — the
+  corner posts had theirs removed because static scenery at the ring edge did not earn it.
+- **Sprite pixels-per-unit equals the sprite's pixel width,** so one sprite is one world unit
+  at scale 1. The hit maths is tuned against those dimensions; changing a PPU silently moves
+  the drawn fists away from the hitboxes.
+- **`Assets/Art/Atlases/BoxerAtlas.spriteatlasv2`** packs the fighters, the impact spark and
+  the ring dressing. The tiling `ring_canvas` and `ring_rope` are deliberately outside it:
+  they are sampled by a material with Repeat wrapping, which atlasing breaks.
+
+### Custom shader
+
+`PoRumble/SpriteLitFX` is a variant of URP's Sprite-Lit-Default adding `_FlashAmount` (white
+hit flash) and `_DissolveAmount` (knockout burn-away, procedural noise, no extra texture).
+Built as a variant rather than from scratch so the fighters keep responding to 2D lights and
+keep writing normals.
+
+Two constraints when touching it:
+
+1. **The `UnityPerMaterial` CBUFFER must be byte-identical in all three passes.** Unity
+   silently drops a shader out of the SRP Batcher when pass layouts disagree.
+2. **`BoxerView` clears its MaterialPropertyBlock the moment an effect ends.** A property
+   block takes a renderer out of the shared sprite batch, so leaving one set permanently
+   would turn ninety renderers into ninety draw calls for the whole match.
+
+## Presentation & Game Feel
+
+Five objects in `SampleScene` carry everything that is not simulation. All are optional —
+`GameLifetimeScope` injects them only if present, which is why the training scenes can omit
+every one of them.
+
+| Object | Component | Does |
+|---|---|---|
+| `CombatFeedback` | `CombatFeedbackView` | Hitstop, impulse shake, five particle systems, impact lights, all audio |
+| `RingLighting` | `RingAtmosphereView` | House lights down and key light in as the field thins |
+| `CameraRig` | `SpectatorCameraView` | Frames the living fighters; tightens as the field thins |
+| `PlayerStatusHud` | `PlayerStatusHudView` | Player health, breath, haymaker meter, hit vignette, behind-you warning |
+| `DiagnosticsHud` | `DiagnosticsHudView` | **F3** telemetry overlay |
+| `MatchInput` | `MatchInputView` | The restart key |
+| `MatchHud` | `MatchHudView` | Survivors, per-boxer health, countdown, result banner |
+
+## Audio
+
+`Assets/Audio/PoRumbleMixer.mixer` routes **Master → SFX / UI / Ambience**. Punches play
+through a pool of positioned 3D voices (`SpatialVoicePool`) so a hit across the ring is
+quieter and off to one side; the bell and countdown are non-positional and go to UI. DSP
+buffer is 512 rather than the default 1024, because ~23ms of latency is audible on a punch.
+
+**Audio is synthesised at runtime** in `ProceduralSfx` — the project has no audio assets, and
+a boxing game where landing, blocking and whiffing all sound identical loses most of what
+tells the player what happened. Swap in recorded one-shots whenever they exist; nothing but
+that one class has to change.
+
+**The camera writes its own transform.** `SpectatorCameraView` computes the centre and extent
+from the models and drives a bare `CinemachineCamera` directly, so there is no position-control
+component to configure. Cinemachine is there for the brain blend and for impulse shake.
+`LensSettings.Orthographic` is read-only — projection comes from the brain's source camera.
+
+**The HUD is styled from `Assets/UI/Styles/porumble.uss`,** not from inline C#. Tokens for
+colour, spacing and type live in `:root`; views assign class names and set only genuinely
+dynamic values (a bar's width percentage). Both HUDs previously carried their own copy of the
+palette as `static readonly Color` fields, free to drift apart.
+
+**The diagnostics overlay's counter names were read back from
+`ProfilerRecorderHandle.GetAvailable`, not assumed.** This Unity version publishes no plain
+`Draw Calls Count` or `Batches Count`; a recorder asking for one reports zero forever rather
+than erroring. `Shadow Casters Count` counts only 3D casters, and `Video Memory Bytes` is the
+adapter total — both were tried and dropped as confidently-wrong numbers.
+
+## Combat Depth
+
+- **Haymaker.** Hold charge to wind up; release to throw. Costs mobility while held, locks out
+  the ordinary jab, and the swing itself is slower — that telegraph is the counterplay. A
+  release below `MinChargeToRelease` throws an ordinary punch, so tapping is never a wasted
+  input.
+- **Counter window.** Blocking a punch opens `CounterWindowDuration` seconds during which your
+  next landed punch takes `CounterDamageBonus`. Consumed by the punch that uses it, so one
+  block buys exactly one counter. This applies to every fighter, the trained policy included —
+  it needs no new action.
+
+## Difficulty Tiers
+
+`BrainProfile` assets in `Assets/Config/Brains/` replace what used to be a block of constants
+in `ScriptedBoxerBrain`, so one roster can field a spread of opponents:
+
+| Profile | Reads as |
+|---|---|
+| `Brain_Rookie` | Slow to react, wild aim, never commits |
+| `Brain_Journeyman` | Competent, unremarkable |
+| `Brain_Pressure` | Walks you down and throws haymakers |
+| `Brain_CounterPuncher` | Patient, accurate, punishes a blocked punch |
+
+`BoxerSpawnPoints._rosterTiers` fills the roster in order after the player; whoever is left
+over keeps the trained `PoRumbleBoxer.onnx` policy. `SampleScene` currently fields six scripted
+fighters across the four tiers and three on the policy.
+
+The brain is seeded per boxer from a local xorshift rather than `UnityEngine.Random`, so it
+stays deterministic — training depends on the sparring partner being reproducible.
+
 ## Coding Rules
 
 `.claude/rules/` is authoritative. The ones that bite most often:
@@ -181,5 +331,7 @@ unity command eval_file --file "Temp/evals/script.cs"
 - **No legacy Input** — blocked by hooks.
 - **No coroutines** — UniTask instead.
 - **`private` by default**; no speculative public API.
-- **Sprite atlases are mandatory for 2D.** None exist yet — the art is still placeholder
-  quads and circles, so the draw-call criterion is not yet reachable.
+- **Sprite atlases are mandatory for 2D.** `Assets/Art/Atlases/BoxerAtlas.spriteatlasv2`
+  packs the boxer parts and the impact spark. The tiling `ring_canvas` and `ring_rope` are
+  deliberately *outside* it: they are sampled by a material with Repeat wrapping, which
+  atlasing breaks. Sprite Atlas V2 is the project's packer mode.

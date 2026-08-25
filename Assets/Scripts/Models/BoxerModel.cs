@@ -17,6 +17,28 @@ namespace PoRumble.Models
         /// </summary>
         public ReactiveProperty<float> Stamina { get; } = new(1f);
 
+        /// <summary>
+        /// How far a haymaker is wound up, 0..1. Reactive so the HUD can show the meter
+        /// filling without polling it every frame.
+        /// </summary>
+        public ReactiveProperty<float> Charge { get; } = new(0f);
+
+        /// <summary>True while the owner is holding the charge button down.</summary>
+        public bool ChargeInput { get; set; }
+
+        /// <summary>
+        /// Seconds left on the counter window opened by blocking a punch. Landing a punch
+        /// while this is running scores a counter, which is the payoff for holding a guard
+        /// up rather than simply trading.
+        ///
+        /// A plain float rather than a ReactiveProperty: it changes every single tick, and
+        /// waking a subscriber sixty times a second to redraw nothing is pure waste. The HUD
+        /// reacts to the block message instead.
+        /// </summary>
+        public float CounterWindow { get; set; }
+
+        public bool HasCounterWindow => CounterWindow > 0f;
+
         /// <summary>Current velocity, carried between ticks so movement has weight.</summary>
         public Vector2 Velocity { get; set; }
 
@@ -80,6 +102,9 @@ namespace PoRumble.Models
             MoveInput = Vector2.zero;
             Velocity = Vector2.zero;
             Stamina.Value = 1f;
+            Charge.Value = 0f;
+            ChargeInput = false;
+            CounterWindow = 0f;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
             Health.Value = maxHealth;
@@ -95,6 +120,9 @@ namespace PoRumble.Models
             }
 
             IsAlive.Value = false;
+            Charge.Value = 0f;
+            ChargeInput = false;
+            CounterWindow = 0f;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
             return true;

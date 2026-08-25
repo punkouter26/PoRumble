@@ -10,13 +10,51 @@ namespace PoRumble.Models
         public readonly bool IsCloseRange;
         public readonly Vector2 Position;
 
+        /// <summary>True when the attacker landed this inside a counter window.</summary>
+        public readonly bool IsCounter;
+
+        /// <summary>Charge the swing carried, 0 for an ordinary punch, 1 for a full haymaker.</summary>
+        public readonly float ChargeLevel;
+
         public PunchLandedMessage(int attackerId, int targetId, int damage, bool isCloseRange, Vector2 position)
+            : this(attackerId, targetId, damage, isCloseRange, position, false, 0f)
+        {
+        }
+
+        public PunchLandedMessage(
+            int attackerId,
+            int targetId,
+            int damage,
+            bool isCloseRange,
+            Vector2 position,
+            bool isCounter,
+            float chargeLevel)
         {
             AttackerId = attackerId;
             TargetId = targetId;
             Damage = damage;
             IsCloseRange = isCloseRange;
             Position = position;
+            IsCounter = isCounter;
+            ChargeLevel = chargeLevel;
+        }
+    }
+
+    /// <summary>
+    /// A haymaker was released. Raised at the moment of commitment rather than impact, so
+    /// the wind-up can be heard and seen before anyone knows whether it lands.
+    /// </summary>
+    public readonly struct HaymakerThrownMessage
+    {
+        public readonly int BoxerId;
+        public readonly Vector2 Position;
+        public readonly float ChargeLevel;
+
+        public HaymakerThrownMessage(int boxerId, Vector2 position, float chargeLevel)
+        {
+            BoxerId = boxerId;
+            Position = position;
+            ChargeLevel = chargeLevel;
         }
     }
 
