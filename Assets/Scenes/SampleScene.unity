@@ -6256,7 +6256,7 @@ MonoBehaviour:
   _spawnRadius: 15
   _arenaHalfExtent: {x: 20, y: 20}
   _autoRestart: 0
-  _humanBoxerId: 0
+  _humanBoxerId: -1
   _scriptedBoxerIds: 
   _rosterTiers:
   - _profile: {fileID: 11400000, guid: 95c1177862b9bf6419e71dc693160741, type: 2}

@@ -32,7 +32,7 @@ MonoBehaviour:
   _lateralSpeedScale: 0.75
   _retreatSpeedScale: 0.6
   _committedTurnScale: 0.4
-  _punchStaminaCost: 0.035
+  _punchStaminaCost: 0.07
   _moveStaminaCost: 0.05
   _knockbackPerDamage: 1.6
   _blockStaminaCost: 0.012

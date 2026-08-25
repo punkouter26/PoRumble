@@ -64,8 +64,11 @@ namespace PoRumble.Models
         [SerializeField] private float _committedTurnScale = 0.4f;
 
         [Header("Stamina")]
-        [Tooltip("Stamina spent per punch thrown.")]
-        [SerializeField] private float _punchStaminaCost = 0.035f;
+        [Tooltip("Stamina spent per punch thrown. Doubled from 0.035 when boxers were limited " +
+                 "to one fist out at a time: that halved throughput to ~2.2 punches/sec, and " +
+                 "at the old cost the 0.077/s drain sat below the 0.09/s recovery, so " +
+                 "punching paid for itself and stamina stopped meaning anything.")]
+        [SerializeField] private float _punchStaminaCost = 0.07f;
         [Tooltip("Stamina spent per second at full sprint.")]
         [SerializeField] private float _moveStaminaCost = 0.05f;
         [Tooltip("Speed a landed punch drives the target backwards, per point of damage. " +

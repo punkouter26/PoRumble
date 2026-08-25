@@ -8,8 +8,11 @@ using VContainer;
 namespace PoRumble.Tests
 {
     /// <summary>
-    /// Held punch input must alternate arms rather than stalling on one, which is the
-    /// juggling rhythm of the original.
+    /// A boxer throws one punch at a time, and held input alternates arms rather than
+    /// stalling on one - the juggling rhythm of the original.
+    ///
+    /// The two rules work together: a request is refused while a fist is still out, and once
+    /// that arm is drawing breath in cooldown the next request falls through to the other arm.
     /// </summary>
     public sealed class AlternatingPunchTests
     {
@@ -48,26 +51,66 @@ namespace PoRumble.Tests
         }
 
         [Test]
-        public void RequestingTheSameArmTwiceThrowsWithTheOther()
+        public void APunchIsRefusedWhileTheOtherFistIsStillOut()
         {
             BoxerModel boxer = _match.Boxers[0];
 
             Assert.That(_boxerSystem.Punch(0, ArmSide.Left), Is.True);
             Assert.That(boxer.LeftArm.Phase, Is.EqualTo(ArmPhase.Extending));
 
-            // Left is busy, so the same request must fall through to the right arm.
+            Assert.That(_boxerSystem.Punch(0, ArmSide.Right), Is.False,
+                "the left fist is still travelling, so the right must not also fire");
+            Assert.That(boxer.RightArm.Phase, Is.EqualTo(ArmPhase.Idle));
+        }
+
+        [Test]
+        public void OnceTheFirstArmIsBackTheRequestFallsThroughToTheOther()
+        {
+            BoxerModel boxer = _match.Boxers[0];
+
+            Assert.That(_boxerSystem.Punch(0, ArmSide.Left), Is.True);
+
+            // Run out the extend and retract phases; the left arm is then cooling down with
+            // its fist already back at the guard.
+            // Generous cap: the extend and retract phases both stretch as stamina falls, so
+            // the cycle runs a little past its nominal 0.30s after the very first punch.
+            for (int tick = 0; tick < 60; tick++)
+            {
+                _boxerSystem.Tick(0.02f);
+
+                if (boxer.LeftArm.Phase == ArmPhase.CoolingDown)
+                {
+                    break;
+                }
+            }
+
+            Assert.That(boxer.LeftArm.Phase, Is.EqualTo(ArmPhase.CoolingDown),
+                "left arm should have finished retracting");
+
+            // Left cannot throw again yet, so the same request must reach the right arm.
             Assert.That(_boxerSystem.Punch(0, ArmSide.Left), Is.True);
             Assert.That(boxer.RightArm.Phase, Is.EqualTo(ArmPhase.Extending));
         }
 
         [Test]
-        public void BothArmsBusy_PunchIsRefused()
+        public void HeldInputNeverPutsBothFistsOutAtOnce()
         {
-            _boxerSystem.Punch(0, ArmSide.Left);
-            _boxerSystem.Punch(0, ArmSide.Left);
+            BoxerModel boxer = _match.Boxers[0];
 
-            Assert.That(_boxerSystem.Punch(0, ArmSide.Left), Is.False,
-                "with both arms swinging there is nothing left to throw");
+            for (int tick = 0; tick < 300; tick++)
+            {
+                // Ask for both arms every tick, the way a held two-button input or a policy
+                // firing both discrete branches would.
+                _boxerSystem.Punch(0, ArmSide.Left);
+                _boxerSystem.Punch(0, ArmSide.Right);
+                _boxerSystem.Tick(0.02f);
+
+                bool leftOut = boxer.LeftArm.Extension > 0f;
+                bool rightOut = boxer.RightArm.Extension > 0f;
+
+                Assert.That(leftOut && rightOut, Is.False,
+                    $"both fists were extended on tick {tick}");
+            }
         }
 
         [Test]

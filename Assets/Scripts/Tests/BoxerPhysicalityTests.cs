@@ -161,10 +161,13 @@ namespace PoRumble.Tests
             BoxerModel boxer = _match.Boxers[0];
             Assert.That(boxer.Stamina.Value, Is.EqualTo(1f));
 
-            for (int punch = 0; punch < 6; punch++)
+            // Held input rather than a fixed cadence. Only one fist may be out at a time, so
+            // a hand-picked interval can land while the other arm is still drawing back and
+            // silently throw no punches at all.
+            for (int tick = 0; tick < 90; tick++)
             {
                 _boxerSystem.Punch(0, ArmSide.Left);
-                Run(0.3f);
+                _boxerSystem.Tick(0.02f);
             }
 
             float spent = boxer.Stamina.Value;

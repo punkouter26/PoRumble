@@ -119,9 +119,34 @@ namespace PoRumble.Systems
             return ThrowPunch(boxer, side, 0f);
         }
 
+        /// <summary>
+        /// True while either fist is away from the body - travelling out or drawing back.
+        ///
+        /// A boxer throws one punch at a time. Both arms firing together let a fighter double
+        /// the damage it could put out for the same stamina, and read on screen as a shove
+        /// rather than a punch.
+        /// </summary>
+        private static bool IsAnyArmOut(BoxerModel boxer)
+        {
+            return IsArmOut(boxer.LeftArm) || IsArmOut(boxer.RightArm);
+        }
+
+        private static bool IsArmOut(ArmModel arm)
+        {
+            // Cooling down does not count: the fist is already back at the guard by then, which
+            // is what keeps held input alternating between the two arms.
+            return arm.Phase == ArmPhase.Extending || arm.Phase == ArmPhase.Retracting;
+        }
+
         /// <summary>Starts a swing on the requested arm, or the other one if it is busy.</summary>
         private bool ThrowPunch(BoxerModel boxer, ArmSide side, float chargeLevel)
         {
+            // One fist out at a time, whoever is asking - human, scripted brain or policy.
+            if (IsAnyArmOut(boxer))
+            {
+                return false;
+            }
+
             ArmModel requested = side == ArmSide.Left ? boxer.LeftArm : boxer.RightArm;
 
             if (requested.CanPunch)
@@ -316,17 +341,20 @@ namespace PoRumble.Systems
         private void ReleaseCharge(BoxerModel boxer)
         {
             float charge = boxer.Charge.Value;
-
-            boxer.Charge.Value = 0f;
-            boxer.LeftArm.SetWindup(0f);
-            boxer.RightArm.SetWindup(0f);
-
             float level = charge >= _config.MinChargeToRelease ? charge : 0f;
 
+            // Attempted before the charge is cleared. With only one fist allowed out at a
+            // time a release can land on a tick where the other arm is still travelling, and
+            // banking the wind-up until an arm frees up is far better than silently eating a
+            // haymaker the player already paid stamina and mobility for.
             if (!ThrowPunch(boxer, ArmSide.Right, level))
             {
                 return;
             }
+
+            boxer.Charge.Value = 0f;
+            boxer.LeftArm.SetWindup(0f);
+            boxer.RightArm.SetWindup(0f);
 
             if (level <= 0f)
             {

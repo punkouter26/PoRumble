@@ -105,6 +105,16 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
   from behind score as clean face hits.
 - **Hits are buffered for a whole tick** and the match resolved once at end of tick, so
   simultaneous knockouts both count.
+- **A boxer throws one punch at a time.** `BoxerSystem.ThrowPunch` refuses while either arm
+  is `Extending` or `Retracting`, so a second fist can never be out alongside the first.
+  Cooling down deliberately does *not* count - the fist is already back at the guard by then,
+  which is what keeps held input alternating left and right instead of stalling on one arm.
+  The rule sits in the system rather than in a controller, so it applies identically to the
+  keyboard, the scripted brains and the trained policy.
+  This halved punch throughput to ~2.2/sec, which quietly killed stamina: at the old
+  `PunchStaminaCost` of 0.035 the drain was 0.077/s against 0.09/s recovery, so spamming
+  punches *gained* breath. The cost was doubled to 0.07 to restore the previous pressure -
+  measured equilibrium under constant punching is now 0.20, against roughly 0.24 before.
 - **Movement is anisotropic to the facing.** `BoxerSystem.ScaleByStance` caps sidesteps and
   retreats against the forward shuffle, and turning drops to `CommittedTurnScale` while a
   punch is on its way out. Feed `MoveInput` straight through and a boxer sprints backwards as
