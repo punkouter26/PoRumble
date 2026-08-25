@@ -73,6 +73,15 @@ namespace PoRumble.Views
         /// <summary>Physics ticks between decisions, read off the DecisionRequester.</summary>
         private int _decisionPeriod = 1;
 
+        // Kept so the handlers can be put back on re-enable. Disabling an agent and enabling
+        // it again used to drop every reward message permanently: OnDisable disposed the
+        // subscriptions and nothing ever resubscribed, so the boxer went on fighting while
+        // silently scoring nothing.
+        private ISubscriber<PunchLandedMessage> _punchSubscriber;
+        private ISubscriber<PunchEvadedMessage> _evadedSubscriber;
+        private ISubscriber<PunchBlockedMessage> _blockedSubscriber;
+        private ISubscriber<BoxerEliminatedMessage> _eliminatedSubscriber;
+
         private IDisposable _punchSubscription;
         private IDisposable _evadedSubscription;
         private IDisposable _blockedSubscription;
@@ -96,10 +105,37 @@ namespace PoRumble.Views
             _flow = flow;
             _config = config;
             _brain = BuildBrain();
-            _punchSubscription = punchSubscriber.Subscribe(OnPunchLanded);
-            _evadedSubscription = evadedSubscriber.Subscribe(OnPunchEvaded);
-            _blockedSubscription = blockedSubscriber.Subscribe(OnPunchBlocked);
-            _eliminatedSubscription = eliminatedSubscriber.Subscribe(OnBoxerEliminated);
+            _punchSubscriber = punchSubscriber;
+            _evadedSubscriber = evadedSubscriber;
+            _blockedSubscriber = blockedSubscriber;
+            _eliminatedSubscriber = eliminatedSubscriber;
+
+            // Injection happens after the object is already enabled, so OnEnable cannot be
+            // the only place this runs.
+            SubscribeToCombat();
+        }
+
+        /// <summary>
+        /// Attaches the reward handlers. Idempotent, and a no-op before injection has
+        /// supplied the subscribers.
+        /// </summary>
+        private void SubscribeToCombat()
+        {
+            if (_punchSubscriber == null || _punchSubscription != null)
+            {
+                return;
+            }
+
+            _punchSubscription = _punchSubscriber.Subscribe(OnPunchLanded);
+            _evadedSubscription = _evadedSubscriber.Subscribe(OnPunchEvaded);
+            _blockedSubscription = _blockedSubscriber.Subscribe(OnPunchBlocked);
+            _eliminatedSubscription = _eliminatedSubscriber.Subscribe(OnBoxerEliminated);
+        }
+
+        protected override void OnEnable()
+        {
+            base.OnEnable();
+            SubscribeToCombat();
         }
 
         /// <summary>
@@ -215,6 +251,10 @@ namespace PoRumble.Views
         {
             // Opponents and walls are perceived by RayPerceptionSensorComponent2D, which handles
             // the roster shrinking from nine opponents to zero. Only self-state goes here.
+            //
+            // Fifteen floats. Changing this count means changing VectorObservationSize on the
+            // prefab to match and retraining: a policy compiled against the old width will not
+            // load at all.
             if (_model == null)
             {
                 sensor.AddObservation(0f);                  // health
@@ -226,6 +266,8 @@ namespace PoRumble.Views
                 sensor.AddObservation(0f);                  // right arm ready
                 sensor.AddObservation(0f);                  // boxers remaining
                 sensor.AddObservation(0f);                  // stamina
+                sensor.AddObservation(Vector2.zero);        // position in ring
+                sensor.AddObservation(Vector2.zero);        // velocity
                 return;
             }
 
@@ -238,6 +280,19 @@ namespace PoRumble.Views
             sensor.AddObservation(_model.RightArm.CanPunch ? 1f : 0f);
             sensor.AddObservation(_match.CountAlive() / (float)Mathf.Max(1, _match.Boxers.Count));
             sensor.AddObservation(_model.Stamina.Value);
+
+            // Where in the ring, as a fraction of the way to each wall. The rays report a wall
+            // as a distance in some direction; they do not say which corner the boxer is in,
+            // and being cornered is the single most important positional fact in boxing.
+            Vector2 half = _match.ArenaHalfExtent;
+            sensor.AddObservation(new Vector2(
+                _model.Position.x / Mathf.Max(0.01f, half.x),
+                _model.Position.y / Mathf.Max(0.01f, half.y)));
+
+            // Momentum. Movement accelerates and coasts, so intent and actual travel come
+            // apart; without this the policy cannot tell that it is still sliding into a
+            // punch it meant to step away from.
+            sensor.AddObservation(_model.Velocity / Mathf.Max(0.01f, _config.MoveSpeed));
         }
 
         public override void OnActionReceived(ActionBuffers actions)

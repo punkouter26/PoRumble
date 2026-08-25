@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PoRumble.Models;
+using Unity.MLAgents.Sensors;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -57,6 +58,12 @@ namespace PoRumble.Views
         [Tooltip("Colour learning agents black and scripted bots white, instead of the " +
                  "ten-way palette.")]
         [SerializeField] private bool _useRoleColors;
+
+        /// <summary>
+        /// Prefix of the per-boxer collider layers, one per roster slot, that
+        /// <see cref="IsolatePerception"/> moves each fighter's own colliders onto.
+        /// </summary>
+        private const string BOXER_LAYER_PREFIX = "BoxerBody";
 
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
@@ -145,10 +152,73 @@ namespace PoRumble.Views
                         view.SetRoleColor(scripted);
                     }
 
+                    IsolatePerception(view, agent, boxer.Id);
+                    DisableSelfCollision(view);
                     _agents.Add(agent);
                 }
 
                 _views.Add(view);
+            }
+        }
+
+        /// <summary>
+        /// Stops a boxer's own parts from colliding with each other.
+        ///
+        /// A HingeJoint2D only excludes the two bodies it directly connects, so a glove still
+        /// collides with the torso it is nowhere near being jointed to. With the arms folded
+        /// into a guard the gloves sit inside the torso's collider, and the servo then spends
+        /// every frame pushing against a contact it can never win - the arm jitters and the
+        /// pose never settles. Limbs of one body have no business colliding anyway; only
+        /// other fighters and the ropes should stop them.
+        /// </summary>
+        private static void DisableSelfCollision(BoxerView view)
+        {
+            Collider2D[] colliders = view.GetComponentsInChildren<Collider2D>(true);
+
+            for (int first = 0; first < colliders.Length; first++)
+            {
+                for (int second = first + 1; second < colliders.Length; second++)
+                {
+                    Physics2D.IgnoreCollision(colliders[first], colliders[second], true);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Moves one boxer's colliders onto a layer of its own and masks that layer out of
+        /// that boxer's ray sensor, so a fighter never perceives itself.
+        ///
+        /// A 2D cast cannot be told to skip the collider that fired it, and there is nothing
+        /// in RayPerceptionSensor that excludes the caster. Physics2D.queriesStartInColliders
+        /// being off covers the body collider the sensor sits inside, but the face probe is
+        /// nearly a metre in front of it and the gloves further still: without this, every
+        /// forward ray - the ones pointing exactly where the boxer is about to punch - reports
+        /// the boxer's own BoxerFace at half a metre, for ever.
+        /// </summary>
+        private static void IsolatePerception(BoxerView view, BoxerAgentView agent, int boxerId)
+        {
+            int layer = LayerMask.NameToLayer(BOXER_LAYER_PREFIX + boxerId);
+
+            if (layer < 0)
+            {
+                Debug.LogWarning(
+                    $"[PoRumble] No layer named '{BOXER_LAYER_PREFIX}{boxerId}'. Boxer " +
+                    $"{boxerId}'s rays will keep reporting its own face probe as a target.");
+                return;
+            }
+
+            Collider2D[] colliders = view.GetComponentsInChildren<Collider2D>(true);
+
+            for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
+            {
+                colliders[colliderIndex].gameObject.layer = layer;
+            }
+
+            // Subtracted from whatever the prefab authored rather than replacing it, so the
+            // sensor keeps ignoring Ignore Raycast and anything else deliberately masked out.
+            if (agent.TryGetComponent(out RayPerceptionSensorComponent2D sensor))
+            {
+                sensor.RayLayerMask = sensor.RayLayerMask.value & ~(1 << layer);
             }
         }
 

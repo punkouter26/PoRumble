@@ -31,9 +31,13 @@ behaviors:
       vis_encode_type: simple
     reward_signals:
       extrinsic:
-        gamma: 0.99
+        # An episode is MaxStep 1500 physics steps at DecisionPeriod 5, so 300 decisions.
+        # At gamma 0.99 the +2 win bonus is worth 0.99^300 = 0.05 at the opening bell, which
+        # is far too faint to shape the early game; 0.995 doubles the horizon to ~200
+        # decisions (20s) and leaves the win worth 0.22 from the first step.
+        gamma: 0.995
         strength: 1.0
-    keep_checkpoints: 5
+    keep_checkpoints: 15
     checkpoint_interval: 200000
     max_steps: 5000000
     time_horizon: 128

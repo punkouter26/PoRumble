@@ -1,6 +1,10 @@
 # Training Rules
 
-## Always start TensorBoard alongside training
+## Always start TensorBoard alongside training (NON-NEGOTIABLE)
+
+**Never start a run without it.** Skipping it is not a shortcut to be taken when a run looks
+short or routine — it is the one step that makes every later question about the run
+answerable. If TensorBoard is not up, the run does not start.
 
 Whenever an ML-Agents training run is started, start TensorBoard too. Training
 without it is flying blind: the console only prints a mean reward every
@@ -20,7 +24,13 @@ mlagents-learn Assets/Config/porumble_ffa.yaml --run-id=<run-id>
 Then open <http://localhost:6006>.
 
 Verify it actually came up rather than assuming — check the port is listening
-before reporting that it is running.
+before reporting that it is running. `Start-Process` returns instantly and succeeds even
+when the process dies a second later, so its exit status proves nothing.
+
+```powershell
+# Proof, not assumption
+Test-NetConnection -ComputerName localhost -Port 6006 -InformationLevel Quiet
+```
 
 ### What to watch
 

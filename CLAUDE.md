@@ -28,12 +28,19 @@ Renderer, so 3D lit materials will not light correctly.
 | Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **R** restart at the results screen · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 84 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 93 EditMode tests |
 
-**Two configs on purpose.** `BoxerConfig.asset` (30 HP) is the game.
-`BoxerConfig_Training.asset` (6 HP) is curriculum stage 1: at 30 HP a knockout needs 15–30
-landed face hits, so every episode simply timed out and there was no terminal signal to
-learn from.
+**Two configs on purpose**, though they now carry the same numbers. `BoxerConfig.asset` is
+the game; `BoxerConfig_Training.asset` is what the training scenes load, so the curriculum
+can diverge from the shipped tuning without touching the game.
+
+It held 6 HP for a long time, because at 30 HP every episode timed out with no terminal
+signal to learn from. That was a symptom of the blind ray sensor, not of the health value:
+the agents could not see an opponent, so they never landed anything. With perception fixed,
+a 30 HP knockout resolves in roughly 280 steps against a 1500-step cap, so the training
+config now matches the game exactly and there is no sim-to-real gap left to cross. If
+episode length ever pins at the cap again, that is the number to look at first — but check
+what the rays are actually returning before blaming it.
 
 ---
 
@@ -98,6 +105,10 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
   from behind score as clean face hits.
 - **Hits are buffered for a whole tick** and the match resolved once at end of tick, so
   simultaneous knockouts both count.
+- **Movement is anisotropic to the facing.** `BoxerSystem.ScaleByStance` caps sidesteps and
+  retreats against the forward shuffle, and turning drops to `CommittedTurnScale` while a
+  punch is on its way out. Feed `MoveInput` straight through and a boxer sprints backwards as
+  fast as it advances while pivoting mid-swing to track a target that already stepped off.
 - **Boxers are clamped to the ring in `BoxerSystem`.** Positions are model-driven, so the
   wall colliders alone contain nobody.
 - **Arm segments are siblings of the torso, never children.** A nested `Rigidbody2D` is moved
@@ -112,9 +123,45 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
   timed on scaled time would stretch itself by exactly the factor it just applied.
   `Time.timeScale` is global and outlives Play mode: `MatchDirector.Dispose` and
   `CombatFeedbackView.OnDestroy` both restore it, and so must anything else that touches it.
+- **A training match must be able to end on the clock.** `MatchDirector` resolves an
+  unfinished match through `MatchSystem.EndByTimeout` a few steps before the agents' own
+  `MaxStep` cuts their trajectories. Without that the ten-way never ends at all: ML-Agents
+  closes every trajectory at the cap, but `MatchPhase` never reaches `Ended`, so the arena is
+  never re-racked, no winner is declared, and the win reward lands in the *next* episode.
+  Rewards then oscillate around zero and value loss falls to nothing. `EndByTimeout` sat
+  written but uncalled for a long time; 1v1 hid it, because those matches resolve well inside
+  the cap.
+- **A ten-way does not finish inside `MaxStep`, and that is expected.** At 30 HP, 270 health
+  has to come off ten fighters spread across a 40x40 ring, and episodes run to the 2500-step
+  cap. The timeout resolution is the normal path there, not the exception - which is why it
+  has to award a real winner rather than lapse.
 - **Training bypasses the presentation loop entirely.** `MatchDirector` branches on
   `BoxerSpawnPoints.AutoRestart`: a training scene jumps straight to `Fighting` and keeps the
   old per-episode reset. A countdown would burn episode steps on animation.
+- **A boxer must never perceive itself.** A 2D cast cannot skip the collider that fired it.
+  Two things keep the ray sensor honest, and both are load-bearing:
+  `Physics2D.queriesStartInColliders` is **off** (the body collider the sensor sits inside),
+  and `BoxerSpawnPoints.IsolatePerception` moves each fighter's colliders onto its own
+  `BoxerBody<id>` layer and subtracts that layer from that fighter's `RayLayerMask` (the face
+  probe 0.9 units ahead and the gloves beyond it). Turn either off and the forward rays —
+  the ones pointing where the boxer is about to punch — report the boxer's own `BoxerFace`
+  at half a metre, permanently. `PerceptionSettingsTests` pins the first half.
+- **Spawn separation must stay inside `RayLength` (14).** Fighters that start further apart
+  than their own sensors reach open every episode blind, wandering until something enters
+  range. Ten-boxer rings are fine at `_spawnRadius: 15`; the 1v1 ring is not, which is why it
+  spawns at 4.5.
+- **The guard pose is folded; the punch pose is not negotiable.** At rest the elbows are
+  flexed to ~125 degrees and carried outward, so the gloves sit in front of the face (rear
+  glove 0.17 from the head centre, lead glove 0.46) - that is the blocking stance. A punch
+  extends the elbow to 8 degrees and drives the fist out to `ArmReach`. Only the guard half
+  is free to restyle: hits resolve at full extension, so the punch angles have to keep
+  putting the drawn glove at 1.6 forward.
+  Two things fell out of folding the guard that far. The arm now slews 117 degrees instead
+  of 37 in the same `ArmExtendDuration`, so `_servoGain` had to rise from 25 to 60 or the
+  fist visibly fell short (measured 1.53 against a 1.6 reach). And a glove tucked to the
+  face sits inside the torso's own collider, so `BoxerSpawnPoints.DisableSelfCollision`
+  turns off collisions among each boxer's own parts - a HingeJoint2D only excludes the pair
+  it directly connects, and without this the servo fights a contact it can never win.
 - **Sprite world sizes are load-bearing.** The boxer's parts are sized so the drawn glove sits
   where `CombatMath` expects it. Sprites are authored at a pixels-per-unit equal to their pixel
   width, so one sprite covers one world unit at scale 1 and the transforms carry over from the
@@ -127,7 +174,7 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
 | Scene | Purpose |
 |---|---|
 | `Assets/Scenes/SampleScene.unity` | The game: 40×40 ring, 10 boxers, HUD, feedback rig, spectator camera |
-| `Assets/Scenes/Training1v1.unity` | Curriculum stage 1: 16×16 ring, 2 boxers at opposite walls, auto-restart |
+| `Assets/Scenes/Training1v1.unity` | Curriculum stage 1: 20×14 ring, one learner against the scripted sparring partner, auto-restart. Spawn radius 4.5 — see the sensor-reach note below |
 
 Boxer prefab (`Assets/Prefabs/Boxer.prefab`) is an anatomical chain:
 
@@ -150,16 +197,46 @@ than someone's back.
 
 - Behaviour name is **`PoRumbleBoxer`** and must match `BehaviorParameters` exactly.
 - Actions: 4 continuous (`moveX`, `moveY`, `aimX`, `aimY`) + 2 discrete branches (punch L/R).
-  **This vector is frozen.** `PoRumbleBoxer.onnx` is compiled against exactly this shape and
-  against 11 self observations; growing either stops the model loading. The haymaker was
+  **The action vector is frozen.** Any compiled policy is built against exactly this shape;
+  growing it stops the model loading. The haymaker was
   therefore built as a side channel (`BoxerSystem.SetCharge`) rather than a third branch, and
   the counter window needs no action at all. Retrain before changing either.
-- Observations: `RayPerceptionSensorComponent2D` (17 rays) plus 10 self scalars. Rays are
+- Observations: `RayPerceptionSensorComponent2D` (17 rays, reach 24) plus 15 self scalars —
+  health, facing, move input, both arms' extension and readiness, survivors, stamina, ring
+  position and velocity. Rays are
   used because the opponent count shrinks during a match and a fixed vector cannot encode a
   variable-length list.
 - Rewards: damage dealt/taken, elimination, win, an existential penalty (the ring does not
   shrink, so idling must cost), plus dense shaping for aiming at and holding range on the
   nearest opponent.
+- **`gamma` is 0.995, not the usual 0.99.** An episode is `MaxStep` 1500 physics steps at
+  `DecisionPeriod` 5 — 300 decisions. At 0.99 the +2 win bonus is worth 0.05 at the opening
+  bell, too faint to shape anything; 0.995 leaves it worth 0.22.
+- **`VectorObservationSize` on the prefab must equal what `CollectObservations` writes.** It is
+  15. ML-Agents does not fail loudly on a mismatch in every path, and a compiled policy simply
+  refuses to load. Change one and you must change the other, and retrain.
+- **`PoRumbleBoxer.onnx` is the `ffa_v5` model** (~21M cumulative steps), trained 1v1 against the scripted
+  partner to saturation and then transferred into the ten-way free-for-all. The policy it
+  replaced (`PoRumbleBoxer_obs11_legacy.onnx`) was compiled against the old 11-wide vector
+  *and* trained while the ray sensor reported nothing but the boxer's own torso; it is kept
+  only so the two can be compared, and it will not load against the current vector.
+  Earlier checkpoints from the chain are kept in `results/_preserved/`.
+- **Select a model on how often matches finish, not on reward.** Reward and the objective
+  pull apart here: finishing a match early truncates the episode, which caps how much
+  damage-dealt reward can accumulate, so the reward function mildly punishes winning
+  quickly. Picking on reward would have shipped a policy that finishes 21% of matches over
+  one that finishes 76%.
+- **Nothing shorter than about 2M steps is a trend here.** The rate at which matches finish
+  before the bell oscillates on roughly that period - 50% at 1M, down to 34% by 3M, back to
+  50% by 4M - while reward sits flat at ~6.05 throughout and hides all of it. A four-window
+  slide looks exactly like a regression and is not one. Preserve checkpoints across the whole
+  run and pick at the end; `keep_checkpoints` is set high for precisely this reason.
+- **Judge a training run on windowed averages, not the last summary.** Per-summary reward
+  swings about +/-0.4 here, so any single line is noise. `ffa_v3` sat in a trough around
+  1-1.6M steps that looked exactly like convergence, then climbed out and gained another
+  eight percent over the next 3M. The clearest signal is not reward at all but how often a
+  match finishes before the bell: that went 0/80 summaries at 1.6M to 28/80 at 4M while
+  reward moved only 5.68 to 6.12.
 - Curriculum: 1v1 self-play → 4-way → 10-way via `--initialize-from`. **Remove the
   `self_play` block for stages 2–3** — self-play models two-team games, not a free-for-all.
 
@@ -331,6 +408,10 @@ stays deterministic — training depends on the sparring partner being reproduci
 - **No legacy Input** — blocked by hooks.
 - **No coroutines** — UniTask instead.
 - **`private` by default**; no speculative public API.
+- **Never start a training run without TensorBoard.** `.claude/rules/training.md` carries the
+  full rule; the short version is that the console prints a mean reward only every
+  `summary_freq` steps, far too coarse to catch reward hacking or a collapsed entropy. Start
+  it first, and check the port is listening rather than assuming the process survived.
 - **Sprite atlases are mandatory for 2D.** `Assets/Art/Atlases/BoxerAtlas.spriteatlasv2`
   packs the boxer parts and the impact spark. The tiling `ring_canvas` and `ring_rope` are
   deliberately *outside* it: they are sampled by a material with Repeat wrapping, which

@@ -199,7 +199,7 @@ namespace PoRumble.Systems
                 effort *= _config.ChargeMoveScale;
             }
 
-            Vector2 desired = boxer.MoveInput * (_config.MoveSpeed * effort);
+            Vector2 desired = ScaleByStance(boxer, boxer.MoveInput) * (_config.MoveSpeed * effort);
             float rate = desired.sqrMagnitude > Mathf.Epsilon ? _config.Acceleration : _config.Deceleration;
 
             boxer.Velocity = Vector2.MoveTowards(boxer.Velocity, desired, rate * deltaTime);
@@ -208,11 +208,47 @@ namespace PoRumble.Systems
             // Turn toward the aim heading at a finite rate; nobody spins on the spot.
             if (boxer.Facing.sqrMagnitude > Mathf.Epsilon && boxer.DesiredFacing.sqrMagnitude > Mathf.Epsilon)
             {
-                float maxTurn = _config.TurnSpeedDegrees * effort * deltaTime;
+                float commitment = IsCommitted(boxer) ? _config.CommittedTurnScale : 1f;
+                float maxTurn = _config.TurnSpeedDegrees * effort * commitment * deltaTime;
                 float delta = Vector2.SignedAngle(boxer.Facing, boxer.DesiredFacing);
                 float applied = Mathf.Clamp(delta, -maxTurn, maxTurn);
                 boxer.ApplyTurn(Rotate(boxer.Facing.normalized, applied));
             }
+        }
+
+        /// <summary>
+        /// Caps travel per direction relative to where the boxer is looking. A boxer is
+        /// fastest going forward, slower sidestepping and slowest backing up; an unscaled
+        /// input lets one sprint backwards as fast as it advances, which is the single
+        /// least human thing a top-down fighter can do.
+        /// </summary>
+        private Vector2 ScaleByStance(BoxerModel boxer, Vector2 moveInput)
+        {
+            if (boxer.Facing.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return moveInput;
+            }
+
+            Vector2 facing = boxer.Facing.normalized;
+            Vector2 lateral = new(-facing.y, facing.x);
+
+            float forward = Vector2.Dot(moveInput, facing);
+            float sideways = Vector2.Dot(moveInput, lateral);
+            float forwardScale = forward >= 0f ? 1f : _config.RetreatSpeedScale;
+
+            return facing * (forward * forwardScale) + lateral * (sideways * _config.LateralSpeedScale);
+        }
+
+        /// <summary>
+        /// True while the shoulders are already committed - a punch on its way out, or a
+        /// haymaker held cocked. Retracting deliberately does not count: that is the recovery,
+        /// and a boxer can start turning again as the arm comes back.
+        /// </summary>
+        private static bool IsCommitted(BoxerModel boxer)
+        {
+            return boxer.ChargeInput
+                   || boxer.LeftArm.Phase == ArmPhase.Extending
+                   || boxer.RightArm.Phase == ArmPhase.Extending;
         }
 
         private static Vector2 Rotate(Vector2 value, float degrees)

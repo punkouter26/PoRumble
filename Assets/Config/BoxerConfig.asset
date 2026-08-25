@@ -28,9 +28,23 @@ MonoBehaviour:
   _moveSpeed: 5
   _acceleration: 18
   _deceleration: 12
-  _turnSpeedDegrees: 540
+  _turnSpeedDegrees: 360
+  _lateralSpeedScale: 0.75
+  _retreatSpeedScale: 0.6
+  _committedTurnScale: 0.4
   _punchStaminaCost: 0.035
   _moveStaminaCost: 0.05
+  _knockbackPerDamage: 1.6
+  _blockStaminaCost: 0.012
   _staminaRecovery: 0.18
   _exhaustedPenalty: 0.45
-  _bodyRadius: 0.71
+  _bodyRadius: 0.98
+  _chargeDuration: 0.75
+  _minChargeToRelease: 0.25
+  _chargeDamageMultiplier: 3
+  _chargeWindupScale: 2.2
+  _chargeKnockbackMultiplier: 2.5
+  _chargeStaminaCost: 0.1
+  _chargeMoveScale: 0.45
+  _counterWindowDuration: 0.45
+  _counterDamageBonus: 2

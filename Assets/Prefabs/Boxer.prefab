@@ -48,7 +48,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.12
+  m_Mass: 0.07
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -442,7 +442,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.1
+  m_Mass: 0.16
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -481,7 +481,7 @@ HingeJoint2D:
     m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -20
+    m_LowerAngle: -45
     m_UpperAngle: 80
 --- !u!1 &540464607181756986
 GameObject:
@@ -550,7 +550,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.46
+  m_Radius: 0.8
 --- !u!1 &565702491724992607
 GameObject:
   m_ObjectHideFlags: 0
@@ -597,7 +597,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.1
+  m_Mass: 0.16
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -637,7 +637,7 @@ HingeJoint2D:
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -80
-    m_UpperAngle: 20
+    m_UpperAngle: 45
 --- !u!1 &609089028288181360
 GameObject:
   m_ObjectHideFlags: 0
@@ -778,7 +778,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.12
+  m_Mass: 0.07
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -1080,7 +1080,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.1
+  m_Mass: 0.09
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -1168,18 +1168,20 @@ MonoBehaviour:
   _shoulderJoint: {fileID: 4629081725792536831}
   _elbowJoint: {fileID: 3811948717388974597}
   _wristJoint: {fileID: 3946021308050021772}
-  _shoulderGuardAngle: 12
-  _shoulderPunchAngle: 5
-  _elbowGuardAngle: 45
+  _shoulderGuardAngle: -15
+  _shoulderPunchAngle: 0
+  _elbowGuardAngle: 125
   _elbowPunchAngle: 8
-  _wristGuardAngle: 12
+  _wristGuardAngle: 25
   _wristPunchAngle: 0
   _mirror: 0
   _windupPullback: 0.55
   _gloveTrail: {fileID: 2368863442619053649}
   _trailThreshold: 0.35
-  _servoGain: 25
-  _maxMotorTorque: 600
+  _servoGain: 60
+  _maxMotorTorque: 1100
+  _elbowTorqueScale: 0.55
+  _wristTorqueScale: 0.2
 --- !u!1 &4558874778711609569
 GameObject:
   m_ObjectHideFlags: 0
@@ -1411,18 +1413,20 @@ MonoBehaviour:
   _shoulderJoint: {fileID: 9047673578425693031}
   _elbowJoint: {fileID: 4022942578818272044}
   _wristJoint: {fileID: 9110682960530660605}
-  _shoulderGuardAngle: 12
-  _shoulderPunchAngle: 5
-  _elbowGuardAngle: 45
+  _shoulderGuardAngle: -15
+  _shoulderPunchAngle: 0
+  _elbowGuardAngle: 103
   _elbowPunchAngle: 8
-  _wristGuardAngle: 12
+  _wristGuardAngle: 25
   _wristPunchAngle: 0
   _mirror: 1
   _windupPullback: 0.55
   _gloveTrail: {fileID: 1963183620672253251}
   _trailThreshold: 0.35
-  _servoGain: 25
-  _maxMotorTorque: 600
+  _servoGain: 60
+  _maxMotorTorque: 1100
+  _elbowTorqueScale: 0.55
+  _wristTorqueScale: 0.2
 --- !u!1 &6652157053363623272
 GameObject:
   m_ObjectHideFlags: 0
@@ -1541,7 +1545,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Policies.BehaviorParameters
   m_BrainParameters:
-    VectorObservationSize: 11
+    VectorObservationSize: 15
     NumStackedVectorObservations: 2
     m_ActionSpec:
       m_NumContinuousActions: 4
@@ -1550,7 +1554,7 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 0
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: 759b5940a599f194d85ec092e684261f, type: 3}
+  m_Model: {fileID: 5022602860645237092, guid: be143fd3f72761e469c4b0e79696c6d9, type: 3}
   m_InferenceDevice: 0
   m_BehaviorType: 0
   m_BehaviorName: PoRumbleBoxer
@@ -1574,13 +1578,13 @@ MonoBehaviour:
   agentParameters:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
-  MaxStep: 1500
+  MaxStep: 2500
   _damageDealtReward: 0.2
   _evadeReward: 0.03
   _blockReward: 0.015
   _damageTakenPenalty: 0.02
-  _eliminationReward: 0.5
-  _eliminatedPenalty: 1
+  _eliminationReward: 1
+  _eliminatedPenalty: 0.75
   _aimShapingWeight: 0.6
   _approachShapingWeight: 0.25
   _rangeShapingWeight: 0.4
@@ -1622,7 +1626,7 @@ MonoBehaviour:
   m_RaysPerDirection: 8
   m_MaxRayDegrees: 180
   m_SphereCastRadius: 0.1
-  m_RayLength: 14
+  m_RayLength: 24
   m_RayLayerMask:
     serializedVersion: 2
     m_Bits: 4294967291
@@ -2098,7 +2102,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.1
+  m_Mass: 0.09
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0

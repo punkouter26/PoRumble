@@ -176,7 +176,8 @@ namespace PoRumble.Tests
         public void AnAggressiveTierFightsCloserThanACautiousOne()
         {
             // Placed well outside anyone's range, so both tiers are closing the distance.
-            _match.Boxers[1].Position = new Vector2(0f, 8f);
+            float idealRange = _config.ArmReach + _config.HeadOffset;
+            _match.Boxers[1].Position = new Vector2(0f, idealRange * 3f);
 
             ScriptedBoxerBrain aggressive = new(_config, Settings(aggression: 1f), 8);
             ScriptedBoxerBrain cautious = new(_config, Settings(aggression: 0f), 8);
@@ -188,10 +189,13 @@ namespace PoRumble.Tests
             Assert.That(Vector2.Dot(aggressiveIntent.Move, Vector2.up), Is.GreaterThan(0.5f));
             Assert.That(Vector2.Dot(cautiousIntent.Move, Vector2.up), Is.GreaterThan(0.5f));
 
-            // The tiers differ in where they break off, not in how fast they walk. At 1.05
-            // units the cautious tier is already backing out of a range the aggressive one is
-            // still happy to work in, so this is the distance that separates them.
-            _match.Boxers[1].Position = new Vector2(0f, 1.05f);
+            // The tiers differ in where they break off, not in how fast they walk. At three
+            // quarters of the ideal range the cautious tier is already backing out of a
+            // pocket the aggressive one is still happy to work in, so this is the distance
+            // that separates them. Expressed against the config rather than as a literal:
+            // the number that used to sit here was three quarters of a reach the game no
+            // longer uses.
+            _match.Boxers[1].Position = new Vector2(0f, idealRange * 0.75f);
 
             float aggressiveApproach = Vector2.Dot(aggressive.Decide(_match, 0, 0.02f).Move, Vector2.up);
             float cautiousApproach = Vector2.Dot(cautious.Decide(_match, 0, 0.02f).Move, Vector2.up);

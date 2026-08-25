@@ -219,6 +219,77 @@ namespace PoRumble.Tests
         }
 
         [Test]
+        public void BackingUpIsSlowerThanAdvancing()
+        {
+            BoxerModel boxer = _match.Boxers[0];
+            _match.Boxers[1].Position = new Vector2(100f, 100f);
+            boxer.Facing = Vector2.up;
+
+            _boxerSystem.SetMoveInput(0, Vector2.up);
+            Run(2f);
+            float advancing = boxer.Velocity.magnitude;
+
+            boxer.Velocity = Vector2.zero;
+            _boxerSystem.SetMoveInput(0, Vector2.down);
+            Run(2f);
+            float retreating = boxer.Velocity.magnitude;
+
+            Assert.That(retreating, Is.LessThan(advancing),
+                "a boxer on the back foot must not travel as fast as one walking forward");
+        }
+
+        [Test]
+        public void SidesteppingIsSlowerThanAdvancing()
+        {
+            BoxerModel boxer = _match.Boxers[0];
+            _match.Boxers[1].Position = new Vector2(100f, 100f);
+            boxer.Facing = Vector2.up;
+
+            _boxerSystem.SetMoveInput(0, Vector2.up);
+            Run(2f);
+            float advancing = boxer.Velocity.magnitude;
+
+            boxer.Velocity = Vector2.zero;
+            _boxerSystem.SetMoveInput(0, Vector2.right);
+            Run(2f);
+            float sidestepping = boxer.Velocity.magnitude;
+
+            Assert.That(sidestepping, Is.LessThan(advancing),
+                "a sidestep must not be as quick as walking someone down");
+            Assert.That(sidestepping, Is.GreaterThan(0f), "but it must still move the boxer");
+        }
+
+        /// <summary>
+        /// A thrown punch takes the shoulders with it. Without this the boxer can pivot at
+        /// full rate mid-swing, which lets a whiffed punch track a target that has already
+        /// stepped off the line.
+        /// </summary>
+        [Test]
+        public void TurningIsSlowerWhileAPunchIsOnItsWay()
+        {
+            BoxerModel free = _match.Boxers[0];
+            BoxerModel committed = _match.Boxers[1];
+            free.Position = new Vector2(-50f, 0f);
+            committed.Position = new Vector2(50f, 0f);
+            free.Facing = Vector2.up;
+            committed.Facing = Vector2.up;
+
+            _boxerSystem.SetAim(0, Vector2.right);
+            _boxerSystem.SetAim(1, Vector2.right);
+            _boxerSystem.Punch(1, ArmSide.Left);
+
+            _boxerSystem.Tick(0.02f);
+
+            float freeTurn = Vector2.Angle(Vector2.up, free.Facing);
+            float committedTurn = Vector2.Angle(Vector2.up, committed.Facing);
+
+            Assert.That(committedTurn, Is.LessThan(freeTurn),
+                "a boxer mid-punch must not pivot as fast as one with both hands back");
+            Assert.That(committedTurn, Is.GreaterThan(0f),
+                "but the feet are not nailed down either");
+        }
+
+        [Test]
         public void ExhaustedBoxersMoveSlower()
         {
             BoxerModel boxer = _match.Boxers[0];

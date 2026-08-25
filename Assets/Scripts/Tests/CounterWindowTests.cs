@@ -21,14 +21,22 @@ namespace PoRumble.Tests
         private readonly List<PunchLandedMessage> _landed = new();
         private readonly List<PunchBlockedMessage> _blocked = new();
 
-        /// <summary>Range at which a glove reaches the head, for a guaranteed clean landing.</summary>
-        private const float LANDING_RANGE = 1.5f;
+        /// <summary>
+        /// Range at which a glove reaches the head, for a guaranteed clean landing: dead
+        /// centre of the band a fully extended punch can reach.
+        ///
+        /// Derived from the config rather than written as a number. These used to be literals
+        /// tuned to a geometry the game had long since moved away from, so they silently
+        /// stopped describing the ranges they are named after.
+        /// </summary>
+        private float LandingRange => _config.ArmReach + _config.HeadOffset;
 
         /// <summary>
         /// Range at which two boxers punching at once meet glove-to-glove: far enough that
-        /// neither reaches the other's head, close enough that the gloves collide.
+        /// neither reaches the other's head, close enough that the gloves collide. Two fully
+        /// extended arms touch at exactly twice the reach.
         /// </summary>
-        private const float GUARD_RANGE = 1.8f;
+        private float GuardRange => _config.ArmReach * 2f;
 
         [SetUp]
         public void SetUp()
@@ -90,7 +98,7 @@ namespace PoRumble.Tests
         [Test]
         public void BlockingAPunchOpensACounterWindow()
         {
-            FaceOff(GUARD_RANGE);
+            FaceOff(GuardRange);
 
             // Both throw at once, so each one's glove runs into the other's.
             _boxerSystem.Punch(0, ArmSide.Right);
@@ -108,7 +116,7 @@ namespace PoRumble.Tests
         [Test]
         public void LandingInsideTheWindowScoresACounter()
         {
-            FaceOff(LANDING_RANGE);
+            FaceOff(LandingRange);
 
             // Baseline damage for this exact punch with no window open.
             _boxerSystem.Punch(0, ArmSide.Left);
@@ -118,7 +126,7 @@ namespace PoRumble.Tests
             Assert.That(_landed[0].IsCounter, Is.False);
 
             _landed.Clear();
-            FaceOff(LANDING_RANGE);
+            FaceOff(LandingRange);
             _match.Boxers[0].Stamina.Value = 1f;
             _match.Boxers[0].CounterWindow = _config.CounterWindowDuration;
 
@@ -133,7 +141,7 @@ namespace PoRumble.Tests
         [Test]
         public void OneBlockBuysExactlyOneCounter()
         {
-            FaceOff(LANDING_RANGE);
+            FaceOff(LandingRange);
             BoxerModel attacker = _match.Boxers[0];
             attacker.CounterWindow = _config.CounterWindowDuration;
 
@@ -157,7 +165,7 @@ namespace PoRumble.Tests
         public void TheWindowExpires()
         {
             BoxerModel boxer = _match.Boxers[0];
-            FaceOff(LANDING_RANGE);
+            FaceOff(LandingRange);
             boxer.CounterWindow = _config.CounterWindowDuration;
 
             Run(_config.CounterWindowDuration + 0.1f);

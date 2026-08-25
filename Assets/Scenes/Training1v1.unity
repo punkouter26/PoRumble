@@ -204,7 +204,7 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 317061281}
   _boxerCount: 2
-  _spawnRadius: 7.5
+  _spawnRadius: 4.5
   _arenaHalfExtent: {x: 10, y: 7}
   _autoRestart: 1
   _humanBoxerId: -1

@@ -34,11 +34,14 @@ namespace PoRumble.Tests
         /// </summary>
         private HitResult PunchAtDistance(float distance)
         {
-            const float ARM_LATERAL_OFFSET = 0.2f;
+            // Read off the config rather than hard-coded: the offset had drifted to less than
+            // half the configured shoulder width, so the test no longer described the geometry
+            // it claims to mirror.
+            float lateral = _config.ArmLateralOffset;
 
             Vector2 attackerPosition = Vector2.zero;
-            Vector2 glovePosition = new(-ARM_LATERAL_OFFSET, _config.ArmReach);
-            Vector2 targetPosition = new(-ARM_LATERAL_OFFSET, distance);
+            Vector2 glovePosition = new(-lateral, _config.ArmReach);
+            Vector2 targetPosition = new(-lateral, distance);
 
             return CombatMath.ResolveHit(
                 0, attackerPosition,
@@ -76,6 +79,36 @@ namespace PoRumble.Tests
                 "no separation produces a long punch - CloseRangeThreshold is above the landing band");
             Assert.That(sawClose, Is.True,
                 "no separation produces a close punch - CloseRangeThreshold is below the landing band");
+        }
+
+        /// <summary>
+        /// Bodies must not be able to push closer than the nearest range at which a punch can
+        /// still reach a face. Below that, two fighters walking into each other reach a
+        /// separation where neither can land anything, and the exchange deadlocks - a clinch
+        /// nobody can break, which the approach shaping actively drives them into.
+        /// </summary>
+        [Test]
+        public void BodiesCannotClinchInsideThePunchingRange()
+        {
+            float nearest = float.MaxValue;
+
+            for (int step = 0; step <= 400; step++)
+            {
+                float distance = step * 0.01f;
+
+                if (PunchAtDistance(distance).IsHit)
+                {
+                    nearest = Mathf.Min(nearest, distance);
+                }
+            }
+
+            Assert.That(nearest, Is.LessThan(float.MaxValue), "a punch must land at some separation");
+
+            float minimumSeparation = _config.BodyRadius * 2f;
+
+            Assert.That(minimumSeparation, Is.GreaterThanOrEqualTo(nearest),
+                $"bodies separate at {minimumSeparation} but a punch only reaches from " +
+                $"{nearest} - everything between is a dead zone where neither boxer can land");
         }
 
         [Test]

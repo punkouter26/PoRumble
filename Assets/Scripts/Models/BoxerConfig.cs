@@ -18,24 +18,24 @@ namespace PoRumble.Models
         [Tooltip("Must sit inside the band of body distances at which a punch can physically " +
                  "land (see BoxerConfigTuningTests). Set below that band, the close-range bonus " +
                  "becomes unreachable and every punch scores 1.")]
-        [SerializeField] private float _closeRangeThreshold = 1.4f;
+        [SerializeField] private float _closeRangeThreshold = 2.5f;
 
         [Header("Hitbox")]
-        [SerializeField] private float _headOffset = 0.5f;
-        [SerializeField] private float _headRadius = 0.45f;
+        [SerializeField] private float _headOffset = 0.89f;
+        [SerializeField] private float _headRadius = 0.8f;
         [Range(0f, 180f)]
         [SerializeField] private float _faceArcHalfAngleDegrees = 60f;
         [Tooltip("Radius of a glove. Two gloves within twice this counts as a block.")]
         [SerializeField] private float _gloveRadius = 0.30f;
 
         [Header("Arms")]
-        [SerializeField] private float _armExtendDuration = 0.12f;
-        [SerializeField] private float _armRetractDuration = 0.18f;
-        [SerializeField] private float _armCooldownDuration = 0.15f;
-        [SerializeField] private float _armReach = 0.9f;
+        [SerializeField] private float _armExtendDuration = 0.22f;
+        [SerializeField] private float _armRetractDuration = 0.2f;
+        [SerializeField] private float _armCooldownDuration = 0.12f;
+        [SerializeField] private float _armReach = 1.6f;
         [Tooltip("Sideways distance from the body centre to each shoulder. Must match the " +
                  "prefab, or punches will land where no fist is drawn.")]
-        [SerializeField] private float _armLateralOffset = 0.3f;
+        [SerializeField] private float _armLateralOffset = 0.53f;
 
         [Header("Movement")]
         [SerializeField] private float _moveSpeed = 5f;
@@ -44,7 +44,24 @@ namespace PoRumble.Models
         [Tooltip("How quickly a boxer coasts to a stop.")]
         [SerializeField] private float _deceleration = 12f;
         [Tooltip("Degrees per second the boxer can turn. Humans cannot pivot instantly.")]
-        [SerializeField] private float _turnSpeedDegrees = 540f;
+        [SerializeField] private float _turnSpeedDegrees = 360f;
+
+        [Tooltip("Top sidestep speed as a fraction of the forward shuffle. A boxer sidesteps " +
+                 "without crossing the feet, which is slower than travelling front-on.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _lateralSpeedScale = 0.75f;
+
+        [Tooltip("Top backward speed as a fraction of the forward shuffle. Retreating on the " +
+                 "back foot is the slowest direction a boxer travels, which is what makes " +
+                 "being walked down dangerous.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _retreatSpeedScale = 0.6f;
+
+        [Tooltip("Turn rate multiplier while a punch is on its way out or a haymaker is " +
+                 "cocked. A thrown punch takes the shoulders with it, so a boxer cannot " +
+                 "re-aim mid-swing.")]
+        [Range(0.05f, 1f)]
+        [SerializeField] private float _committedTurnScale = 0.4f;
 
         [Header("Stamina")]
         [Tooltip("Stamina spent per punch thrown.")]
@@ -62,7 +79,12 @@ namespace PoRumble.Models
         [Tooltip("Speed and damage multiplier when completely spent.")]
         [Range(0.1f, 1f)]
         [SerializeField] private float _exhaustedPenalty = 0.45f;
-        [SerializeField] private float _bodyRadius = 0.4f;
+
+        [Tooltip("Half the width of a body. Two boxers cannot come closer than twice this, so " +
+                 "it must stay above the nearest separation at which a punch can reach a face " +
+                 "(see BoxerConfigTuningTests) - otherwise fighters can bulldoze into a clinch " +
+                 "where neither can land and the exchange deadlocks.")]
+        [SerializeField] private float _bodyRadius = 0.98f;
 
         [Header("Charged punch")]
         [Tooltip("Seconds of holding the charge button to reach a full-power haymaker.")]
@@ -86,10 +108,6 @@ namespace PoRumble.Models
                  "mobility, otherwise there is no reason ever to throw a jab.")]
         [Range(0.1f, 1f)]
         [SerializeField] private float _chargeMoveScale = 0.45f;
-        [Tooltip("How far the glove is drawn back at full charge, as a fraction of reach. " +
-                 "Visual telegraph only — hits still resolve at full extension.")]
-        [Range(0f, 1f)]
-        [SerializeField] private float _chargePullback = 0.55f;
 
         [Header("Counter")]
         [Tooltip("Seconds after blocking a punch during which your next landed punch counts " +
@@ -113,6 +131,9 @@ namespace PoRumble.Models
         public float Acceleration => _acceleration;
         public float Deceleration => _deceleration;
         public float TurnSpeedDegrees => _turnSpeedDegrees;
+        public float LateralSpeedScale => _lateralSpeedScale;
+        public float RetreatSpeedScale => _retreatSpeedScale;
+        public float CommittedTurnScale => _committedTurnScale;
         public float PunchStaminaCost => _punchStaminaCost;
         public float MoveStaminaCost => _moveStaminaCost;
         public float StaminaRecovery => _staminaRecovery;
@@ -126,7 +147,6 @@ namespace PoRumble.Models
         public float ChargeKnockbackMultiplier => _chargeKnockbackMultiplier;
         public float ChargeStaminaCost => _chargeStaminaCost;
         public float ChargeMoveScale => _chargeMoveScale;
-        public float ChargePullback => _chargePullback;
         public float CounterWindowDuration => _counterWindowDuration;
         public int CounterDamageBonus => _counterDamageBonus;
 
