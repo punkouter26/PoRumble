@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The F3 telemetry overlay.
+
+  The graph element is empty by design: its contents are painted through
+  generateVisualContent with Painter2D, so there is nothing here for UXML to declare beyond
+  the box it draws into and the class that gives that box its size and ground.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="diag" picking-mode="Ignore">
+        <ui:Label name="title" text="DIAGNOSTICS   F3" class="diag__title" picking-mode="Ignore" />
+        <ui:VisualElement name="graph" class="diag__graph" picking-mode="Ignore" />
+        <ui:Label name="readout" class="diag__readout" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

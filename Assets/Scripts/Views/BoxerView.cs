@@ -36,6 +36,19 @@ namespace PoRumble.Views
         [Tooltip("Seconds a knocked-out boxer takes to burn away.")]
         [SerializeField] private float _dissolveSeconds = 0.9f;
 
+        [Header("Outline")]
+        [Tooltip("Colour of the outline drawn while this boxer's counter window is open.")]
+        [SerializeField] private Color _counterOutlineColor = new(1f, 0.85f, 0.25f);
+        [Tooltip("Colour of the standing outline marking the fighter the player is driving.")]
+        [SerializeField] private Color _playerOutlineColor = new(0.45f, 0.85f, 1f);
+        [Tooltip("Strength of the player's standing outline. Deliberately faint - it is a " +
+                 "way of finding yourself in a melee, not a highlight.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _playerOutlineAmount = 0.5f;
+        [Tooltip("Beats per second the counter outline pulses at, so it reads as a timer " +
+                 "running out rather than as a state that is simply on.")]
+        [SerializeField] private float _counterPulseHz = 6f;
+
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =
         {
@@ -54,6 +67,8 @@ namespace PoRumble.Views
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
         private static readonly int FlashAmountId = Shader.PropertyToID("_FlashAmount");
         private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
+        private static readonly int OutlineAmountId = Shader.PropertyToID("_OutlineAmount");
+        private static readonly int OutlineColorId = Shader.PropertyToID("_OutlineColor");
 
         private readonly CompositeDisposable _disposables = new();
 
@@ -75,6 +90,12 @@ namespace PoRumble.Views
         private float _dissolveElapsed;
         private bool _dissolving;
         private bool _effectsActive;
+
+        /// <summary>
+        /// True on the seat the human is driving. Marked with a standing outline, which is the
+        /// one effect here that never switches itself off - see <see cref="Update"/>.
+        /// </summary>
+        private bool _isPlayer;
 
         [Inject]
         public void Construct(ISubscriber<BoxerDamagedMessage> damagedSubscriber)
@@ -124,6 +145,37 @@ namespace PoRumble.Views
         /// Forces the standard two-tone scheme: learning agents black, the scripted sparring
         /// partner white, so it is obvious which is which while watching a match.
         /// </summary>
+        /// <summary>
+        /// Marks this seat as the one the human is driving, so it can be picked out of a
+        /// ten-way. Called by the spawner when the roster is dealt.
+        /// </summary>
+        public void SetIsPlayer(bool isPlayer)
+        {
+            if (_isPlayer == isPlayer)
+            {
+                return;
+            }
+
+            _isPlayer = isPlayer;
+
+            if (isPlayer)
+            {
+                _effectsActive = true;
+                return;
+            }
+
+            // Dropping the marker has to actively push the cleared state, because the effect
+            // loop only runs while something is animating and would otherwise leave the last
+            // outline written on the renderers forever.
+            PushEffectProperties();
+
+            if (_flashRemaining <= 0f && !_dissolving)
+            {
+                _effectsActive = false;
+                ClearEffectProperties();
+            }
+        }
+
         public void SetRoleColor(bool isScripted)
         {
             _aliveColor = isScripted ? _scriptedColor : _rlColor;
@@ -202,6 +254,22 @@ namespace PoRumble.Views
                 stillActive = true;
             }
 
+            // A counter window is model state rather than an event, so it is sampled rather
+            // than subscribed to - there is no message published when one opens or expires.
+            if (_model != null && _model.HasCounterWindow)
+            {
+                stillActive = true;
+            }
+
+            // The player marker is the one effect with no end condition. It holds the property
+            // block open on this boxer's nine renderers for the whole match, which is nine draw
+            // calls that will not batch - affordable for exactly one fighter, and the reason
+            // this is a per-seat flag rather than something every boxer could switch on.
+            if (_isPlayer)
+            {
+                stillActive = true;
+            }
+
             PushEffectProperties();
 
             if (stillActive)
@@ -212,9 +280,9 @@ namespace PoRumble.Views
             // Nothing left to animate. A property block set on a renderer takes it out of the
             // shared batch, so it is cleared the moment it stops earning its place - otherwise
             // ninety renderers would each become their own draw call for the whole match.
-            _effectsActive = _dissolving;
+            _effectsActive = _dissolving || _isPlayer;
 
-            if (!_dissolving)
+            if (!_effectsActive)
             {
                 ClearEffectProperties();
             }
@@ -269,6 +337,33 @@ namespace PoRumble.Views
                 ? Mathf.Clamp01(_dissolveElapsed / _dissolveSeconds)
                 : 0f;
 
+            // The counter window wins over the player marker where both apply: a counter is
+            // about to expire and is worth acting on, whereas "this one is yours" is standing
+            // information the player has already absorbed.
+            bool countering = _model != null && _model.HasCounterWindow;
+            float outline;
+            Color outlineColor;
+
+            if (countering)
+            {
+                // Unscaled, like everything else in this loop: a pulse timed on scaled time
+                // would visibly stall during hitstop, which is exactly when a counter matters.
+                float pulse = 0.5f + 0.5f * Mathf.Sin(
+                    Time.unscaledTime * _counterPulseHz * 2f * Mathf.PI);
+                outline = Mathf.Lerp(0.55f, 1f, pulse);
+                outlineColor = _counterOutlineColor;
+            }
+            else if (_isPlayer)
+            {
+                outline = _playerOutlineAmount;
+                outlineColor = _playerOutlineColor;
+            }
+            else
+            {
+                outline = 0f;
+                outlineColor = _counterOutlineColor;
+            }
+
             for (int rendererIndex = 0; rendererIndex < _renderers.Length; rendererIndex++)
             {
                 Renderer target = _renderers[rendererIndex];
@@ -281,6 +376,8 @@ namespace PoRumble.Views
                 target.GetPropertyBlock(_propertyBlock);
                 _propertyBlock.SetFloat(FlashAmountId, flash);
                 _propertyBlock.SetFloat(DissolveAmountId, dissolve);
+                _propertyBlock.SetFloat(OutlineAmountId, outline);
+                _propertyBlock.SetColor(OutlineColorId, outlineColor);
                 target.SetPropertyBlock(_propertyBlock);
             }
         }

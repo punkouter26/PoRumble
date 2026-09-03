@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Match HUD structure.
+
+  The panel and the centre stage are siblings rather than nested, and that is load-bearing:
+  the countdown and the result banner are absolutely positioned over the middle of the screen,
+  so nesting them inside the top-left panel would make the panel's own layout depend on text
+  that changes length every second.
+
+  Everything here is picking-mode="Ignore". The HUD sits over a live ring and must never eat a
+  click meant for the fight card panel sorted beneath it.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="match-hud" picking-mode="Ignore">
+        <ui:Label name="survivors" class="text text--lg text--bold" picking-mode="Ignore" />
+        <ui:VisualElement name="roster" class="match-hud__roster" picking-mode="Ignore" />
+        <ui:Label name="result" class="text text--xl text--bold result-banner" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="centre-stage" class="centre-stage" picking-mode="Ignore">
+        <ui:Label name="caption" class="text text--display text--bold centre-stage__caption" picking-mode="Ignore" />
+        <ui:Label name="prompt" class="text text--md centre-stage__prompt" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

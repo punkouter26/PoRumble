@@ -44,11 +44,17 @@ Material:
     - _DissolveAmount: 0
     - _EnableExternalAlpha: 0
     - _FlashAmount: 0
+    - _OutlineAmount: 0
+    - _OutlineWidth: 1.6
+    - _RimAmount: 0.38
+    - _RimPower: 2.6
     - _ZWrite: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _DissolveEdgeColor: {r: 1, g: 0.45, b: 0.2, a: 1}
     - _FlashColor: {r: 1, g: 1, b: 1, a: 1}
+    - _OutlineColor: {r: 1, g: 0.85, b: 0.25, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+    - _RimColor: {r: 1, g: 0.94, b: 0.8, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

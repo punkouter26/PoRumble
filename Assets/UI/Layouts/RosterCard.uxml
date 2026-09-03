@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The fight card shell. Tiles are cloned into #grid from Templates/RosterTile.uxml.
+
+  Note the absence of picking-mode="Ignore" on the panel: this is the one screen in the game
+  that is actually clicked, and the tiles inside it have to hit-test. The document root is set
+  to Ignore from C# instead, so the card does not swallow clicks aimed at panels below it
+  while it is closed.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="roster">
+        <ui:Label name="title" text="SELECT THE CARD" class="text text--lg text--bold roster__title" picking-mode="Ignore" />
+        <ui:VisualElement name="grid" class="roster__grid" />
+        <ui:Label name="footer" class="text text--sm roster__footer" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

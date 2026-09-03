@@ -13,6 +13,14 @@ namespace PoRumble.Views
     ///
     /// Replace these with recorded one-shots when real audio exists; nothing else has to
     /// change, since the feedback view only ever asks this class for a clip.
+    ///
+    /// Every impact sound takes a <c>variant</c>. A boxing match is mostly the same four or
+    /// five sounds fired hundreds of times, and a bank of one clip per event makes that
+    /// obvious within seconds - the ear locks onto an identical waveform far faster than the
+    /// eye locks onto a repeated sprite. Pitch-shifting one clip at playback does not fix it
+    /// either, because the noise transient shifts with the body and the result still reads as
+    /// the same sample. A variant reseeds the noise *and* moves the body frequency, so the
+    /// clips differ in timbre rather than only in pitch.
     /// </summary>
     internal static class ProceduralSfx
     {
@@ -33,27 +41,76 @@ namespace PoRumble.Views
             return (_randomState & 0xFFFFFF) / (float)0x800000 - 1f;
         }
 
-        /// <summary>A dull thud: low body plus a short noise transient. An ordinary punch.</summary>
-        internal static AudioClip CreateJab()
+        /// <summary>
+        /// Restarts the noise sequence for a variant, so variant N is always the same clip.
+        ///
+        /// Determinism matters here for the same reason it matters in the scripted brains: a
+        /// build and a training run should not differ because the clips were generated in a
+        /// different order.
+        /// </summary>
+        private static void Seed(int variant)
         {
-            return Build("sfx_jab", 0.14f, (t, duration) =>
+            // Golden-ratio odd constant, so consecutive variants land far apart in the state
+            // space rather than producing near-identical sequences.
+            _randomState = (uint)(0x9E3779B9 + variant * 0x85EBCA6B);
+
+            if (_randomState == 0u)
+            {
+                _randomState = 0x9E3779B9;
+            }
+
+            // Xorshift correlates strongly for the first few draws from a fresh seed.
+            for (int warmup = 0; warmup < 8; warmup++)
+            {
+                NextNoise();
+            }
+        }
+
+        /// <summary>
+        /// A deterministic multiplier around 1 for a variant, used to detune the tonal body.
+        /// Variant 0 always returns exactly 1, so the first clip of every bank is the tuned
+        /// one and the spread is a deviation from it rather than a drift away from it.
+        /// </summary>
+        private static float VariantScale(int variant, float spread)
+        {
+            if (variant == 0)
+            {
+                return 1f;
+            }
+
+            uint hash = (uint)(variant * 0x9E3779B9);
+            hash ^= hash >> 15;
+            float unit = (hash & 0xFFFF) / 65535f * 2f - 1f;
+            return 1f + unit * spread;
+        }
+
+        /// <summary>A dull thud: low body plus a short noise transient. An ordinary punch.</summary>
+        internal static AudioClip CreateJab(int variant = 0)
+        {
+            Seed(variant);
+            float bodyHz = 165f * VariantScale(variant, 0.14f);
+
+            return Build("sfx_jab_" + variant, 0.14f, (t, duration) =>
             {
                 float envelope = Decay(t, duration, 18f);
-                float body = Mathf.Sin(2f * Mathf.PI * 165f * t);
+                float body = Mathf.Sin(2f * Mathf.PI * bodyHz * t);
                 float transient = NextNoise() * Decay(t, duration, 90f);
                 return (body * 0.55f + transient * 0.45f) * envelope;
             });
         }
 
         /// <summary>Heavier, lower and longer. A close-range punch.</summary>
-        internal static AudioClip CreateHook()
+        internal static AudioClip CreateHook(int variant = 0)
         {
-            return Build("sfx_hook", 0.24f, (t, duration) =>
+            Seed(variant);
+            float scale = VariantScale(variant, 0.13f);
+
+            return Build("sfx_hook_" + variant, 0.24f, (t, duration) =>
             {
                 float envelope = Decay(t, duration, 11f);
 
                 // Pitch drops through the hit, which is what makes it read as heavier.
-                float frequency = Mathf.Lerp(150f, 70f, t / duration);
+                float frequency = Mathf.Lerp(150f * scale, 70f * scale, t / duration);
                 float body = Mathf.Sin(2f * Mathf.PI * frequency * t);
                 float transient = NextNoise() * Decay(t, duration, 55f);
                 return (body * 0.7f + transient * 0.4f) * envelope;
@@ -61,12 +118,15 @@ namespace PoRumble.Views
         }
 
         /// <summary>Full haymaker: everything the hook has, deeper and with more crack.</summary>
-        internal static AudioClip CreateHaymakerImpact()
+        internal static AudioClip CreateHaymakerImpact(int variant = 0)
         {
-            return Build("sfx_haymaker_impact", 0.42f, (t, duration) =>
+            Seed(variant);
+            float scale = VariantScale(variant, 0.10f);
+
+            return Build("sfx_haymaker_impact_" + variant, 0.42f, (t, duration) =>
             {
                 float envelope = Decay(t, duration, 7f);
-                float frequency = Mathf.Lerp(130f, 45f, t / duration);
+                float frequency = Mathf.Lerp(130f * scale, 45f * scale, t / duration);
                 float body = Mathf.Sin(2f * Mathf.PI * frequency * t);
                 float sub = Mathf.Sin(2f * Mathf.PI * frequency * 0.5f * t) * 0.6f;
                 float crack = NextNoise() * Decay(t, duration, 60f);
@@ -75,17 +135,19 @@ namespace PoRumble.Views
         }
 
         /// <summary>The wind-up: rising filtered noise, so a haymaker can be heard coming.</summary>
-        internal static AudioClip CreateWhoosh()
+        internal static AudioClip CreateWhoosh(int variant = 0)
         {
+            Seed(variant);
             float previous = 0f;
+            float openTo = 0.55f * VariantScale(variant, 0.18f);
 
-            return Build("sfx_whoosh", 0.30f, (t, duration) =>
+            return Build("sfx_whoosh_" + variant, 0.30f, (t, duration) =>
             {
                 float progress = t / duration;
 
                 // A one-pole low-pass that opens up over the swing: the filter sweeping
                 // upward is what makes this read as movement rather than static.
-                float cutoff = Mathf.Lerp(0.04f, 0.55f, progress);
+                float cutoff = Mathf.Lerp(0.04f, openTo, progress);
                 previous += (NextNoise() - previous) * cutoff;
 
                 // Swells in and falls away, rather than starting at full volume.
@@ -95,25 +157,30 @@ namespace PoRumble.Views
         }
 
         /// <summary>A hard leather-on-leather click. Guard held.</summary>
-        internal static AudioClip CreateBlock()
+        internal static AudioClip CreateBlock(int variant = 0)
         {
-            return Build("sfx_block", 0.10f, (t, duration) =>
+            Seed(variant);
+            float clickHz = 900f * VariantScale(variant, 0.16f);
+
+            return Build("sfx_block_" + variant, 0.10f, (t, duration) =>
             {
                 float envelope = Decay(t, duration, 45f);
-                float click = Mathf.Sin(2f * Mathf.PI * 900f * t) * 0.4f;
+                float click = Mathf.Sin(2f * Mathf.PI * clickHz * t) * 0.4f;
                 float slap = NextNoise() * 0.7f;
                 return (click + slap) * envelope;
             });
         }
 
         /// <summary>A soft airy swish. A punch slipped.</summary>
-        internal static AudioClip CreateEvade()
+        internal static AudioClip CreateEvade(int variant = 0)
         {
+            Seed(variant);
             float previous = 0f;
+            float cutoff = 0.35f * VariantScale(variant, 0.20f);
 
-            return Build("sfx_evade", 0.18f, (t, duration) =>
+            return Build("sfx_evade_" + variant, 0.18f, (t, duration) =>
             {
-                previous += (NextNoise() - previous) * 0.35f;
+                previous += (NextNoise() - previous) * cutoff;
                 float envelope = Mathf.Sin(t / duration * Mathf.PI);
                 return previous * envelope * 0.35f;
             });

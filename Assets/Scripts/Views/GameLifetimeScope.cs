@@ -74,6 +74,7 @@ namespace PoRumble.Views
                 InjectOptional<TouchControlsView>(container);
                 InjectOptional<RosterSelectionView>(container);
                 InjectOptional<StandingsHudView>(container);
+                InjectOptional<KnockoutMoodView>(container);
             });
         }
 

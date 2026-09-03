@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The player's own panel, plus the full-screen damage wash.
+
+  The vignette is declared first so it paints behind the panel. It is a sibling of the panel
+  rather than a parent of it because it is faded to full red on a heavy hit, and tinting the
+  readouts along with the screen would hide the health bar exactly when it is most needed.
+
+  The three bar rows are not here: they are cloned from Templates/StatBar.uxml, because a
+  track and a fill repeated three times with only a caption and two class names differing is
+  the case a template exists for.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="vignette" class="vignette" picking-mode="Ignore" />
+
+    <ui:VisualElement name="panel" class="panel player-hud" picking-mode="Ignore">
+        <ui:Label name="title" class="text text--sm text--bold player-hud__title" picking-mode="Ignore" />
+        <ui:VisualElement name="bars" picking-mode="Ignore" />
+        <ui:Label name="counter" class="text text--sm text--bold player-hud__counter" picking-mode="Ignore" />
+        <ui:Label name="threat" class="text text--sm text--bold player-hud__threat" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

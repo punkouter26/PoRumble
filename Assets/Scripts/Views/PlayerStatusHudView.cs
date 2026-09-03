@@ -24,6 +24,12 @@ namespace PoRumble.Views
     [RequireComponent(typeof(UIDocument))]
     public sealed class PlayerStatusHudView : MonoBehaviour
     {
+        [Tooltip("The panel's structure. Without it the player HUD renders nothing.")]
+        [SerializeField] private VisualTreeAsset _layout;
+
+        [Tooltip("One captioned bar, cloned for health, breath and power.")]
+        [SerializeField] private VisualTreeAsset _statBarTemplate;
+
         [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
@@ -99,10 +105,10 @@ namespace PoRumble.Views
                 _root.styleSheets.Add(_styleSheet);
             }
 
-            BuildVignette();
-
-            // No human in this scene - a training arena, or an all-AI exhibition. The panel
-            // simply does not exist rather than showing an empty set of bars.
+            // No human in this scene - a training arena, or an all-AI exhibition. Nothing is
+            // built at all rather than showing an empty set of bars. The damage vignette goes
+            // with the panel: it lives in the same document, and with nobody to take damage
+            // there was never anything to drive it.
             if (_player == null)
             {
                 return;
@@ -142,79 +148,88 @@ namespace PoRumble.Views
             return null;
         }
 
-        /// <summary>Full-screen red wash, faded up on damage. Never picks, never blocks input.</summary>
-        private void BuildVignette()
-        {
-            _vignette = new VisualElement();
-            _vignette.AddToClassList("vignette");
-            _vignette.pickingMode = PickingMode.Ignore;
-            _root.Add(_vignette);
-        }
-
+        /// <summary>
+        /// Clones the layout and keeps the handful of elements that get written at runtime.
+        ///
+        /// The vignette and the panel both come from the one document: they are siblings, and
+        /// the wash has to paint behind the readouts rather than over them.
+        /// </summary>
         private void BuildPanel()
         {
-            _panel = new VisualElement();
-            _panel.AddToClassList("panel");
-            _panel.AddToClassList("player-hud");
+            if (_layout == null)
+            {
+                Debug.LogError(
+                    $"{nameof(PlayerStatusHudView)} has no layout assigned; the player HUD " +
+                    "will not render. Assign Assets/UI/Layouts/PlayerStatusHud.uxml.", this);
+                return;
+            }
+
+            _layout.CloneTree(_root);
+
+            _vignette = _root.Q<VisualElement>("vignette");
+            _panel = _root.Q<VisualElement>("panel");
+
+            if (_panel == null)
+            {
+                return;
+            }
 
             // The panel's usual home is bottom-left, which is exactly where the virtual stick
             // lives. On a touch device it moves up out of the way.
             _panel.EnableInClassList(
                 "player-hud--touch", UnityEngine.InputSystem.Touchscreen.current != null);
 
-            _panel.pickingMode = PickingMode.Ignore;
-            _root.Add(_panel);
+            Label title = _root.Q<Label>("title");
 
-            Label title = MakeLabel("text", "text--sm", "text--bold", "player-hud__title");
-            title.text = $"YOU  #{_player.Id:00}";
-            _panel.Add(title);
-
-            _healthFill = AddBar("HEALTH", "bar__fill--healthy", "player-hud__bar--health");
-            _staminaFill = AddBar("BREATH", "bar__fill--stamina", "player-hud__bar--minor");
-            _chargeFill = AddBar("POWER", "bar__fill--charge", "player-hud__bar--minor");
-
-            _counterLabel = MakeLabel("text", "text--sm", "text--bold", "player-hud__counter");
-            _panel.Add(_counterLabel);
-
-            _threatLabel = MakeLabel("text", "text--sm", "text--bold", "player-hud__threat");
-            _panel.Add(_threatLabel);
-        }
-
-        private VisualElement AddBar(string caption, string fillClass, string sizeClass)
-        {
-            VisualElement row = new();
-            row.AddToClassList("player-hud__bar-row");
-            _panel.Add(row);
-
-            Label label = MakeLabel("bar__label");
-            label.text = caption;
-            row.Add(label);
-
-            VisualElement track = new();
-            track.AddToClassList("bar");
-            track.AddToClassList("player-hud__bar");
-            track.AddToClassList(sizeClass);
-            row.Add(track);
-
-            VisualElement fill = new();
-            fill.AddToClassList("bar__fill");
-            fill.AddToClassList(fillClass);
-            track.Add(fill);
-
-            return fill;
-        }
-
-        private static Label MakeLabel(params string[] classes)
-        {
-            Label label = new(string.Empty);
-            label.pickingMode = PickingMode.Ignore;
-
-            for (int index = 0; index < classes.Length; index++)
+            if (title != null)
             {
-                label.AddToClassList(classes[index]);
+                title.text = $"YOU  #{_player.Id:00}";
             }
 
-            return label;
+            VisualElement bars = _root.Q<VisualElement>("bars");
+
+            _healthFill = AddBar(bars, "HEALTH", "bar__fill--healthy", "player-hud__bar--health");
+            _staminaFill = AddBar(bars, "BREATH", "bar__fill--stamina", "player-hud__bar--minor");
+            _chargeFill = AddBar(bars, "POWER", "bar__fill--charge", "player-hud__bar--minor");
+
+            _counterLabel = _root.Q<Label>("counter");
+            _threatLabel = _root.Q<Label>("threat");
+        }
+
+        /// <summary>
+        /// Clones one captioned bar and returns its fill.
+        ///
+        /// The size and state classes are applied here rather than in the template because
+        /// they are what distinguishes the three otherwise identical rows - and because the
+        /// health fill's state class is rewritten every time the value crosses a threshold.
+        /// </summary>
+        private VisualElement AddBar(
+            VisualElement parent, string caption, string fillClass, string sizeClass)
+        {
+            if (parent == null || _statBarTemplate == null)
+            {
+                Debug.LogError(
+                    $"{nameof(PlayerStatusHudView)} is missing the stat-bar template or its " +
+                    "container; the player's bars will not be shown.", this);
+                return null;
+            }
+
+            _statBarTemplate.CloneTree(parent);
+            VisualElement row = parent[parent.childCount - 1];
+
+            Label label = row.Q<Label>("caption");
+
+            if (label != null)
+            {
+                label.text = caption;
+            }
+
+            row.Q<VisualElement>("track")?.AddToClassList(sizeClass);
+
+            VisualElement fill = row.Q<VisualElement>("fill");
+            fill?.AddToClassList(fillClass);
+
+            return fill;
         }
 
         private void OnHealthChanged(int health)

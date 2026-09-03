@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One contestant's tile on the fight card.
+
+  The portrait carries no image here. A fighter's face is a sprite on a FighterProfile asset,
+  and a fighter with no face falls back to a flat plate in their trunk colour - both are set
+  from C# because both come from data the layout cannot see.
+
+  Only the tile itself picks. The labels inside are ignored so a click anywhere on the tile,
+  including squarely on the name, still toggles the contestant.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="tile" class="roster-tile">
+        <ui:VisualElement name="portrait" class="roster-tile__portrait" picking-mode="Ignore" />
+        <ui:Label name="name" class="text text--md text--bold roster-tile__name" picking-mode="Ignore" />
+        <ui:Label name="tagline" class="text text--xs text--muted roster-tile__tagline" picking-mode="Ignore" />
+        <ui:Label name="standing" class="text text--xs roster-tile__standing" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

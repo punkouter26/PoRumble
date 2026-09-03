@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One fighter's row in the match HUD: name, then a health track with a fill inside it.
+
+  Cloned once per boxer slot. Slots are permanent and the contestant sitting in one is not,
+  so the name label is looked up by name and rewritten whenever the card is re-dealt rather
+  than baked in here.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="row" class="match-hud__row" picking-mode="Ignore">
+        <ui:Label name="name" class="match-hud__name" picking-mode="Ignore" />
+        <ui:VisualElement name="track" class="bar match-hud__bar" picking-mode="Ignore">
+            <ui:VisualElement name="fill" class="bar__fill bar__fill--healthy" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

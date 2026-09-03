@@ -22,6 +22,12 @@ namespace PoRumble.Views
     [RequireComponent(typeof(UIDocument))]
     public sealed class RosterSelectionView : MonoBehaviour
     {
+        [Tooltip("The card's structure. Without it the fight card renders nothing.")]
+        [SerializeField] private VisualTreeAsset _layout;
+
+        [Tooltip("One contestant's tile, cloned once per selectable fighter.")]
+        [SerializeField] private VisualTreeAsset _tileTemplate;
+
         [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
@@ -77,73 +83,92 @@ namespace PoRumble.Views
             // with the root ignored, so the tiles keep working.
             root.pickingMode = PickingMode.Ignore;
 
-            _panel = new VisualElement();
-            _panel.AddToClassList("roster");
+            if (_layout == null)
+            {
+                Debug.LogError(
+                    $"{nameof(RosterSelectionView)} has no layout assigned; the fight card " +
+                    "will not render. Assign Assets/UI/Layouts/RosterCard.uxml.", this);
+                return;
+            }
+
+            _layout.CloneTree(root);
+
+            _panel = root.Q<VisualElement>("panel");
+            _footerLabel = root.Q<Label>("footer");
+
+            if (_panel == null)
+            {
+                return;
+            }
+
+            // Closed until something opens it. Kept in C# rather than in the UXML because it
+            // is state rather than structure, and OnOpenChanged writes the same property.
             _panel.style.display = DisplayStyle.None;
-            root.Add(_panel);
 
-            Label title = new("SELECT THE CARD");
-            title.AddToClassList("text");
-            title.AddToClassList("text--lg");
-            title.AddToClassList("text--bold");
-            title.AddToClassList("roster__title");
-            _panel.Add(title);
-
-            VisualElement grid = new();
-            grid.AddToClassList("roster__grid");
-            _panel.Add(grid);
-
-            BuildTiles(grid);
-
-            _footerLabel = new Label(string.Empty);
-            _footerLabel.AddToClassList("text");
-            _footerLabel.AddToClassList("text--sm");
-            _footerLabel.AddToClassList("roster__footer");
-            _panel.Add(_footerLabel);
+            BuildTiles(root.Q<VisualElement>("grid"));
 
             _roster.IsOpen.Subscribe(OnOpenChanged).AddTo(_disposables);
             _roster.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
             _ratings.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
         }
 
+        /// <summary>
+        /// Clones one tile per selectable contestant and fills in what comes from data.
+        ///
+        /// The face, the name, the tagline and the trunk colour all live on a FighterProfile
+        /// asset, so none of them can be authored in the template - the layout guarantees the
+        /// shape of a tile and this fills it with a particular fighter.
+        /// </summary>
         private void BuildTiles(VisualElement grid)
         {
+            if (grid == null || _tileTemplate == null)
+            {
+                Debug.LogError(
+                    $"{nameof(RosterSelectionView)} is missing the tile template or its grid; " +
+                    "the fight card will be empty.", this);
+                return;
+            }
+
             IReadOnlyList<FighterProfile> available = _roster.Available;
 
             for (int index = 0; index < available.Count; index++)
             {
                 FighterProfile profile = available[index];
 
-                VisualElement tile = new();
-                tile.AddToClassList("roster-tile");
+                _tileTemplate.CloneTree(grid);
+                VisualElement tile = grid[grid.childCount - 1];
 
-                VisualElement portrait = new();
-                portrait.AddToClassList("roster-tile__portrait");
+                VisualElement portrait = tile.Q<VisualElement>("portrait");
 
                 // A fighter with no face keeps the tile's plain plate rather than an empty
                 // hole, so the two generic entries still read as contestants.
-                if (profile.Face != null)
+                if (portrait != null)
                 {
-                    portrait.style.backgroundImage = new StyleBackground(profile.Face);
+                    if (profile.Face != null)
+                    {
+                        portrait.style.backgroundImage = new StyleBackground(profile.Face);
+                    }
+                    else
+                    {
+                        portrait.style.backgroundColor = profile.Tint;
+                    }
                 }
-                else
+
+                Label name = tile.Q<Label>("name");
+
+                if (name != null)
                 {
-                    portrait.style.backgroundColor = profile.Tint;
+                    name.text = profile.DisplayName;
                 }
 
-                tile.Add(portrait);
+                Label tagline = tile.Q<Label>("tagline");
 
-                Label name = MakeLabel("text", "text--md", "text--bold", "roster-tile__name");
-                name.text = profile.DisplayName;
-                tile.Add(name);
+                if (tagline != null)
+                {
+                    tagline.text = profile.Tagline;
+                }
 
-                Label tagline = MakeLabel("text", "text--xs", "text--muted", "roster-tile__tagline");
-                tagline.text = profile.Tagline;
-                tile.Add(tagline);
-
-                Label standing = MakeLabel("text", "text--xs", "roster-tile__standing");
-                tile.Add(standing);
-                _standingLabels.Add(standing);
+                _standingLabels.Add(tile.Q<Label>("standing"));
 
                 // Captured per tile so the handler knows which contestant it belongs to
                 // without hit-testing anything.
@@ -151,7 +176,6 @@ namespace PoRumble.Views
                 tile.RegisterCallback<ClickEvent>(_ => OnTileClicked(captured));
 
                 _tiles.Add(tile);
-                grid.Add(tile);
             }
         }
 
@@ -233,18 +257,6 @@ namespace PoRumble.Views
                     .Append(" CORNERS.   TAB TO CLOSE");
 
             _footerLabel.text = _builder.ToString();
-        }
-
-        private static Label MakeLabel(params string[] classes)
-        {
-            Label label = new(string.Empty);
-
-            for (int index = 0; index < classes.Length; index++)
-            {
-                label.AddToClassList(classes[index]);
-            }
-
-            return label;
         }
 
         private void OnDestroy() => _disposables.Dispose();

@@ -3,6 +3,7 @@ using PoRumble.Models;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Profiling;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UIElements;
 using VContainer;
 
@@ -36,10 +37,17 @@ namespace PoRumble.Views
         [Tooltip("Frame time above which the graph turns red, in milliseconds. 16.7 is 60fps.")]
         [SerializeField] private float _frameBudgetMs = 16.7f;
 
+        [Tooltip("The overlay's structure. Without it nothing is drawn.")]
+        [SerializeField] private VisualTreeAsset _layout;
+
         [SerializeField] private StyleSheet _styleSheet;
 
         private readonly StringBuilder _builder = new(512);
         private readonly float[] _frameHistory = new float[HISTORY];
+
+        // Scratch for the percentile sort. Pre-allocated because this overlay exists to report
+        // allocation rate and would be lying if it allocated an array to do it.
+        private readonly float[] _sortedFrames = new float[HISTORY];
 
         private MatchModel _match;
         private MatchFlowModel _flow;
@@ -54,6 +62,20 @@ namespace PoRumble.Views
         private ProfilerRecorder _setPassRecorder;
         private ProfilerRecorder _trianglesRecorder;
         private ProfilerRecorder _renderTexturesRecorder;
+        private ProfilerRecorder _textureMemoryRecorder;
+        private ProfilerRecorder _textureCountRecorder;
+        private ProfilerRecorder _meshMemoryRecorder;
+
+        // Counted once. Neither the light rig nor the caster set changes during a session -
+        // RingAtmosphereView moves and dims lights but never adds or removes one - so polling
+        // for these every refresh would be a scene-wide search for a constant.
+        private int _light2DCount;
+        private int _shadowCasterCount;
+
+        // The pooled combat voices, cached at Start. There is no profiler counter for playing
+        // audio sources on this platform: the Audio category publishes timing markers only,
+        // which was read back from ProfilerRecorderHandle.GetAvailable rather than assumed.
+        private AudioSource[] _audioSources;
 
         private int _historyHead;
         private float _refreshTimer;
@@ -90,10 +112,24 @@ namespace PoRumble.Views
             // a screen whose whole job is being right. Render textures are real and, with 2D
             // lights and post-processing both on, the number worth watching.
             _renderTexturesRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Render Textures Count");
+
+            // Texture memory is the number that moves when art changes, and this project has
+            // just taken on a normal map per sprite and an SDF atlas per font weight. Without
+            // it, a doubling of VRAM footprint is invisible until a device runs out.
+            _textureMemoryRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Texture Memory");
+            _textureCountRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Texture Count");
+            _meshMemoryRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Mesh Memory");
         }
 
         private void Start()
         {
+            // One scene-wide search each, at startup, for values that never change afterwards.
+            _light2DCount = FindObjectsByType<Light2D>(FindObjectsSortMode.None).Length;
+            _shadowCasterCount = FindObjectsByType<ShadowCaster2D>(FindObjectsSortMode.None).Length;
+
+            // The combat voice pool builds its sources in Awake, so by Start they all exist.
+            _audioSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
+
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
 
             if (root == null)
@@ -106,24 +142,28 @@ namespace PoRumble.Views
                 root.styleSheets.Add(_styleSheet);
             }
 
-            _panel = new VisualElement();
-            _panel.AddToClassList("diag");
-            _panel.pickingMode = PickingMode.Ignore;
-            root.Add(_panel);
+            if (_layout == null)
+            {
+                Debug.LogError(
+                    $"{nameof(DiagnosticsHudView)} has no layout assigned; the overlay will " +
+                    "not render. Assign Assets/UI/Layouts/Diagnostics.uxml.", this);
+                return;
+            }
 
-            Label title = new("DIAGNOSTICS   F3");
-            title.AddToClassList("diag__title");
-            _panel.Add(title);
+            _layout.CloneTree(root);
 
-            _graph = new VisualElement();
-            _graph.AddToClassList("diag__graph");
+            _panel = root.Q<VisualElement>("panel");
+            _graph = root.Q<VisualElement>("graph");
+            _readout = root.Q<Label>("readout");
+
+            if (_panel == null || _graph == null || _readout == null)
+            {
+                return;
+            }
+
+            // The graph has no children: it is painted directly with Painter2D, so the
+            // callback is what gives the element its contents.
             _graph.generateVisualContent += DrawGraph;
-            _panel.Add(_graph);
-
-            _readout = new Label(string.Empty);
-            _readout.AddToClassList("diag__readout");
-            _panel.Add(_readout);
-
             _panel.style.display = _visibleOnStart ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
@@ -181,6 +221,7 @@ namespace PoRumble.Views
             _builder.Clear();
             _builder.Append("fps      ").Append(fps.ToString("F0"))
                     .Append("   avg ").Append(averageMs.ToString("F2")).Append("ms")
+                    .Append("   p95 ").Append(Percentile(0.95f).ToString("F2")).Append("ms")
                     .Append("   peak ").Append(_worstMs.ToString("F2")).Append("ms\n");
 
             long draws = Read(_srpBatcherDraws) + Read(_standardDraws) + Read(_dynamicDraws);
@@ -189,6 +230,22 @@ namespace PoRumble.Views
                     .Append("   setpass ").Append(Read(_setPassRecorder))
                     .Append("   tris ").Append(Read(_trianglesRecorder))
                     .Append("   rendertex ").Append(Read(_renderTexturesRecorder)).Append('\n');
+
+            _builder.Append("vram     tex ").Append((Read(_textureMemoryRecorder) / 1048576f).ToString("F1"))
+                    .Append(" MB / ").Append(Read(_textureCountRecorder))
+                    .Append("   mesh ").Append((Read(_meshMemoryRecorder) / 1048576f).ToString("F1"))
+                    .Append(" MB\n");
+
+            // Shadow casters get their own line because they are the most expensive thing in
+            // the scene - measured, not assumed: switching the key light's shadows off took
+            // SetPass calls from 69 to 37. Unity's own "Shadow Casters Count" counts 3D casters
+            // only and reads zero for every ShadowCaster2D here, so this is counted directly.
+            _builder.Append("lights   ").Append(_light2DCount).Append(" light2d")
+                    .Append("   ").Append(_shadowCasterCount).Append(" casters\n");
+
+            _builder.Append("audio    ").Append(CountPlayingVoices())
+                    .Append('/').Append(_audioSources == null ? 0 : _audioSources.Length)
+                    .Append(" voices\n");
 
 
             _builder.Append("mono     ").Append((gcNow / 1048576f).ToString("F1")).Append(" MB")
@@ -268,6 +325,54 @@ namespace PoRumble.Views
         }
 
         /// <summary>
+        /// A percentile over the frame history.
+        ///
+        /// p95 rather than the mean, and alongside the peak rather than instead of it, because
+        /// the three answer different questions. The mean hides hitches entirely - a single
+        /// 90ms frame in a 120-frame window moves a 16ms average by less than a millisecond.
+        /// The peak catches that frame but cannot tell a one-off domain reload from a stutter
+        /// happening several times a second. p95 is the one that says "this is how bad it
+        /// regularly gets", which is what a player actually feels.
+        /// </summary>
+        private float Percentile(float fraction)
+        {
+            System.Array.Copy(_frameHistory, _sortedFrames, HISTORY);
+            System.Array.Sort(_sortedFrames);
+
+            int index = Mathf.Clamp(
+                Mathf.RoundToInt(fraction * (HISTORY - 1)), 0, HISTORY - 1);
+
+            return _sortedFrames[index];
+        }
+
+        /// <summary>
+        /// How many pooled voices are mid-playback. Sixteen simultaneous punches on a
+        /// fourteen-voice pool means the pool is stealing from itself and hits are being cut
+        /// short, which is audible long before it is obvious why.
+        /// </summary>
+        private int CountPlayingVoices()
+        {
+            if (_audioSources == null)
+            {
+                return 0;
+            }
+
+            int playing = 0;
+
+            for (int index = 0; index < _audioSources.Length; index++)
+            {
+                AudioSource source = _audioSources[index];
+
+                if (source != null && source.isPlaying)
+                {
+                    playing++;
+                }
+            }
+
+            return playing;
+        }
+
+        /// <summary>
         /// Recorders hold native handles. Leaving them undisposed leaks across a domain reload,
         /// which in the Editor means every entry into Play mode adds another.
         /// </summary>
@@ -279,6 +384,9 @@ namespace PoRumble.Views
             _setPassRecorder.Dispose();
             _trianglesRecorder.Dispose();
             _renderTexturesRecorder.Dispose();
+            _textureMemoryRecorder.Dispose();
+            _textureCountRecorder.Dispose();
+            _meshMemoryRecorder.Dispose();
         }
 
         /// <summary>

@@ -159,6 +159,12 @@ namespace PoRumble.Views
                     bool isHuman = boxer.Id == _humanBoxerId;
                     agent.SetHumanControlled(isHuman);
 
+                    // Marks the seat visually. Set here rather than in SeatRoster because
+                    // which chair the human occupies is a scene setting, not a card decision:
+                    // re-dealing the roster changes who sits where, never who is holding the
+                    // keyboard. The shipped Android build passes -1 and nobody is marked.
+                    view.SetIsPlayer(isHuman);
+
                     // A card of contestants replaces the tier path outright: who fights, how
                     // and with what face is the roster's business, and SeatRoster does all of
                     // it in one place so a re-deal between matches runs the same code.

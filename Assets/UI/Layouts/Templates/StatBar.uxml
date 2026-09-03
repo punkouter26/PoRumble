@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A captioned bar: HEALTH, BREATH, POWER.
+
+  The fill carries no state class here. Which of the three health states applies is a function
+  of the value, so the view assigns it; this template only guarantees the structure and the
+  track those classes need to sit in.
+
+  (Their names are spelled with a double hyphen, which an XML comment may not contain - hence
+  the circumlocution. See the bar rules in porumble.uss for the actual class names.)
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="row" class="player-hud__bar-row" picking-mode="Ignore">
+        <ui:Label name="caption" class="bar__label" picking-mode="Ignore" />
+        <ui:VisualElement name="track" class="bar player-hud__bar" picking-mode="Ignore">
+            <ui:VisualElement name="fill" class="bar__fill" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

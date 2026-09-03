@@ -46,6 +46,25 @@
     --text-xl: 34px;
     --text-display: 90px;
 
+    /* Families. Three voices, and the split is functional rather than decorative:
+       Anton is the fight-poster display face and is unreadable below ~30px; Barlow
+       Condensed carries everything else and is condensed because the build ships
+       portrait, where a normal-width face overruns the health rows and roster tiles;
+       Space Mono exists only for the diagnostics overlay, whose figures have to be
+       tabular or the columns shift on every refresh. */
+    --font-body: url("../../Art/Fonts/BarlowCondensed-Medium.asset");
+    --font-emphasis: url("../../Art/Fonts/BarlowCondensed-SemiBold.asset");
+    --font-bold: url("../../Art/Fonts/BarlowCondensed-Bold.asset");
+    --font-display: url("../../Art/Fonts/Anton-Regular.asset");
+    --font-mono: url("../../Art/Fonts/SpaceMono-Regular.asset");
+
+    /* Motion. Three durations, so nothing in the HUD invents its own timing.
+       Fast is for input acknowledgement, where anything slower reads as lag; base is
+       for state a player is watching change; slow is for whole panels arriving. */
+    --motion-fast: 80ms;
+    --motion-base: 160ms;
+    --motion-slow: 280ms;
+
     --radius: 3px;
 
     /* Touch controls. Sized generously: a thumb is far less precise than a cursor. */
@@ -68,6 +87,7 @@
 /* ----------------------------------------------------------------- primitives */
 .text {
     color: var(--text-primary);
+    -unity-font-definition: var(--font-body);
     -unity-font-style: normal;
     font-size: var(--text-sm);
     /* A shadow on every label, because the HUD sits over a bright green canvas and white
@@ -82,7 +102,27 @@
 .text--lg { font-size: var(--text-lg); }
 .text--xl { font-size: var(--text-xl); }
 .text--display { font-size: var(--text-display); }
-.text--bold { -unity-font-style: bold; }
+
+/* Weight is a different font file, not a synthesised smear. Asking TextCore to fake bold
+   from the medium weight thickens the stems unevenly and blurs the SDF edge, which is
+   exactly where a condensed face falls apart. */
+.text--bold {
+    -unity-font-definition: var(--font-bold);
+    -unity-font-style: normal;
+}
+
+.text--emphasis {
+    -unity-font-definition: var(--font-emphasis);
+    -unity-font-style: normal;
+}
+
+/* Declared last on purpose: an element carrying both `text--display` and `text--bold`
+   must land on Anton, and USS resolves a specificity tie by document order. */
+.text--xl,
+.text--display {
+    -unity-font-definition: var(--font-display);
+    -unity-font-style: normal;
+}
 
 .panel {
     background-color: var(--surface-panel);
@@ -127,9 +167,22 @@
 .bar__fill--charge { background-color: var(--state-charge); }
 .bar__fill--charge-ready { background-color: var(--state-charge-ready); }
 
+/* Only the health fills animate, and the distinction is not cosmetic. Health moves in
+   discrete jumps when a punch lands, so easing the width turns a jarring snap into a
+   readable drain. Stamina and the haymaker charge are recomputed every tick, and a
+   transition on a value that already changes each frame just renders it permanently
+   behind the model it is supposed to be reporting. */
+.player-hud__bar--health > .bar__fill,
+.match-hud__bar > .bar__fill {
+    transition-property: width, background-color;
+    transition-duration: var(--motion-base), var(--motion-slow);
+    transition-timing-function: ease-out, linear;
+}
+
 .bar__label {
     width: 62px;
     color: var(--text-secondary);
+    -unity-font-definition: var(--font-body);
     font-size: var(--text-xs);
     text-shadow: 1px 1px 2px var(--text-shadow);
 }
@@ -193,6 +246,16 @@
    available, not only who was picked. */
 .roster-tile { opacity: 0.45; }
 
+.roster-tile {
+    transition-property: opacity, background-color, border-color, scale;
+    transition-duration: var(--motion-base);
+    transition-timing-function: ease-out;
+}
+
+/* The card is the one screen with a pointer on it, so it is the one place a hover state
+   earns its keep - it tells you which tile the click will land on before you commit. */
+.roster-tile:hover { scale: 1.04; }
+
 .roster-tile--in {
     opacity: 1;
     background-color: var(--tile-in);
@@ -252,6 +315,8 @@
 .standings__row {
     letter-spacing: 1px;
     margin-bottom: var(--space-1);
+    transition-property: color;
+    transition-duration: var(--motion-slow);
 }
 
 .standings__row--gain { color: var(--state-healthy); }
@@ -277,6 +342,7 @@
        card of named fighters overflowed it silently. */
     width: 84px;
     color: var(--text-secondary);
+    -unity-font-definition: var(--font-body);
     font-size: var(--text-xs);
     text-shadow: 1px 1px 2px var(--text-shadow);
 }
@@ -332,6 +398,12 @@
     min-width: 300px;
 }
 
+.player-hud {
+    transition-property: opacity;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: ease-out;
+}
+
 .player-hud--down { opacity: 0.4; }
 
 .player-hud__title {
@@ -361,7 +433,9 @@
     letter-spacing: 1px;
 }
 
-/* Full-screen damage wash. Painted by the player HUD, alpha driven from C#. */
+/* Full-screen damage wash. Painted by the player HUD, alpha driven from C#.
+   Deliberately carries no transition: the view already eases the alpha itself every
+   frame, and a USS transition on top would chase a target that has already moved. */
 .vignette {
     position: absolute;
     left: 0;
@@ -386,8 +460,9 @@
 
 .diag__title {
     color: var(--text-secondary);
+    -unity-font-definition: var(--font-mono);
     font-size: var(--text-xs);
-    -unity-font-style: bold;
+    -unity-font-style: normal;
     letter-spacing: 2px;
     margin-bottom: var(--space-2);
 }
@@ -398,8 +473,12 @@
     margin-bottom: var(--space-2);
 }
 
+/* Monospace is load-bearing here, not a style choice: the overlay redraws four times a
+   second and a proportional face re-lays every column as the digits change, so the numbers
+   visibly crawl. Tabular figures hold the columns still. */
 .diag__readout {
     color: var(--text-primary);
+    -unity-font-definition: var(--font-mono);
     font-size: var(--text-xs);
     white-space: normal;
 }
@@ -458,8 +537,9 @@
 
 .touch-button__label {
     color: var(--text-primary);
+    -unity-font-definition: var(--font-bold);
     font-size: var(--text-lg);
-    -unity-font-style: bold;
+    -unity-font-style: normal;
     letter-spacing: 2px;
     text-shadow: 1px 1px 2px var(--text-shadow);
 }
@@ -468,8 +548,19 @@
 .touch-button--charge { background-color: var(--touch-charge); }
 .touch-button--dodge { background-color: var(--touch-surface); }
 
-/* Pressed state is a colour change rather than a transform: a thumb already covers the
-   button, so the feedback has to be visible around its edge. */
+/* Input feedback runs at --motion-fast. Anything slower than about a tenth of a second
+   here stops reading as "the button responded" and starts reading as dropped input. */
+.touch-button {
+    transition-property: background-color, scale;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: ease-out;
+}
+
+/* Pressed state is mostly a colour change rather than a transform: a thumb already covers
+   the button, so the feedback has to be visible around its edge. The slight shrink only
+   has to survive being seen in peripheral vision. */
+.touch-button--down { scale: 0.95; }
+
 .touch-button--punch.touch-button--down { background-color: var(--touch-punch-down); }
 .touch-button--charge.touch-button--down { background-color: var(--touch-charge-down); }
 .touch-button--dodge.touch-button--down { background-color: var(--touch-surface-strong); }

@@ -12,9 +12,9 @@ namespace PoRumble.Views
     /// Match HUD: survivor count, per-boxer health bars, the countdown to the bell and the
     /// result banner.
     ///
-    /// All styling comes from the shared stylesheet. This class assigns class names and the
-    /// handful of values that are genuinely dynamic - a bar's width - and owns no colours,
-    /// paddings or font sizes of its own.
+    /// Structure comes from UXML and styling from the shared stylesheet. This class owns
+    /// neither: it looks elements up by name and writes only what is genuinely dynamic - a
+    /// bar's width, a label's text, a state class. No colours, paddings or font sizes.
     ///
     /// A View: it observes models and messages and never mutates game state.
     /// </summary>
@@ -22,6 +22,12 @@ namespace PoRumble.Views
     [RequireComponent(typeof(UIDocument))]
     public sealed class MatchHudView : MonoBehaviour
     {
+        [Tooltip("The panel's structure. Without it the HUD renders nothing at all.")]
+        [SerializeField] private VisualTreeAsset _layout;
+
+        [Tooltip("One fighter's health row, cloned once per boxer slot.")]
+        [SerializeField] private VisualTreeAsset _healthRowTemplate;
+
         [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
@@ -73,25 +79,23 @@ namespace PoRumble.Views
                 root.styleSheets.Add(_styleSheet);
             }
 
-            VisualElement panel = new();
-            panel.AddToClassList("match-hud");
-            panel.pickingMode = PickingMode.Ignore;
-            root.Add(panel);
+            if (_layout == null)
+            {
+                Debug.LogError(
+                    $"{nameof(MatchHudView)} has no layout assigned; the match HUD will not " +
+                    "render. Assign Assets/UI/Layouts/MatchHud.uxml.", this);
+                return;
+            }
 
-            _survivorsLabel = MakeLabel("text", "text--lg", "text--bold");
-            panel.Add(_survivorsLabel);
+            _layout.CloneTree(root);
 
-            VisualElement roster = new();
-            roster.AddToClassList("match-hud__roster");
-            panel.Add(roster);
+            _survivorsLabel = root.Q<Label>("survivors");
+            _resultLabel = root.Q<Label>("result");
+            _captionLabel = root.Q<Label>("caption");
+            _promptLabel = root.Q<Label>("prompt");
 
-            BuildHealthBars(roster);
+            BuildHealthBars(root.Q<VisualElement>("roster"));
             RefreshNames();
-
-            _resultLabel = MakeLabel("text", "text--xl", "text--bold", "result-banner");
-            panel.Add(_resultLabel);
-
-            BuildCenterCaption(root);
             RefreshSurvivors();
 
             if (_flow != null)
@@ -105,64 +109,34 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// The big middle-of-screen caption: "3 / 2 / 1 / FIGHT!", then the restart prompt.
-        /// Non-picking so it never eats a click, and absolutely positioned so its text changing
-        /// length cannot shift the health bars around.
+        /// Clones one row per boxer slot and keeps the two elements that get written later.
+        ///
+        /// CloneTree(target) adds the template's own children straight into the target, with no
+        /// TemplateContainer in between. That matters here: an extra wrapper element would sit
+        /// in the middle of the column's flex layout and give every row a second box to
+        /// inherit sizing from.
         /// </summary>
-        private void BuildCenterCaption(VisualElement root)
-        {
-            VisualElement centre = new();
-            centre.AddToClassList("centre-stage");
-            centre.pickingMode = PickingMode.Ignore;
-            root.Add(centre);
-
-            _captionLabel = MakeLabel("text", "text--display", "text--bold", "centre-stage__caption");
-            centre.Add(_captionLabel);
-
-            _promptLabel = MakeLabel("text", "text--md", "centre-stage__prompt");
-            centre.Add(_promptLabel);
-        }
-
-        private static Label MakeLabel(params string[] classes)
-        {
-            Label label = new(string.Empty);
-            label.pickingMode = PickingMode.Ignore;
-
-            for (int index = 0; index < classes.Length; index++)
-            {
-                label.AddToClassList(classes[index]);
-            }
-
-            return label;
-        }
-
         private void BuildHealthBars(VisualElement roster)
         {
+            if (roster == null || _healthRowTemplate == null)
+            {
+                Debug.LogError(
+                    $"{nameof(MatchHudView)} is missing the health-row template or its " +
+                    "container; per-fighter health will not be shown.", this);
+                return;
+            }
+
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {
                 BoxerModel boxer = boxers[boxerIndex];
 
-                VisualElement row = new();
-                row.AddToClassList("match-hud__row");
+                _healthRowTemplate.CloneTree(roster);
+                VisualElement row = roster[roster.childCount - 1];
 
-                Label name = MakeLabel("match-hud__name");
-                row.Add(name);
-                _nameLabels.Add(name);
-
-                VisualElement track = new();
-                track.AddToClassList("bar");
-                track.AddToClassList("match-hud__bar");
-                row.Add(track);
-
-                VisualElement fill = new();
-                fill.AddToClassList("bar__fill");
-                fill.AddToClassList("bar__fill--healthy");
-                track.Add(fill);
-
-                _healthFills.Add(fill);
-                roster.Add(row);
+                _nameLabels.Add(row.Q<Label>("name"));
+                _healthFills.Add(row.Q<VisualElement>("fill"));
 
                 int index = boxerIndex;
                 boxer.Health.Subscribe(hp => OnHealthChanged(index, hp)).AddTo(_disposables);
