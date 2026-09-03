@@ -1,0 +1,13 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart LR
+  A["Stage 1<br/>one-on-one<br/>vs scripted partner"] --> B["Stage 2<br/>four-way"]
+  B --> C["Stage 3<br/>ten-way free-for-all"]
+  A -. "--initialize-from" .-> B
+  B -. "--initialize-from" .-> C
+  D["PPO<br/>2 x 256 hidden"] --- A
+  E["Pick the checkpoint on<br/>how often a match FINISHES,<br/>not on reward"] --- C
+  style E fill:#C8342B,color:#FFFFFF,stroke:#8E241E

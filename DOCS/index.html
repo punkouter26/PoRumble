@@ -1,0 +1,101 @@
+<title>PoRumble Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<style>
+:root{--paper:#F7F4ED;--card:#FFFDF8;--ink:#16171B;--ink-2:#4A463F;--muted:#736C60;
+--rule:#DED7C8;--rule-soft:#EBE5D8;--red:#B23A2E;--blue:#2C5A87;
+--f-display:'Anton',Impact,sans-serif;--f-body:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+--f-mono:'Space Mono',ui-monospace,Menlo,monospace;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#131210;--card:#1C1A17;
+--ink:#F1ECE2;--ink-2:#CFC7B8;--muted:#9A9285;--rule:#342F28;--rule-soft:#262220;
+--red:#DE7A68;--blue:#79A6D8;}}
+:root[data-theme="dark"]{--paper:#131210;--card:#1C1A17;--ink:#F1ECE2;--ink-2:#CFC7B8;
+--muted:#9A9285;--rule:#342F28;--rule-soft:#262220;--red:#DE7A68;--blue:#79A6D8;}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.45}
+.wrap{max-width:900px;margin:0 auto;padding:0 24px 72px}
+h1{font-family:var(--f-display);font-weight:400;text-transform:uppercase;
+font-size:clamp(36px,6vw,60px);line-height:.98;margin:0}
+h2{font-family:var(--f-display);font-weight:400;text-transform:uppercase;font-size:22px;margin:0 0 4px}
+p{margin:0 0 12px;max-width:64ch;color:var(--ink-2)}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+header{border-bottom:2px solid var(--ink);padding:32px 0 18px;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;
+background:var(--rule);border:1px solid var(--rule);margin-top:24px}
+a.card{display:block;background:var(--card);padding:22px 24px;text-decoration:none;color:inherit}
+a.card:hover{background:var(--rule-soft)}
+a.card:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+a.card .t{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+color:var(--muted);display:block;margin-bottom:8px}
+a.card p{margin:0;font-size:15.5px}
+.mono{font-family:var(--f-mono);font-size:.86em}
+.note{border-left:3px solid var(--red);padding:12px 16px;background:var(--card);margin:24px 0;font-size:15.5px}
+.note b{color:var(--red)}
+ul.files{list-style:none;padding:0;margin:16px 0 0;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+ul.files li{padding:5px 0;border-bottom:1px solid var(--rule-soft)}
+footer{border-top:2px solid var(--ink);padding-top:16px;margin-top:40px;font-size:14px;color:var(--muted)}
+</style>
+<div class="wrap">
+<header>
+  <span class="eyebrow">PoRumble · Unity 6000.5.8f1 · ML-Agents 4.1.0 · generated 2026-09-03</span>
+  <h1>Documentation</h1>
+</header>
+<p>Five documents covering the ML-Agents pipeline, the ONNX runtime, the scenes and the
+contestants. Each is written in three tiers — a 30-second summary, an overview, and the
+complete specification — so you can stop at whichever depth answers the question.</p>
+
+<div class="note"><b>Read this first.</b> The shipped policy
+<span class="mono">PoRumbleBoxer.onnx</span> declares 200 encoder inputs; the current build emits
+125. It cannot load correctly against the game as it now stands, and a replacement is in training.
+Every document says so where it matters rather than quietly describing a model that no longer fits.</div>
+
+<div class="grid">
+  <a class="card" href="creatures_dashboard.html">
+    <span class="t">Interactive · Executive / Technical</span>
+    <h2>Ringside</h2>
+    <p>The dashboard. Toggle between an executive read and the full technical one, at three
+    levels of detail. Behaviour evolution, reward composition, tensor graphs, joint physics,
+    observation vector, hyperparameters.</p>
+  </a>
+  <a class="card" href="training_motivation.html">
+    <span class="t">Essay · diagram-design system</span>
+    <h2>What The Fighter Wants</h2>
+    <p>A second reading of the same material, focused on how the agents train, how they run,
+    and what actually motivates them. Different visual system on purpose.</p>
+  </a>
+  <a class="card" href="onnx_summary.html.md" style="pointer-events:none;opacity:.5">
+    <span class="t">Markdown</span>
+    <h2>ONNX &amp; Rig Inventory</h2>
+    <p>Matrix A — models, tensor shapes, parameter counts, promotion status.
+    Matrix B — physics and actuators. Open <span class="mono">onnx_summary.md</span>.</p>
+  </a>
+  <a class="card" href="scene_atlas.html">
+    <span class="t">Reference</span>
+    <h2>Four Rings</h2>
+    <p>Every scene, every object in it, and what each one is for — with a component census
+    counted from the scene files rather than from memory.</p>
+  </a>
+  <a class="card" href="fighter_comparison.html">
+    <span class="t">Charts</span>
+    <h2>The Card</h2>
+    <p>Six contestants compared across ten style and attribute dimensions, plus how distinct
+    they actually are from one another and how to turn specification into measured performance.</p>
+  </a>
+</div>
+
+<h2 style="margin-top:40px">Generated files</h2>
+<ul class="files">
+  <li>DOCS/creatures_dashboard.html — interactive dashboard</li>
+  <li>DOCS/training_motivation.html — motivation essay</li>
+  <li>DOCS/onnx_summary.md — model &amp; rig inventory</li>
+  <li>DOCS/scene_atlas.html — scene inventory</li>
+  <li>DOCS/fighter_comparison.html — contestant charts</li>
+  <li>DOCS/training_curve.json — the live run's summaries</li>
+  <li>DOCS/diagrams/*.mmd — 11 mermaid sources</li>
+  <li>DOCS/assets/*.svg — 11 compiled diagrams</li>
+</ul>
+
+<footer><p>Diagrams compiled with <span class="mono">@mermaid-js/mermaid-cli</span>.
+Rebuild: <span class="mono">npx @mermaid-js/mermaid-cli -i DOCS/diagrams/NAME.mmd -o DOCS/assets/NAME.svg -b transparent</span></p></footer>
+</div>

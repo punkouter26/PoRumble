@@ -1,0 +1,15 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Geist Sans, Inter, Helvetica Neue, sans-serif","fontSize":"20px",
+"primaryColor":"#F5F5F5","primaryTextColor":"#242424","primaryBorderColor":"#C0C0C0",
+"lineColor":"#8A8A8A","secondaryColor":"#ECECEC","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#FAFAFA","clusterBorder":"#D8D8D8","edgeLabelBackground":"#F5F5F5"}} }%%
+flowchart LR
+  W["<i>It wants to be<br/>the last one standing.</i>"] --> M1["Find someone"]
+  M1 --> M2["Get to arm's length"]
+  M2 --> M3["Hit the face,<br/>not the guard"]
+  M3 --> M4["Do not get hit back"]
+  M4 --> W2["Last one standing"]
+  M4 -.->|"it usually is not"| M1
+
+  classDef accent fill:#F99E62,color:#242424,stroke:#D97B3E,stroke-width:2px;
+  class W2 accent;

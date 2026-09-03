@@ -1,0 +1,27 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Geist Sans, Inter, Helvetica Neue, sans-serif","fontSize":"20px",
+"primaryColor":"#F5F5F5","primaryTextColor":"#242424","primaryBorderColor":"#C0C0C0",
+"lineColor":"#8A8A8A","secondaryColor":"#ECECEC","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#FAFAFA","clusterBorder":"#D8D8D8","edgeLabelBackground":"#F5F5F5"}} }%%
+flowchart LR
+  subgraph TRAIN["Training - it is allowed to be wrong"]
+    direction TB
+    T1["8 rings at once"]
+    T2["arms posed, not simulated"]
+    T3["no crowd, no camera"]
+    T4["ends and restarts<br/>every 50 seconds"]
+  end
+
+  subgraph PLAY["Playing - it only gets one go"]
+    direction TB
+    P1["one ring"]
+    P2["arms on real joints"]
+    P3["a style bends its choices"]
+    P4["an Elo table remembers"]
+  end
+
+  SAME["<i>The same 119,313 numbers<br/>drive both.</i>"]
+  TRAIN --> SAME --> PLAY
+
+  classDef accent fill:#F99E62,color:#242424,stroke:#D97B3E,stroke-width:2px;
+  class SAME accent;

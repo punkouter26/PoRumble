@@ -1,0 +1,34 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart TB
+  subgraph TICK["Every FixedUpdate - 0.02 s, 50 Hz"]
+    direction TB
+    A1["DecisionRequester<br/>DecisionPeriod 5<br/>TakeActionsBetweenDecisions = true"]
+    A2["CollectObservations<br/>20 floats x 2 stacks = 30<br/>+ RayPerceptionSensor2D 17 x 5 = 85"]
+    A3["Inference Engine (Sentis)<br/>obs_0[170] + obs_1[30]<br/>2 x Dense 256 - 119,313 params"]
+    A4["OnActionReceived<br/>4 continuous + 2 discrete"]
+    A5["StyleModulator<br/>re-rolls on decision steps only"]
+    A6["BoxerSystem.Tick<br/>dodge, stun, movement, stamina,<br/>charge, arms"]
+    A7["CombatMath.ResolveHit<br/>no physics query - deterministic"]
+    A8["Physics2D step<br/>6 HingeJoint2D servos per fighter<br/>cosmetic only"]
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7 --> A8
+  end
+
+  TICK --> R["Hits buffered for the whole tick<br/>simultaneous knockouts both count"]
+  R --> M["MatchSystem.EvaluateMatchState"]
+  M --> T{"fewer than 2 standing?"}
+  T -- "yes" --> W["EndMatch - knockout<br/>EndedOnTimeout = false"]
+  T -- "no" --> B{"episodeSteps >= MaxStep - 5<br/>(2495)"}
+  B -- "yes" --> V["EndByTimeout - the bell<br/>highest health wins"]
+  B -- "no" --> TICK
+  W --> Z["AwardMatchResult +6<br/>then EndEpisode on every agent"]
+  V --> Z
+  Z --> RS["SpawnSystem.ResetRoster<br/>ring rotated, every fighter jittered"]
+  RS --> TICK
+
+  style A3 fill:#C8342B,color:#FFFFFF,stroke:#8E241E
+  style A7 fill:#2E5E8C,color:#FFFFFF,stroke:#1F4363
+  style A8 stroke-dasharray: 4 4

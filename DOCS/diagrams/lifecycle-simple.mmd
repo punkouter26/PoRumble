@@ -1,0 +1,17 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart LR
+  A["Academy<br/>steps the world"] --> B["Boxer Agent<br/>observes"]
+  B --> C["Policy<br/>PoRumbleBoxer.onnx"]
+  C --> D["Boxer Agent<br/>acts"]
+  D --> E["Fight simulation<br/>pure maths, deterministic"]
+  E --> F["Physics 2D<br/>draws the arms"]
+  E --> G{"Match over?"}
+  G -- "no" --> A
+  G -- "knockout or bell" --> H["Reward the winner<br/>re-rack the ring"]
+  H --> A
+  style C fill:#C8342B,color:#FFFFFF,stroke:#8E241E
+  style E fill:#2E5E8C,color:#FFFFFF,stroke:#1F4363

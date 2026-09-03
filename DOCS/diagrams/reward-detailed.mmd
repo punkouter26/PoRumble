@@ -1,0 +1,46 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart TB
+  subgraph SENSE["Perception"]
+    S1["RayPerceptionSensor2D<br/>17 rays - 180 deg - reach 24<br/>tags: BoxerFace, Boxer, Wall<br/>batched casts, 1 stack"]
+    S2["Self scalars x20<br/>health, facing, move, both arms,<br/>survivors, stamina, ring position,<br/>velocity, stun, bearing, range,<br/>incoming punch"]
+  end
+
+  subgraph TERM["Terminal - dominates the return"]
+    T1["win  +6.0"]
+    T2["elimination dealt  +1.5"]
+    T3["eliminated  -1.0"]
+  end
+
+  subgraph EVENT["Event rewards"]
+    E1["damage dealt  +0.6 per full health bar"]
+    E2["damage taken  -0.4 per full health bar"]
+    E3["evade  +0.03"]
+    E4["block  +0.015"]
+    E5["clash own fists  -0.05"]
+    E6["punch thrown  -0.002"]
+  end
+
+  subgraph DENSE["Dense shaping - faded out by curriculum"]
+    D1["aim at nearest  0.6"]
+    D2["close the distance  0.25"]
+    D3["hold punching range  0.4"]
+    D4["existential  -1.0 per episode"]
+  end
+
+  CUR["environment_parameters: shaping_scale<br/>1.0 -> 0.5 -> 0.0 over first 30% of the run"]
+  CUR -.->|"scales"| DENSE
+
+  SENSE --> POLICY["Policy"]
+  POLICY --> EVENT
+  POLICY --> DENSE
+  EVENT --> TERM
+  DENSE --> TERM
+  TERM --> RET["Episode return<br/>gamma 0.997 over 500 decisions"]
+
+  style TERM fill:#C8342B,color:#FFFFFF,stroke:#8E241E
+  style RET fill:#2E5E8C,color:#FFFFFF,stroke:#1F4363
+  style DENSE stroke-dasharray: 4 4

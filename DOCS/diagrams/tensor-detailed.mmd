@@ -1,0 +1,40 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart TB
+  subgraph IN["Observation tensors - what the ONNX actually declares"]
+    O0["obs_0  [batch, 170]<br/>RayPerceptionSensor2D<br/>17 rays x (3 tags + hit + distance) x 2 stacks"]
+    O1["obs_1  [batch, 30]<br/>15 self scalars x 2 stacks"]
+    AM["action_masks  [batch, 4]"]
+  end
+  O0 --> CAT["concat -> 200"]
+  O1 --> CAT
+  CAT --> L1["Gemm 200 -> 256<br/>51,200 weights"]
+  L1 --> L2["Gemm 256 -> 256<br/>65,536 weights"]
+  L2 --> H1["mu head<br/>Gemm 256 -> 4  (1,024)"]
+  L2 --> H2["branch 0<br/>Gemm 256 -> 2  (512)"]
+  L2 --> H3["branch 1<br/>Gemm 256 -> 2  (512)"]
+  H1 --> C1["continuous_actions [batch, 4]<br/>moveX, moveY, aimX, aimY"]
+  H2 --> C2["discrete_actions [batch, 2]<br/>punch L, punch R"]
+  H3 --> C2
+  AM -.-> H2
+  AM -.-> H3
+
+  C1 --> ACT["BoxerSystem<br/>SetMoveInput / SetAim"]
+  C2 --> ACT2["BoxerSystem.Punch(side)"]
+  SC["Side channels - outside the action vector<br/>SetCharge(bool) - haymaker<br/>Dodge(dir) - slip"] --> ACT2
+
+  ACT2 --> ARM["ArmView servo per fighter"]
+  subgraph DRIVE["Joint drive - HingeJoint2D motors, 6 per fighter"]
+    J1["shoulder  -45..80 deg  |  torque 260"]
+    J2["elbow  0..145 deg  |  torque x 0.55"]
+    J3["wrist  +/-25 deg  |  torque x 0.20"]
+    J4["servo gain 60  |  max speed 1800 deg/s<br/>error via Mathf.DeltaAngle"]
+  end
+  ARM --> DRIVE
+
+  style CAT fill:#C8342B,color:#FFFFFF,stroke:#8E241E
+  style SC fill:#EDE9E1,stroke-dasharray: 4 4
+  style DRIVE fill:#EFEBE3

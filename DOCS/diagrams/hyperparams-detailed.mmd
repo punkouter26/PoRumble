@@ -1,0 +1,25 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart TB
+  subgraph CFG["Three trainer configs - all PPO, all behaviour PoRumbleBoxer"]
+    direction LR
+    P1["porumble_spar.yaml<br/>stage 1b - vs scripted<br/>batch 1024 / buffer 10240<br/>beta 1.0e-3 - lr linear<br/>max 5M - keep 50"]
+    P2["porumble_ppo.yaml<br/>stage 1 - self-play<br/>batch 1024 / buffer 10240<br/>beta 5.0e-3 - lr constant<br/>max 8M - keep 40<br/>self_play block present"]
+    P3["porumble_ffa.yaml<br/>stage 3 - ten-way<br/>batch 2048 / buffer 20480<br/>beta 2.0e-3 - lr linear<br/>max 8M - keep 80<br/>NO self_play"]
+  end
+
+  SHARED["Shared across all three<br/>gamma 0.997 - time_horizon 256<br/>epsilon 0.2 - lambd 0.95 - num_epoch 3<br/>hidden 256 x 2 - normalize false<br/>summary_freq 10000"]
+  CFG --- SHARED
+
+  G["gamma 0.997, not 0.995<br/>episode is MaxStep 2500 / DecisionPeriod 5 = 500 decisions<br/>0.995^500 = 0.08 at the bell - too faint<br/>0.997^500 = 0.22"]
+  H["time_horizon 256, not 128<br/>a horizon far below the discount horizon<br/>bootstraps away the terminal win reward"]
+  K["keep_checkpoints must cover max_steps / checkpoint_interval<br/>15 kept of 50 written was a trailing 30% window"]
+  SHARED --> G
+  SHARED --> H
+  CFG --> K
+
+  style G fill:#C8342B,color:#FFFFFF,stroke:#8E241E
+  style K fill:#2E5E8C,color:#FFFFFF,stroke:#1F4363

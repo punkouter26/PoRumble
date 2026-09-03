@@ -1,0 +1,15 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart LR
+  R["17 rays<br/>what it can see"] --> N
+  S["20 self facts<br/>how it feels"] --> N
+  N["Shared network<br/>one brain for every fighter"] --> A["Move + aim<br/>4 numbers"]
+  N --> P["Punch left / right<br/>2 switches"]
+  A --> B["The boxer"]
+  P --> B
+  C["Charge and slip<br/>side channels, not actions"] --> B
+  style N fill:#C8342B,color:#FFFFFF,stroke:#8E241E
+  style C fill:#EDE9E1,stroke-dasharray: 4 4

@@ -1,0 +1,48 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Geist Sans, Inter, Helvetica Neue, sans-serif","fontSize":"20px",
+"primaryColor":"#F5F5F5","primaryTextColor":"#242424","primaryBorderColor":"#C0C0C0",
+"lineColor":"#8A8A8A","secondaryColor":"#ECECEC","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#FAFAFA","clusterBorder":"#D8D8D8","edgeLabelBackground":"#F5F5F5"}} }%%
+flowchart TB
+  subgraph TAUGHT["Scaffolding - true only at the start"]
+    direction LR
+    I1["face the nearest fighter"]
+    I2["walk toward them"]
+    I3["stand at punching range"]
+  end
+
+  subgraph WANTS["Appetites - felt every exchange"]
+    direction LR
+    A1["landing hurts them"]
+    A2["being hit hurts me"]
+    A3["a block or a slip<br/>is worth a little"]
+    A4["my own fists colliding<br/>is worth nothing"]
+  end
+
+  GOAL["<i>Be the last one standing</i>"]
+
+  FADE["shaping_scale<br/>1.0 -> 0.5 -> 0.0"]
+  FADE -.->|"turns the scaffolding off<br/>once it can see"| TAUGHT
+
+  CLOCK["the bell<br/>500 decisions"]
+  CLOCK -.->|"standing still costs"| WANTS
+
+  TAUGHT --> WANTS --> GOAL
+
+  subgraph LEARN["How the wanting is learned"]
+    direction LR
+    L1["act"]
+    L2["remember 256 steps"]
+    L3["compare to what it expected"]
+    L4["want that more, or less"]
+    L1 --> L2 --> L3 --> L4
+    L4 -.-> L1
+  end
+
+  GOAL --> LEARN
+  LEARN -.->|"gamma 0.997 - the win is<br/>still worth 0.22 at the opening bell"| GOAL
+
+  classDef accent fill:#F99E62,color:#242424,stroke:#D97B3E,stroke-width:2px;
+  classDef muted fill:#F5F5F5,color:#5A6B7C,stroke:#9FB0C0,stroke-dasharray: 3 3;
+  class GOAL accent;
+  class FADE,CLOCK muted;

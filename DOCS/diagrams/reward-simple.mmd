@@ -1,0 +1,18 @@
+%%{init: {"theme":"base","themeVariables":{
+"fontFamily":"Barlow Condensed, Trebuchet MS, sans-serif","fontSize":"19px",
+"primaryColor":"#F7F5F0","primaryTextColor":"#141519","primaryBorderColor":"#B9B2A4",
+"lineColor":"#6E6A63","secondaryColor":"#EDE9E1","tertiaryColor":"#FFFFFF",
+"clusterBkg":"#EFEBE3","clusterBorder":"#C9C2B4"}} }%%
+flowchart LR
+  P["What it senses<br/>rays + its own body"] --> Q{"What just happened?"}
+  Q -- "landed a punch" --> G1["reward"]
+  Q -- "took one" --> B1["penalty"]
+  Q -- "blocked or slipped" --> G2["small reward"]
+  Q -- "clashed its own fists" --> B2["penalty"]
+  Q -- "did nothing" --> B3["standing cost"]
+  G1 --> W["Won the fight<br/>+6"]
+  G2 --> W
+  B1 --> L["Knocked out<br/>-1"]
+  B2 --> L
+  B3 --> L
+  style W fill:#C8342B,color:#FFFFFF,stroke:#8E241E

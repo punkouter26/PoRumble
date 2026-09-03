@@ -1,0 +1,417 @@
+<title>Ringside</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap">
+<style>
+:root {
+  --paper:#F7F4ED; --card:#FFFDF8; --ink:#16171B; --ink-2:#4A463F; --muted:#736C60;
+  --rule:#DED7C8; --rule-soft:#EBE5D8;
+  --red:#B23A2E; --blue:#2C5A87; --gold:#8A6410;
+  --seq-1:#EFE0BC; --seq-2:#D9BE7E; --seq-3:#B8933C; --seq-4:#8A6410;
+  --good:#2F6B44; --warn:#8A6410; --crit:#B23A2E;
+  --shadow:0 1px 2px rgba(22,23,27,.06);
+  --f-display:'Anton',Impact,'Haettenschweiler',sans-serif;
+  --f-body:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-mono:'Space Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#131210; --card:#1C1A17; --ink:#F1ECE2; --ink-2:#CFC7B8; --muted:#9A9285;
+    --rule:#342F28; --rule-soft:#262220;
+    --red:#DE7A68; --blue:#79A6D8; --gold:#D6AC55;
+    --seq-1:#3A3122; --seq-2:#6A5626; --seq-3:#A5822F; --seq-4:#D6AC55;
+    --good:#5FA87A; --warn:#D6AC55; --crit:#DE7A68;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#131210; --card:#1C1A17; --ink:#F1ECE2; --ink-2:#CFC7B8; --muted:#9A9285;
+  --rule:#342F28; --rule-soft:#262220;
+  --red:#DE7A68; --blue:#79A6D8; --gold:#D6AC55;
+  --seq-1:#3A3122; --seq-2:#6A5626; --seq-3:#A5822F; --seq-4:#D6AC55;
+  --good:#5FA87A; --warn:#D6AC55; --crit:#DE7A68;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*,*::before,*::after { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--f-body); font-size:17px; line-height:1.45; }
+.wrap { max-width:1080px; margin:0 auto; padding:0 24px 80px; }
+h1,h2,h3 { font-family:var(--f-display); font-weight:400; text-wrap:balance;
+  letter-spacing:.01em; margin:0; text-transform:uppercase; }
+h1 { font-size:clamp(38px,6vw,64px); line-height:.96; }
+h2 { font-size:28px; letter-spacing:.02em; }
+h3 { font-size:19px; letter-spacing:.03em; color:var(--ink-2); }
+p { margin:0 0 12px; max-width:66ch; color:var(--ink-2); }
+a { color:var(--blue); }
+code,.mono { font-family:var(--f-mono); font-size:.86em; }
+.eyebrow { font-family:var(--f-mono); font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); }
+
+/* ---- masthead ---- */
+header.mast { border-bottom:2px solid var(--ink); padding:28px 0 16px; margin-bottom:0; }
+.mast-row { display:flex; gap:20px; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; }
+.mast p { margin-top:8px; }
+
+/* ---- controls ---- */
+.rail { position:sticky; top:0; z-index:20; background:var(--paper);
+  border-bottom:1px solid var(--rule); padding:10px 0; margin-bottom:28px;
+  display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+.grp { display:flex; gap:8px; align-items:center; }
+.grp > .eyebrow { margin-right:2px; }
+button.sw { font-family:var(--f-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  padding:6px 12px; border:1px solid var(--rule); background:var(--card); color:var(--ink-2);
+  border-radius:2px; cursor:pointer; }
+button.sw[aria-pressed="true"] { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+button.sw:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+/* ---- sections ---- */
+section { padding:34px 0; border-top:1px solid var(--rule-soft); }
+section > h2 { margin-bottom:4px; }
+.sub { color:var(--muted); margin-bottom:20px; font-size:15px; }
+[hidden] { display:none !important; }
+
+/* ---- scorecard ---- */
+.score { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1px;
+  background:var(--rule); border:1px solid var(--rule); margin:24px 0; }
+.score > div { background:var(--card); padding:16px 18px; }
+.score .k { font-family:var(--f-mono); font-size:10px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+.score .v { font-family:var(--f-display); font-size:34px; line-height:1;
+  font-variant-numeric:tabular-nums; }
+.score .n { display:block; font-size:14px; color:var(--muted); margin-top:5px; }
+
+/* ---- status pills ---- */
+.pill { display:inline-flex; align-items:center; gap:6px; font-family:var(--f-mono);
+  font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  padding:3px 9px; border-radius:2px; border:1px solid currentColor; }
+.pill.crit { color:var(--crit); } .pill.good { color:var(--good); } .pill.warn { color:var(--warn); }
+.pill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
+
+/* ---- progress ---- */
+.prog { margin:14px 0 22px; }
+.prog-row { display:grid; grid-template-columns:150px 1fr 92px; gap:12px; align-items:center;
+  padding:8px 0; border-bottom:1px solid var(--rule-soft); }
+.prog-lab { font-size:15px; }
+.prog-track { height:12px; background:var(--rule-soft); border:1px solid var(--rule); position:relative; }
+.prog-fill { height:100%; background:var(--seq-3); }
+.prog-fill.on { background:var(--good); }
+.prog-tgt { position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--ink); }
+.prog-val { font-family:var(--f-mono); font-size:13px; text-align:right;
+  font-variant-numeric:tabular-nums; color:var(--ink-2); }
+
+/* ---- chart ---- */
+.chart { width:100%; height:auto; display:block; }
+.chart .grid { stroke:var(--rule-soft); stroke-width:1; }
+.chart .zero { stroke:var(--rule); stroke-width:1.5; stroke-dasharray:3 3; }
+.chart .area { fill:var(--seq-1); opacity:.55; }
+.chart .line { fill:none; stroke:var(--gold); stroke-width:2; stroke-linejoin:round; }
+.chart .dot-peak { fill:var(--red); stroke:var(--card); stroke-width:2; }
+.chart .dot-start { fill:var(--muted); stroke:var(--card); stroke-width:2; }
+.chart .ax { font-family:var(--f-mono); font-size:11px; fill:var(--muted); }
+.chart .ax-y { text-anchor:end; } .chart .ax-x { text-anchor:middle; }
+.chart .anno { font-family:var(--f-mono); font-size:12px; fill:var(--ink-2); }
+.chart .anno-peak { fill:var(--red); text-anchor:end; font-weight:700; }
+.figwrap { background:var(--card); border:1px solid var(--rule); padding:18px; overflow-x:auto; }
+
+/* ---- return split ---- */
+.rs { display:flex; height:38px; border:1px solid var(--rule); background:var(--card); }
+.rs-seg { display:flex; align-items:center; justify-content:center; }
+.rs-seg + .rs-seg { border-left:2px solid var(--card); }
+.rs-seg.s0 { background:var(--seq-4); } .rs-seg.s1 { background:var(--seq-3); }
+.rs-seg.s2 { background:var(--seq-2); }
+.rs-v { font-family:var(--f-mono); font-size:12px; font-weight:700; color:var(--paper); }
+.rs-seg.s2 .rs-v { color:var(--ink); }
+.rs-keys { margin-top:12px; display:grid; gap:6px; }
+.rs-key { display:grid; grid-template-columns:14px 130px 1fr 48px; gap:10px; align-items:center;
+  font-size:15px; padding:4px 0; border-bottom:1px solid var(--rule-soft); }
+.rs-sw { width:14px; height:14px; }
+.rs-sw.s0 { background:var(--seq-4); } .rs-sw.s1 { background:var(--seq-3); }
+.rs-sw.s2 { background:var(--seq-2); }
+.rs-note { color:var(--muted); font-size:14px; }
+.rs-pct { font-family:var(--f-mono); font-size:13px; text-align:right; font-variant-numeric:tabular-nums; }
+
+/* ---- small multiples ---- */
+.sm-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:26px 32px; }
+.sm figcaption { display:flex; flex-direction:column; gap:1px; margin-bottom:10px;
+  padding-bottom:6px; border-bottom:1px solid var(--rule); }
+.sm figcaption b { font-family:var(--f-body); font-size:16px; letter-spacing:.04em;
+  text-transform:uppercase; }
+.sm figcaption span { color:var(--muted); font-size:13.5px; }
+.sm-rows { display:grid; gap:5px; }
+.sm-row { display:grid; grid-template-columns:10px 74px 1fr 46px; gap:8px; align-items:center; }
+.sm-chip { width:10px; height:10px; border-radius:50%; }
+.sm-name { font-family:var(--f-mono); font-size:11px; letter-spacing:.04em; color:var(--ink-2); }
+.sm-track { height:9px; background:var(--rule-soft); }
+.sm-fill { display:block; height:100%; background:var(--seq-3); }
+.sm-val { font-family:var(--f-mono); font-size:12px; text-align:right;
+  font-variant-numeric:tabular-nums; color:var(--ink-2); }
+.sm-scale { display:flex; justify-content:space-between; margin-top:6px;
+  font-family:var(--f-mono); font-size:10px; color:var(--muted); }
+
+/* ---- diagrams ---- */
+.dia { margin:0 0 26px; }
+.dia-frame { background:var(--card); border:1px solid var(--rule); padding:20px;
+  overflow-x:auto; box-shadow:var(--shadow); }
+.dia-frame img, .dia-frame svg { display:block; width:100%; height:auto; min-width:560px; }
+.dia figcaption { margin-top:8px; font-size:14.5px; color:var(--muted); }
+
+/* ---- tables ---- */
+.tbl { width:100%; border-collapse:collapse; font-size:15px; }
+.tbl th, .tbl td { text-align:left; padding:8px 12px; border-bottom:1px solid var(--rule-soft); vertical-align:top; }
+.tbl th { font-family:var(--f-mono); font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--rule); }
+.tbl td.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.scroll { overflow-x:auto; border:1px solid var(--rule); background:var(--card); }
+
+.note { border-left:3px solid var(--red); padding:12px 16px; background:var(--card);
+  margin:18px 0; font-size:15.5px; }
+.note b { color:var(--red); }
+footer { border-top:2px solid var(--ink); padding-top:16px; margin-top:40px;
+  font-size:14px; color:var(--muted); }
+@media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="wrap">
+<header class="mast">
+  <div class="mast-row">
+    <div>
+      <span class="eyebrow">PoRumble · ML-Agents 4.1.0 · Unity 6000.5.8f1</span>
+      <h1>Ringside</h1>
+    </div>
+    <div><span class="pill crit">Model blocked</span> <span class="pill good">Training live</span></div>
+  </div>
+  <p>Ten fighters, one ring, one network. What the policy sees, what it wants, and what
+  actually drives the arms — read at whichever depth you need.</p>
+</header>
+
+<div class="rail">
+  <div class="grp"><span class="eyebrow">View</span>
+    <button class="sw" data-mode="exec" aria-pressed="true">Executive</button>
+    <button class="sw" data-mode="tech" aria-pressed="false">Technical</button>
+  </div>
+  <div class="grp"><span class="eyebrow">Detail</span>
+    <button class="sw" data-tier="1" aria-pressed="false">1 · Brief</button>
+    <button class="sw" data-tier="2" aria-pressed="true">2 · Overview</button>
+    <button class="sw" data-tier="3" aria-pressed="false">3 · Complete</button>
+  </div>
+</div>
+
+<!-- ============================= TIER 1 ============================= -->
+<section data-tier="1,2,3" data-mode="exec,tech">
+  <span class="eyebrow">Tier 1 — the whole thing in 30 seconds</span>
+  <h2>The scorecard</h2>
+  <div class="score">
+    <div><span class="k">Policy parameters</span><span class="v">119,313</span>
+      <span class="n">two dense layers of 256</span></div>
+    <div><span class="k">Shipped model</span><span class="v">475 KB</span>
+      <span class="n">PoRumbleBoxer.onnx · opset 9</span></div>
+    <div><span class="k">Live run peak</span><span class="v">3.80</span>
+      <span class="n">from −3.21 at step 10k</span></div>
+    <div><span class="k">Steps trained</span><span class="v">430k</span>
+      <span class="n">167 steps/sec</span></div>
+  </div>
+  <div class="note"><b>The shipped model cannot load against the current game.</b>
+  It declares 200 encoder inputs (<span class="mono">obs_0[170] + obs_1[30]</span>); the rebuilt
+  observation space emits 125. Everything below describes the game as it is now — the network
+  in <span class="mono">Assets/ML-Agents/Models/</span> is one revision behind it.</div>
+</section>
+
+<!-- ============================= EXECUTIVE ============================= -->
+<section data-tier="1,2,3" data-mode="exec">
+  <span class="eyebrow">Executive</span>
+  <h2>Where the reward comes from</h2>
+  <p class="sub">A nine-kill sweep of the ten-way, decomposed. Outcomes carry the return; damage is
+  the smallest share — which is the whole point of the rebalance.</p>
+  <div class="figwrap">
+    <div class="rs"><div class="rs-seg s0" style="flex:13.5"><span class="rs-v">13.5</span></div><div class="rs-seg s1" style="flex:6.0"><span class="rs-v">6.0</span></div><div class="rs-seg s2" style="flex:5.4"><span class="rs-v">5.4</span></div></div>
+    <div class="rs-keys"><div class="rs-key"><span class="rs-sw s0"></span><b>Eliminations</b><span class="rs-note">nine at +1.5</span><span class="rs-pct">54%</span></div><div class="rs-key"><span class="rs-sw s1"></span><b>Win bonus</b><span class="rs-note">last one standing</span><span class="rs-pct">24%</span></div><div class="rs-key"><span class="rs-sw s2"></span><b>Damage</b><span class="rs-note">nine full health bars at +0.6</span><span class="rs-pct">22%</span></div></div>
+  </div>
+  <div class="note">Before the rebalance, damage was <b>0.2 per point</b> — a single knockout was
+  worth 6.0 against a win bonus of 2.0, so the objective was outscored three to one by its own
+  scaffolding. That is why the policy preferred long matches: finishing early truncates the
+  episode and caps the damage still to be farmed.</div>
+</section>
+
+<section data-tier="2,3" data-mode="exec">
+  <h2>Behaviour evolution</h2>
+  <p class="sub">Run <span class="mono">pr_v6_spar_01</span> · stage 1b, learner against the scripted
+  sparring partner · 43 summaries.</p>
+  <div class="figwrap"><svg viewBox="0 0 720 260" class="chart" role="img"
+ aria-label="Mean reward against training step for run pr_v6_spar_01: rises from -3.21 at step 10,000 to a peak of 3.80 at step 420,000">
+ <line x1="52" y1="226.0" x2="704" y2="226.0" class="grid"/><text x="44" y="230.0" class="ax ax-y">-4</text><line x1="52" y1="180.2" x2="704" y2="180.2" class="grid"/><text x="44" y="184.2" class="ax ax-y">-2</text><line x1="52" y1="134.4" x2="704" y2="134.4" class="grid"/><text x="44" y="138.4" class="ax ax-y">+0</text><line x1="52" y1="88.7" x2="704" y2="88.7" class="grid"/><text x="44" y="92.7" class="ax ax-y">+2</text><line x1="52" y1="42.9" x2="704" y2="42.9" class="grid"/><text x="44" y="46.9" class="ax ax-y">+4</text>
+ <line x1="52" y1="134.4" x2="704" y2="134.4" class="zero"/>
+ <polygon points="52.0,226.0 67.2,207.8 82.3,217.7 97.5,189.7 112.7,192.9 127.8,183.5 143.0,174.7 158.1,181.3 173.3,154.1 188.5,144.7 203.6,165.6 218.8,152.2 234.0,174.5 249.1,152.6 264.3,154.9 279.4,128.3 294.6,124.2 309.8,95.5 324.9,93.1 340.1,110.7 355.3,114.0 370.4,96.0 385.6,104.2 400.7,75.6 415.9,109.0 431.1,102.9 446.2,104.3 461.4,101.6 476.6,100.4 491.7,86.7 506.9,74.5 522.0,67.4 537.2,68.8 552.4,76.8 567.5,75.3 582.7,52.0 597.9,61.7 613.0,58.7 628.2,84.0 643.3,61.7 658.5,56.1 673.7,61.7 688.8,47.5 704.0,74.4 704.0,226.0" class="area"/>
+ <polyline points="67.2,207.8 82.3,217.7 97.5,189.7 112.7,192.9 127.8,183.5 143.0,174.7 158.1,181.3 173.3,154.1 188.5,144.7 203.6,165.6 218.8,152.2 234.0,174.5 249.1,152.6 264.3,154.9 279.4,128.3 294.6,124.2 309.8,95.5 324.9,93.1 340.1,110.7 355.3,114.0 370.4,96.0 385.6,104.2 400.7,75.6 415.9,109.0 431.1,102.9 446.2,104.3 461.4,101.6 476.6,100.4 491.7,86.7 506.9,74.5 522.0,67.4 537.2,68.8 552.4,76.8 567.5,75.3 582.7,52.0 597.9,61.7 613.0,58.7 628.2,84.0 643.3,61.7 658.5,56.1 673.7,61.7 688.8,47.5 704.0,74.4" class="line"/>
+ <circle cx="67.2" cy="207.8" r="4" class="dot-start"/>
+ <circle cx="688.8" cy="47.5" r="5" class="dot-peak"/>
+ <text x="682.8" y="35.5" class="anno anno-peak">peak 3.80</text>
+ <text x="77.2" y="223.8" class="anno">start -3.21</text>
+ <text x="52.0" y="250" class="ax ax-x">0k</text><text x="203.6" y="250" class="ax ax-x">100k</text><text x="355.3" y="250" class="ax ax-x">200k</text><text x="506.9" y="250" class="ax ax-x">300k</text><text x="658.5" y="250" class="ax ax-x">400k</text>
+ <text x="52" y="250" class="ax ax-x" style="text-anchor:start">0</text>
+</svg></div>
+  <div class="prog">
+    <div class="prog-row"><span class="prog-lab">Mean reward</span>
+      <span class="prog-track"><span class="prog-fill on" style="width:66%"></span><span class="prog-tgt" style="left:80%"></span></span>
+      <span class="prog-val">2.62 / 6.0</span></div>
+    <div class="prog-row"><span class="prog-lab">Peak reward</span>
+      <span class="prog-track"><span class="prog-fill on" style="width:78%"></span><span class="prog-tgt" style="left:80%"></span></span>
+      <span class="prog-val">3.80 / 6.0</span></div>
+    <div class="prog-row"><span class="prog-lab">Curriculum</span>
+      <span class="prog-track"><span class="prog-fill" style="width:57%"></span><span class="prog-tgt" style="left:100%"></span></span>
+      <span class="prog-val">lesson 1 of 3</span></div>
+    <div class="prog-row"><span class="prog-lab">Run budget</span>
+      <span class="prog-track"><span class="prog-fill" style="width:8.6%"></span></span>
+      <span class="prog-val">430k / 5M</span></div>
+  </div>
+  <p>The vertical rule marks the target. Reward crossed from negative to positive around step
+  120k — the moment the policy stopped simply losing. Per the project's own rule, nothing under
+  ~2M steps is a trend: per-summary swings of ±0.4 here are noise.</p>
+</section>
+
+<section data-tier="2,3" data-mode="exec">
+  <h2>How it runs</h2>
+  <p class="sub">Conceptual — the loop without the machinery.</p>
+  <figure class="dia"><div class="dia-frame"><img src="assets/lifecycle-simple.svg" alt="One turn of the loop: observe, decide, fight, check whether anybody is left standing." /></div><figcaption>One turn of the loop: observe, decide, fight, check whether anybody is left standing.</figcaption></figure>
+  <figure class="dia"><div class="dia-frame"><img src="assets/motivation-simple.svg" alt="What a fighter is actually trying to do, in its own terms." /></div><figcaption>What a fighter is actually trying to do, in its own terms.</figcaption></figure>
+</section>
+
+<section data-tier="3" data-mode="exec">
+  <h2>What it wants, in full</h2>
+  <figure class="dia"><div class="dia-frame"><img src="assets/motivation-detailed.svg" alt="The motivation stack: taught behaviours that fade, appetites that persist, and one goal." /></div><figcaption>The motivation stack: taught behaviours that fade, appetites that persist, and one goal.</figcaption></figure>
+  <figure class="dia"><div class="dia-frame"><img src="assets/run-loop-motivation.svg" alt="The same weights under two very different regimes." /></div><figcaption>The same weights under two very different regimes.</figcaption></figure>
+</section>
+
+<!-- ============================= TECHNICAL ============================= -->
+<section data-tier="1,2,3" data-mode="tech">
+  <span class="eyebrow">Technical</span>
+  <h2>Tensor blueprint</h2>
+  <p class="sub">Shapes read from the ONNX file, not inferred from the config.</p>
+  <figure class="dia"><div class="dia-frame"><img src="assets/tensor-simple.svg" alt="The signal path, conceptually." /></div><figcaption>The signal path, conceptually.</figcaption></figure>
+</section>
+
+<section data-tier="2,3" data-mode="tech">
+  <h2>Observation vector</h2>
+  <p class="sub">What <span class="mono">CollectObservations</span> writes, in order. Twenty floats,
+  stacked twice.</p>
+  <div class="scroll"><table class="tbl">
+    <thead><tr><th>#</th><th>Observation</th><th>Normalisation</th><th>Why it is there</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>health</td><td class="num">÷ MaxHealth</td><td>how close to going out</td></tr>
+      <tr><td class="num">1–2</td><td>facing</td><td class="num">unit</td><td>the face arc is centred on it</td></tr>
+      <tr><td class="num">3–4</td><td>move input</td><td class="num">−1…1</td><td>what it asked for last tick</td></tr>
+      <tr><td class="num">5</td><td>left arm extension</td><td class="num">0…1</td><td>mid-punch or not</td></tr>
+      <tr><td class="num">6</td><td>left arm ready</td><td class="num">0/1</td><td>can it throw</td></tr>
+      <tr><td class="num">7</td><td>right arm extension</td><td class="num">0…1</td><td>—</td></tr>
+      <tr><td class="num">8</td><td>right arm ready</td><td class="num">0/1</td><td>—</td></tr>
+      <tr><td class="num">9</td><td>survivors</td><td class="num">÷ roster</td><td>how far through the battle royale</td></tr>
+      <tr><td class="num">10</td><td>stamina</td><td class="num">0…1</td><td>throughput and damage both scale off it</td></tr>
+      <tr><td class="num">11–12</td><td>ring position</td><td class="num">÷ half extent</td><td>rays give distance, not which corner</td></tr>
+      <tr><td class="num">13–14</td><td>velocity</td><td class="num">÷ MoveSpeed</td><td>it coasts; intent and travel diverge</td></tr>
+      <tr><td class="num">15</td><td><b>stun</b></td><td class="num">÷ MaxStun</td><td>a boxer knows when its legs have gone</td></tr>
+      <tr><td class="num">16–17</td><td><b>bearing to nearest</b></td><td class="num">cos, sin</td><td>exact and signed where 17 rays are coarse; survives an opponent behind it</td></tr>
+      <tr><td class="num">18</td><td><b>range to nearest</b></td><td class="num">÷ ring diagonal</td><td>—</td></tr>
+      <tr><td class="num">19</td><td><b>incoming punch</b></td><td class="num">0…1</td><td>without it the slip is unusable: the window only exists for something that can see an arm travelling</td></tr>
+    </tbody>
+  </table></div>
+  <p>Bold entries are new. Alongside these the ray sensor contributes
+  <span class="mono">17 × (3 tags + 2) = 85</span> floats at one stack — 180° of forward vision,
+  reach 24, batched casts. A fighter is deliberately blind behind it.</p>
+</section>
+
+<section data-tier="3" data-mode="tech">
+  <h2>Full tensor and actuator map</h2>
+  <figure class="dia"><div class="dia-frame"><img src="assets/tensor-detailed.svg" alt="Every declared tensor, the dense stack, both action heads, the two side channels, and the joint drive they end up commanding." /></div><figcaption>Every declared tensor, the dense stack, both action heads, the two side channels, and the joint drive they end up commanding.</figcaption></figure>
+</section>
+
+<section data-tier="2,3" data-mode="tech">
+  <h2>Execution loop</h2>
+  <figure class="dia"><div class="dia-frame"><img src="assets/lifecycle-detailed.svg" alt="The full fixed-step loop, terminal checks and episode boundary." /></div><figcaption>The full fixed-step loop, terminal checks and episode boundary.</figcaption></figure>
+</section>
+
+<section data-tier="2,3" data-mode="tech">
+  <h2>Reward tree</h2>
+  <figure class="dia"><div class="dia-frame"><img src="assets/reward-detailed.svg" alt="Perception, event rewards, terminal rewards and the shaping terms the curriculum fades out." /></div><figcaption>Perception, event rewards, terminal rewards and the shaping terms the curriculum fades out.</figcaption></figure>
+</section>
+
+<section data-tier="3" data-mode="tech">
+  <h2>Joint drive</h2>
+  <p class="sub">Six revolute DOF per fighter. No ArticulationBody, no ConfigurableJoint, no SLERP —
+  a 2D hinge has no orientation to interpolate.</p>
+  <div class="scroll"><table class="tbl">
+    <thead><tr><th>Segment</th><th>Mass</th><th>Joint</th><th>Limits</th><th>Torque</th><th>Colliders</th></tr></thead>
+    <tbody>
+      <tr><td>Torso</td><td class="num">1.00</td><td>kinematic</td><td>—</td><td>—</td><td>circle r 0.64 · face probe r 0.80</td></tr>
+      <tr><td>Upper arm</td><td class="num">0.030</td><td>shoulder → torso</td><td class="num">−45…80°</td><td class="num">260</td><td>capsule 0.28 × 0.73</td></tr>
+      <tr><td>Forearm</td><td class="num">0.018</td><td>elbow → upper arm</td><td class="num">0…145°</td><td class="num">143</td><td>capsule 0.28 × 0.78</td></tr>
+      <tr><td>Glove</td><td class="num">0.012</td><td>wrist → forearm</td><td class="num">±25°</td><td class="num">52</td><td>circle r 0.30</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><b>The servo is a P controller, and its error must wrap.</b>
+  <span class="mono">HingeJoint2D.jointAngle</span> is cumulative and never wraps at 180°, so a raw
+  <span class="mono">target − jointAngle</span> runs away once a joint gets round: measured mid-fight
+  at −6543° asking for 300,000 °/s, gloves nine units from their own torso and never recovering.
+  <span class="mono">Mathf.DeltaAngle</span> plus an 1800 °/s clamp is the fix.</div>
+</section>
+
+<section data-tier="3" data-mode="tech">
+  <h2>Trainer specification</h2>
+  <figure class="dia"><div class="dia-frame"><img src="assets/hyperparams-detailed.svg" alt="The three configs, what they share, and the three settings that were quietly wrong." /></div><figcaption>The three configs, what they share, and the three settings that were quietly wrong.</figcaption></figure>
+  <div class="scroll"><table class="tbl">
+    <thead><tr><th>Setting</th><th>spar</th><th>ppo</th><th>ffa</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>batch / buffer</td><td class="num">1024 / 10240</td><td class="num">1024 / 10240</td><td class="num">2048 / 20480</td><td>ten agents produce more per step</td></tr>
+      <tr><td>beta</td><td class="num">1.0e-3</td><td class="num">5.0e-3</td><td class="num">2.0e-3</td><td>ffa transfers in with entropy already low</td></tr>
+      <tr><td>gamma</td><td class="num">0.997</td><td class="num">0.997</td><td class="num">0.997</td><td>500 decisions, not 300 — was 0.995</td></tr>
+      <tr><td>time_horizon</td><td class="num">256</td><td class="num">256</td><td class="num">256</td><td>was 128, below the discount horizon</td></tr>
+      <tr><td>max_steps</td><td class="num">5M</td><td class="num">8M</td><td class="num">8M</td><td>—</td></tr>
+      <tr><td>keep_checkpoints</td><td class="num">50</td><td class="num">40</td><td class="num">80</td><td>must cover max_steps ÷ interval</td></tr>
+      <tr><td>self_play</td><td>—</td><td>yes</td><td>—</td><td>an FFA is not a two-team game</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================= FIGHTERS ============================= -->
+<section data-tier="2,3" data-mode="exec,tech">
+  <h2>The card</h2>
+  <p class="sub">One network drives all six. <span class="mono">StyleModulator</span> bends the actions
+  it produced on the way to the boxer — so they share a brain and differ in how they use it.
+  Bars are magnitude on one hue; the coloured chip is the fighter's ring colour, carrying identity only.</p>
+  <div class="sm-grid"><figure class="sm"><figcaption><b>Pressure</b><span>forward bias added to the policy's move vector</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:50.0%"></span></span><span class="sm-val">-0.05</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">+0.55</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:66.7%"></span></span><span class="sm-val">+0.15</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:83.3%"></span></span><span class="sm-val">+0.35</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">-0.65</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:37.5%"></span></span><span class="sm-val">-0.20</span></div></div><div class="sm-scale"><span>-0.65</span><span>0.55</span></div></figure><figure class="sm"><figcaption><b>Circling</b><span>lateral drift, one fixed direction per fighter</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:17.6%"></span></span><span class="sm-val">0.15</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">0.85</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:11.8%"></span></span><span class="sm-val">0.10</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:52.9%"></span></span><span class="sm-val">0.45</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:64.7%"></span></span><span class="sm-val">0.55</span></div></div><div class="sm-scale"><span>0</span><span>0.85</span></div></figure><figure class="sm"><figcaption><b>Punch gate</b><span>share of the network's punches let through</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:35.0%"></span></span><span class="sm-val">0.35</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:70.0%"></span></span><span class="sm-val">0.70</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">1.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">1.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:50.0%"></span></span><span class="sm-val">0.50</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:60.0%"></span></span><span class="sm-val">0.60</span></div></div><div class="sm-scale"><span>0</span><span>1</span></div></figure><figure class="sm"><figcaption><b>Opportunism</b><span>punches thrown that the network did not ask for</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:23.1%"></span></span><span class="sm-val">0.15</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">0.65</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:69.2%"></span></span><span class="sm-val">0.45</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:23.1%"></span></span><span class="sm-val">0.15</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:7.7%"></span></span><span class="sm-val">0.05</span></div></div><div class="sm-scale"><span>0</span><span>0.65</span></div></figure><figure class="sm"><figcaption><b>Haymaker</b><span>chance per second of winding one up at an opening</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:54.5%"></span></span><span class="sm-val">0.30</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">0.55</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:18.2%"></span></span><span class="sm-val">0.10</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:72.7%"></span></span><span class="sm-val">0.40</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.00</span></div></div><div class="sm-scale"><span>0</span><span>0.55</span></div></figure><figure class="sm"><figcaption><b>Slip</b><span>chance of slipping a punch it can actually see coming</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:47.4%"></span></span><span class="sm-val">0.45</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:26.3%"></span></span><span class="sm-val">0.25</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:15.8%"></span></span><span class="sm-val">0.15</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:36.8%"></span></span><span class="sm-val">0.35</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">0.95</span></div></div><div class="sm-scale"><span>0</span><span>0.95</span></div></figure><figure class="sm"><figcaption><b>Power</b><span>damage dealt multiplier</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:75.0%"></span></span><span class="sm-val">1.25</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">1.45</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:6.2%"></span></span><span class="sm-val">0.70</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:31.2%"></span></span><span class="sm-val">0.90</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:87.5%"></span></span><span class="sm-val">1.35</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.65</span></div></div><div class="sm-scale"><span>0.65</span><span>1.45</span></div></figure><figure class="sm"><figcaption><b>Chin</b><span>damage TAKEN multiplier - lower is a better chin</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:28.6%"></span></span><span class="sm-val">0.90</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:2.0%"></span></span><span class="sm-val">0.70</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">1.40</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:42.9%"></span></span><span class="sm-val">1.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:50.0%"></span></span><span class="sm-val">1.05</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:21.4%"></span></span><span class="sm-val">0.85</span></div></div><div class="sm-scale"><span>0.7</span><span>1.4</span></div></figure><figure class="sm"><figcaption><b>Speed</b><span>movement effort and slip burst</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:37.5%"></span></span><span class="sm-val">0.95</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:18.8%"></span></span><span class="sm-val">0.80</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:87.5%"></span></span><span class="sm-val">1.35</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:43.8%"></span></span><span class="sm-val">1.00</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:50.0%"></span></span><span class="sm-val">1.05</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:75.0%"></span></span><span class="sm-val">1.25</span></div></div><div class="sm-scale"><span>0.65</span><span>1.45</span></div></figure><figure class="sm"><figcaption><b>Recovery</b><span>stamina regained per second</span></figcaption><div class="sm-rows"><div class="sm-row"><span class="sm-chip" style="background:#4A82D6"></span><span class="sm-name">ALAN</span><span class="sm-track"><span class="sm-fill" style="width:38.9%"></span></span><span class="sm-val">1.05</span></div><div class="sm-row"><span class="sm-chip" style="background:#D94A3D"></span><span class="sm-name">BIGGIE</span><span class="sm-track"><span class="sm-fill" style="width:16.7%"></span></span><span class="sm-val">0.85</span></div><div class="sm-row"><span class="sm-chip" style="background:#F2C740"></span><span class="sm-name">BLIPPI</span><span class="sm-track"><span class="sm-fill" style="width:44.4%"></span></span><span class="sm-val">1.10</span></div><div class="sm-row"><span class="sm-chip" style="background:#66BA5C"></span><span class="sm-name">BRENDAN</span><span class="sm-track"><span class="sm-fill" style="width:100.0%"></span></span><span class="sm-val">1.60</span></div><div class="sm-row"><span class="sm-chip" style="background:#B866C7"></span><span class="sm-name">DUPEE</span><span class="sm-track"><span class="sm-fill" style="width:27.8%"></span></span><span class="sm-val">0.95</span></div><div class="sm-row"><span class="sm-chip" style="background:#59C2C2"></span><span class="sm-name">EPSTEIN</span><span class="sm-track"><span class="sm-fill" style="width:50.0%"></span></span><span class="sm-val">1.15</span></div></div><div class="sm-scale"><span>0.7</span><span>1.6</span></div></figure></div>
+  <div class="note"><b>Chin is inverted:</b> it multiplies damage <i>taken</i>, so BIGGIE at 0.70 is
+  granite and BLIPPI at 1.40 is glass. The aim is never bent — pointing at an opponent is the one
+  thing the network is genuinely good at, and rotating its output produces a worse fighter rather
+  than a different one.</div>
+</section>
+
+<footer>
+  <p>Generated 2026-09-03 from the working tree — ONNX shapes read from the file, rig values from
+  <span class="mono">Boxer.prefab</span>, the curve from the live trainer log. Diagram sources in
+  <span class="mono">DOCS/diagrams/</span>.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var mode = "exec", tier = "2";
+  function apply() {
+    document.querySelectorAll("section[data-tier]").forEach(function (s) {
+      var okT = s.dataset.tier.split(",").indexOf(tier) > -1;
+      var okM = s.dataset.mode.split(",").indexOf(mode) > -1;
+      s.hidden = !(okT && okM);
+    });
+    document.querySelectorAll("button[data-mode]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.mode === mode));
+    });
+    document.querySelectorAll("button[data-tier]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.tier === tier));
+    });
+  }
+  document.querySelectorAll("button[data-mode]").forEach(function (b) {
+    b.addEventListener("click", function () { mode = b.dataset.mode; apply(); });
+  });
+  document.querySelectorAll("button[data-tier]").forEach(function (b) {
+    b.addEventListener("click", function () { tier = b.dataset.tier; apply(); });
+  });
+  apply();
+})();
+</script>

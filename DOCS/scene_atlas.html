@@ -1,0 +1,97 @@
+<title>Four Rings</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap"><style>
+:root{--paper:#F7F4ED;--card:#FFFDF8;--ink:#16171B;--ink-2:#4A463F;--muted:#736C60;
+--rule:#DED7C8;--rule-soft:#EBE5D8;--red:#B23A2E;--blue:#2C5A87;--gold:#8A6410;
+--seq-1:#EFE0BC;--seq-2:#D9BE7E;--seq-3:#B8933C;--seq-4:#8A6410;--good:#2F6B44;--crit:#B23A2E;
+--f-display:'Anton',Impact,sans-serif;--f-body:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
+--f-mono:'Space Mono',ui-monospace,Menlo,monospace;}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#131210;--card:#1C1A17;
+--ink:#F1ECE2;--ink-2:#CFC7B8;--muted:#9A9285;--rule:#342F28;--rule-soft:#262220;--red:#DE7A68;
+--blue:#79A6D8;--gold:#D6AC55;--seq-1:#3A3122;--seq-2:#6A5626;--seq-3:#A5822F;--seq-4:#D6AC55;
+--good:#5FA87A;--crit:#DE7A68;}}
+:root[data-theme="dark"]{--paper:#131210;--card:#1C1A17;--ink:#F1ECE2;--ink-2:#CFC7B8;--muted:#9A9285;
+--rule:#342F28;--rule-soft:#262220;--red:#DE7A68;--blue:#79A6D8;--gold:#D6AC55;--seq-1:#3A3122;
+--seq-2:#6A5626;--seq-3:#A5822F;--seq-4:#D6AC55;--good:#5FA87A;--crit:#DE7A68;}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.45}
+.wrap{max-width:1000px;margin:0 auto;padding:0 24px 72px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;text-transform:uppercase;text-wrap:balance;margin:0}
+h1{font-size:clamp(34px,5.5vw,56px);line-height:.98}h2{font-size:26px}h3{font-size:18px;color:var(--ink-2)}
+p{margin:0 0 12px;max-width:66ch;color:var(--ink-2)}
+a{color:var(--blue)}code,.mono{font-family:var(--f-mono);font-size:.86em}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+header.mast{border-bottom:2px solid var(--ink);padding:28px 0 16px}
+section{padding:32px 0;border-top:1px solid var(--rule-soft)}
+.sub{color:var(--muted);margin-bottom:18px;font-size:15px}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th,.tbl td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+.tbl th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+color:var(--muted);border-bottom:1px solid var(--rule)}
+.tbl td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--card)}
+.note{border-left:3px solid var(--red);padding:12px 16px;background:var(--card);margin:18px 0;font-size:15.5px}
+.note b{color:var(--red)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1px;background:var(--rule);
+border:1px solid var(--rule)}
+.cards>article{background:var(--card);padding:18px 20px}
+.cards h3{margin-bottom:2px}
+.cards .meta{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:10px}
+.cards ul{margin:8px 0 0;padding-left:18px;font-size:15px;color:var(--ink-2)}
+.cards li{margin-bottom:4px}
+.dia{margin:0 0 24px}
+.dia-frame{background:var(--card);border:1px solid var(--rule);padding:20px;overflow-x:auto}
+.dia-frame img{display:block;width:100%;height:auto;min-width:540px}
+.dia figcaption{margin-top:8px;font-size:14.5px;color:var(--muted)}
+.sm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px 30px}
+.sm figcaption{display:flex;flex-direction:column;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.sm figcaption b{font-family:var(--f-body);font-size:16px;letter-spacing:.04em;text-transform:uppercase}
+.sm figcaption span{color:var(--muted);font-size:13.5px}
+.sm-rows{display:grid;gap:5px}
+.sm-row{display:grid;grid-template-columns:10px 74px 1fr 46px;gap:8px;align-items:center}
+.sm-chip{width:10px;height:10px;border-radius:50%}
+.sm-name{font-family:var(--f-mono);font-size:11px;color:var(--ink-2)}
+.sm-track{height:9px;background:var(--rule-soft)}
+.sm-fill{display:block;height:100%;background:var(--seq-3)}
+.sm-val{font-family:var(--f-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.sm-scale{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--f-mono);font-size:10px;color:var(--muted)}
+footer{border-top:2px solid var(--ink);padding-top:16px;margin-top:36px;font-size:14px;color:var(--muted)}
+</style>
+<div class="wrap"><header class="mast"><span class="eyebrow">PoRumble · scene inventory</span>
+<h1>Four Rings</h1>
+<p>Every scene in the project, what is in it, and what each object is for. Component counts were
+read from the scene files, not from documentation.</p></header>
+
+<section><span class="eyebrow">Tier 1</span><h2>In one line each</h2>
+<div class="scroll"><table class="tbl">
+<thead><tr><th>Scene</th><th>Job</th><th>Agents</th><th>Auto-restart</th><th>Presentation</th></tr></thead>
+<tbody>
+<tr><td>SampleScene</td><td>the game</td><td class="num">10</td><td>no</td><td>full — HUD, camera, audio, FX</td></tr>
+<tr><td>Training1v1</td><td>stage 1 curriculum</td><td class="num">2</td><td>yes</td><td>none</td></tr>
+<tr><td>Training10</td><td>stage 3 curriculum</td><td class="num">10</td><td>yes</td><td>none</td></tr>
+<tr><td>Training10x8</td><td>parallel throughput</td><td class="num">80</td><td>yes</td><td>none</td></tr>
+</tbody></table></div></section>
+
+<section><span class="eyebrow">Tier 2</span><h2>What is in each</h2>
+<div class="cards"><article><h3>SampleScene</h3><div class="meta">The game — 40 × 40 ring · 10 boxers · full presentation</div><ul><li><b>GameLifetimeScope</b> — binds every model, system and view; installs the single ring itself because there are no arena children</li><li><b>Ring</b> — Walls, Floor, Posts, SpawnPoints, Boxers — the ring dressing; walls carry BoxCollider2D but do not contain anyone — positions are model-driven and clamped in BoxerSystem</li><li><b>CameraRig</b> — CinemachineCamera + Brain + ImpulseListener — SpectatorCameraView writes the transform directly and frames one exchange, not the whole field</li><li><b>CombatFeedback</b> — hitstop, impulse shake, five particle systems, impact lights, all audio</li><li><b>MatchHud / PlayerStatusHud / Standings / RosterCard / DiagnosticsHud</b> — five UIDocuments; layouts in UXML, styling from porumble.uss</li><li><b>RingLighting</b> — house lights down and key light in as the field thins</li><li><b>KnockoutMood</b> — blends a desaturated grade and the mixer's Knockout snapshot</li><li><b>MatchInput</b> — the restart key</li></ul></article><article><h3>Training1v1</h3><div class="meta">Curriculum stage 1 — 20 × 14 ring · 2 boxers · spawn radius 4.5 · auto-restart</div><ul><li><b>GameLifetimeScope</b> — same bindings; every presentation view is simply absent and injected optionally</li><li><b>BoxerSpawnPoints</b> — boxerCount 2, scriptedBoxerIds [1] — one learner against the hand-written sparring brain</li><li><b>2 × BoxerView</b> — pre-placed rather than instantiated, so the ring is visible without entering play mode</li><li>no HUD, no camera rig, no feedback — a countdown would burn episode steps on animation</li></ul></article><article><h3>Training10</h3><div class="meta">Curriculum stage 3 — 40 × 40 ring · 10 boxers · spawn radius 15 · auto-restart</div><ul><li><b>GameLifetimeScope</b> — one ring, installed at the root</li><li><b>Ring/SpawnPoints</b> — ten spawn transforms dealt round a circle, rotated and jittered every episode</li><li><b>Boxer_Template</b> — an inactive scene copy; the spawner instantiates from the prefab asset</li><li><b>DebugInputView</b> — <span class="mono">missing script</span> — the referenced script no longer exists; logs a warning on every run. Pre-existing, harmless, worth deleting</li></ul></article><article><h3>Training10x8</h3><div class="meta">Parallel training — generated — 8 rings, 80 units apart · 80 agents · auto-restart</div><ul><li><b>GameLifetimeScope</b> — registers only the shared half — config, roster, ratings — and skips the per-ring install because arena children exist</li><li><b>8 × Arena_NN</b> → <b>ArenaLifetimeScope</b> — each owns its own MatchModel, BoxerSystem, MatchDirector and message brokers</li><li><b>8 × Ring</b> — identical copies, offset on a 3-column grid</li><li>spacing 80 — the ring is 40 across and RayLength is 24, so anything under 64 lets a fighter perceive the fight next door</li></ul></article></div></section>
+
+<section><span class="eyebrow">Tier 3</span><h2>Verified component census</h2>
+<p class="sub">Counted from the <span class="mono">.unity</span> files by MonoBehaviour class identifier.</p>
+<div class="scroll"><table class="tbl">
+<thead><tr><th>Component</th><th>SampleScene</th><th>Training1v1</th><th>Training10</th><th>Training10x8</th></tr></thead>
+<tbody>
+<tr><td>GameLifetimeScope</td><td class="num">1</td><td class="num">1</td><td class="num">1</td><td class="num">1</td></tr>
+<tr><td>ArenaLifetimeScope</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">8</td></tr>
+<tr><td>BoxerSpawnPoints</td><td class="num">1</td><td class="num">1</td><td class="num">1</td><td class="num">8</td></tr>
+<tr><td>BoxerView (pre-placed)</td><td class="num">—</td><td class="num">2</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>UIDocument</td><td class="num">5</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>Cinemachine (brain/camera/impulse)</td><td class="num">4</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>Presentation views (HUD, FX, mood, atmosphere)</td><td class="num">10</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>DebugInputView (missing script)</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td class="num">1</td></tr>
+<tr><td>GameObjects (total)</td><td class="num">69</td><td class="num">16</td><td class="num">27</td><td class="num">203</td></tr>
+</tbody></table></div>
+<div class="note"><b>Every presentation component is optional by design.</b>
+<span class="mono">GameLifetimeScope</span> injects them with <span class="mono">InjectOptional</span>
+rather than <span class="mono">RegisterComponentInHierarchy</span>, which would throw when they are
+absent — and that is exactly why the training scenes can omit all ten of them.</div>
+</section>
+
+<footer><p>Generated 2026-09-03 · sources: <span class="mono">Assets/Scenes/*.unity</span></p></footer></div>

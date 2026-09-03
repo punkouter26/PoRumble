@@ -1,0 +1,183 @@
+<title>What The Fighter Wants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500&family=Geist+Mono:wght@400&display=swap">
+<style>
+/* Design system: cathrynlavery/diagram-design.
+   Paper white-smoke, ink jet-black, ONE atomic-tangerine accent reserved for 1-2 focal
+   elements, blue-slate muted, silver hairlines. 1px borders, no shadows, radius <= 10px.
+   Every gap and inset divisible by 4. Target density 4/10 - the whitespace is the point. */
+:root {
+  --paper:#F5F5F5; --surface:#FFFFFF; --ink:#242424; --ink-2:#3D3D3D;
+  --muted:#6A7B8C; --hairline:#C0C0C0; --hairline-soft:#E4E4E4;
+  --accent:#F99E62; --accent-line:#D97B3E;
+  --serif:'Instrument Serif',Georgia,'Times New Roman',serif;
+  --sans:'Geist','Helvetica Neue',Arial,system-ui,sans-serif;
+  --mono:'Geist Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#141414; --surface:#1C1C1C; --ink:#EDEDED; --ink-2:#C8C8C8;
+    --muted:#8FA3B6; --hairline:#3A3A3A; --hairline-soft:#2A2A2A;
+    --accent:#F0A472; --accent-line:#C97F4A;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#141414; --surface:#1C1C1C; --ink:#EDEDED; --ink-2:#C8C8C8;
+  --muted:#8FA3B6; --hairline:#3A3A3A; --hairline-soft:#2A2A2A;
+  --accent:#F0A472; --accent-line:#C97F4A;
+}
+*,*::before,*::after { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.6; }
+.wrap { max-width:848px; margin:0 auto; padding:0 24px 96px; }
+
+h1 { font-family:var(--serif); font-weight:400; font-size:clamp(40px,6vw,68px);
+  line-height:1.04; letter-spacing:-0.01em; margin:0 0 16px; text-wrap:balance; }
+h2 { font-family:var(--serif); font-weight:400; font-size:32px; line-height:1.2;
+  margin:0 0 8px; text-wrap:balance; }
+h3 { font-family:var(--sans); font-weight:500; font-size:15px; letter-spacing:0.04em;
+  text-transform:uppercase; color:var(--muted); margin:0 0 12px; }
+p { margin:0 0 16px; max-width:64ch; color:var(--ink-2); }
+.lede { font-family:var(--serif); font-size:22px; line-height:1.45; color:var(--ink); font-style:italic; }
+.mono { font-family:var(--mono); font-size:0.86em; }
+a { color:var(--accent-line); }
+
+header { padding:96px 0 48px; }
+.kicker { font-family:var(--mono); font-size:11px; letter-spacing:0.14em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:20px; }
+
+section { padding:48px 0; border-top:1px solid var(--hairline-soft); }
+
+figure { margin:0 0 32px; }
+.frame { background:var(--surface); border:1px solid var(--hairline); border-radius:8px;
+  padding:32px; overflow-x:auto; }
+.frame img { display:block; width:100%; height:auto; min-width:520px; }
+figcaption { margin-top:12px; font-family:var(--serif); font-style:italic;
+  font-size:17px; color:var(--muted); }
+
+.pull { border-left:2px solid var(--accent); padding:4px 0 4px 20px; margin:32px 0;
+  font-family:var(--serif); font-style:italic; font-size:21px; line-height:1.4; color:var(--ink); }
+
+.rows { display:grid; gap:0; margin:24px 0 0; }
+.row { display:grid; grid-template-columns:180px 1fr; gap:24px; padding:16px 0;
+  border-bottom:1px solid var(--hairline-soft); align-items:baseline; }
+.row dt { font-family:var(--mono); font-size:12px; letter-spacing:0.04em; color:var(--muted); }
+.row dd { margin:0; color:var(--ink-2); }
+.row dd b { color:var(--ink); font-weight:500; }
+
+.split { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:24px; }
+@media (max-width:680px) { .split { grid-template-columns:1fr; } .row { grid-template-columns:1fr; gap:4px; } }
+.col { border:1px solid var(--hairline); border-radius:8px; padding:24px; background:var(--surface); }
+.col h3 { margin-bottom:16px; }
+.col ul { margin:0; padding-left:20px; }
+.col li { margin-bottom:8px; color:var(--ink-2); }
+.col.focal { border-color:var(--accent-line); }
+
+.num { font-family:var(--mono); font-variant-numeric:tabular-nums; color:var(--ink); }
+footer { padding-top:24px; border-top:1px solid var(--hairline); margin-top:48px;
+  font-family:var(--mono); font-size:12px; color:var(--muted); }
+@media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="kicker">PoRumble — a second reading</div>
+  <h1>What the fighter wants</h1>
+  <p class="lede">The same 119,313 numbers that play the game learned it by wanting things.
+  This is the shape of that wanting.</p>
+</header>
+
+<section>
+  <h3>Tier 1 — thirty seconds</h3>
+  <h2>It wants to be the last one standing</h2>
+  <p>Everything else is instrumental. Finding someone, closing to arm's length, hitting a face
+  rather than a guard, not being hit back — none of these are goals. They are what winning
+  decomposes into, and the agent is paid for them only until it stops needing the help.</p>
+  <figure>
+    <div class="frame"><img src="assets/motivation-simple.svg" alt="A single loop: find someone, close the distance, hit the face, do not get hit back, be the last standing." /></div>
+    <figcaption>The whole motivation, before any machinery.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h3>Tier 2 — the two clocks</h3>
+  <h2>Wanting that expires, and wanting that does not</h2>
+  <p>Three of the rewards are scaffolding. They pay per step for facing the nearest opponent,
+  for walking toward them, and for standing at punching range — exactly the right things to
+  reward when a fighter cannot yet find anybody, and exactly the wrong things once it can.
+  Hovering at reach without throwing scores almost as well as fighting.</p>
+  <div class="pull">So the scaffolding is switched off on a schedule.
+  <span class="mono">shaping_scale</span> steps 1.0 → 0.5 → 0.0 across the first 30% of a run,
+  and what is left is the fight.</div>
+  <figure>
+    <div class="frame"><img src="assets/motivation-detailed.svg" alt="Taught behaviours that fade, appetites felt every exchange, one goal, and the learning loop underneath." /></div>
+    <figcaption>Taught behaviours fade; appetites persist; one goal sits behind both.</figcaption>
+  </figure>
+  <dl class="rows">
+    <div class="row"><dt>the bell</dt><dd><b>500 decisions.</b> An episode is 2,500 physics steps at a decision every 5. Standing still costs <span class="num">−1.0</span> spread across all of them, so idling is never free.</dd></div>
+    <div class="row"><dt>the horizon</dt><dd><b>γ = 0.997.</b> The win is still worth <span class="num">0.22</span> at the opening bell. At 0.995 it was worth <span class="num">0.08</span> — too faint to shape the early game, which is why the policy optimised the dense terms instead.</dd></div>
+    <div class="row"><dt>memory</dt><dd><b>256 steps.</b> Below the discount horizon the value estimate bootstraps before the terminal reward can reach it. It was 128.</dd></div>
+  </dl>
+</section>
+
+<section>
+  <h3>Tier 2 — two regimes</h3>
+  <h2>Training is not playing</h2>
+  <figure>
+    <div class="frame"><img src="assets/run-loop-motivation.svg" alt="Training conditions on the left, playing conditions on the right, the same weights driving both." /></div>
+    <figcaption>The same weights, under conditions that share almost nothing else.</figcaption>
+  </figure>
+  <div class="split">
+    <div class="col">
+      <h3>Training</h3>
+      <ul>
+        <li>Eight rings at once, 80 units apart — closer and a fighter sees the fight next door</li>
+        <li>Arms posed from the model, solver off: 60 bodies and 60 joints per ring that decide nothing</li>
+        <li>No camera, no HUD, no audio — every presentation component is optional and absent</li>
+        <li>Episode ends and re-racks roughly every 50 seconds of simulated time</li>
+        <li>It is allowed to be wrong. Being wrong is the data</li>
+      </ul>
+    </div>
+    <div class="col focal">
+      <h3>Playing</h3>
+      <ul>
+        <li>One ring, ten seats, a fight card that can be re-dealt between matches</li>
+        <li>Arms on real hinge joints, servoed every physics step</li>
+        <li>A <span class="mono">StyleModulator</span> bends its choices into a personality</li>
+        <li>An Elo table remembers across sessions</li>
+        <li>It gets one go</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h3>Tier 3 — the loop underneath</h3>
+  <h2>How wanting becomes weights</h2>
+  <p>The agent acts, remembers a window of what happened, compares it against what it expected,
+  and adjusts toward whatever beat the expectation. PPO's clip keeps each adjustment small enough
+  that one lucky round cannot rewrite the fighter.</p>
+  <figure>
+    <div class="frame"><img src="assets/lifecycle-detailed.svg" alt="The full fixed-step execution loop from decision request through to episode reset." /></div>
+    <figcaption>One turn, in full: observe, infer, act, simulate, check for a terminal state.</figcaption>
+  </figure>
+  <dl class="rows">
+    <div class="row"><dt>observe</dt><dd>17 rays across a <span class="num">180°</span> forward arc plus 20 self scalars, stacked twice. It is blind behind itself, deliberately — so is a boxer.</dd></div>
+    <div class="row"><dt>decide</dt><dd>Two dense layers of 256. Four continuous outputs and two binary ones. No memory, no recurrence — <span class="mono">memory_size</span> is 0.</dd></div>
+    <div class="row"><dt>act</dt><dd>Move, aim, and one switch per fist. The haymaker and the slip are <b>not</b> actions — they ride side channels, because growing the action vector stops any compiled policy loading.</dd></div>
+    <div class="row"><dt>consequence</dt><dd>Resolved in pure maths, never a physics query, so the same inputs always give the same fight. Reinforcement learning depends on that.</dd></div>
+    <div class="row"><dt>credit</dt><dd>Damage, blocks, slips and clashes land immediately; eliminations and the win land at the end. <span class="num">78%</span> of a clean sweep's return is the outcome, not the damage.</dd></div>
+  </dl>
+  <div class="pull">One thing it must learn that nothing tells it: both fists travel to the same
+  centreline, so throwing them together makes them collide. The punch is lost and both arms are
+  knocked into recovery. Nothing forbids it — it simply costs.</div>
+</section>
+
+<footer>
+  Generated 2026-09-03 · diagram system after cathrynlavery/diagram-design ·
+  sources in DOCS/diagrams/
+</footer>
+
+</div>
