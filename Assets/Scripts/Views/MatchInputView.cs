@@ -24,13 +24,19 @@ namespace PoRumble.Views
         private MatchFlowSystem _flowSystem;
         private RosterSystem _rosterSystem;
         private RosterModel _roster;
+        private MatchFlowModel _flow;
 
         [Inject]
-        public void Construct(MatchFlowSystem flowSystem, RosterSystem rosterSystem, RosterModel roster)
+        public void Construct(
+            MatchFlowSystem flowSystem,
+            RosterSystem rosterSystem,
+            RosterModel roster,
+            MatchFlowModel flow)
         {
             _flowSystem = flowSystem;
             _rosterSystem = rosterSystem;
             _roster = roster;
+            _flow = flow;
         }
 
         private void Update()
@@ -40,8 +46,8 @@ namespace PoRumble.Views
                 return;
             }
 
-            // The card, before the restart: opening it must not also be read as a request to
-            // start the next match.
+            // The card, before anything else: opening it must not also be read as a request to
+            // start or restart a match.
             if (RosterToggleRequested())
             {
                 _rosterSystem.Toggle();
@@ -50,20 +56,50 @@ namespace PoRumble.Views
 
             // wasPressedThisFrame throughout, not isPressed: a held key or finger would
             // otherwise restart the match again on every frame of the results screen.
-            if (RestartRequested())
+            if (!ConfirmRequested())
             {
-                _flowSystem.TryRestart();
+                return;
             }
+
+            // One gesture, two meanings, resolved by phase rather than by asking the player to
+            // learn two. Each is refused outside its own phase, so a single tap can never both
+            // dismiss the results and start the next bout.
+            if (_flowSystem.TryRestart())
+            {
+                return;
+            }
+
+            _flowSystem.TryStartFight();
         }
 
-        private static bool RosterToggleRequested()
+        private bool RosterToggleRequested()
         {
             Keyboard keyboard = Keyboard.current;
 
-            return keyboard != null && keyboard.tabKey.wasPressedThisFrame;
+            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
+            {
+                return true;
+            }
+
+            // A phone has no Tab key, and for a long time that meant the fight card - the whole
+            // contestant-selection screen - simply could not be opened in the shipping build.
+            // The on-screen button in the card panel is the discoverable way in; this two-finger
+            // tap is the shortcut for anyone who finds it.
+            //
+            // Only between matches: mid-fight the roster must not be re-seated underneath the
+            // fighters currently swinging.
+            Touchscreen touchscreen = Touchscreen.current;
+
+            if (touchscreen == null || !_flow.CanOpenCard)
+            {
+                return false;
+            }
+
+            return touchscreen.touches.Count > 1
+                   && touchscreen.touches[1].press.wasPressedThisFrame;
         }
 
-        private bool RestartRequested()
+        private bool ConfirmRequested()
         {
             Keyboard keyboard = Keyboard.current;
 
@@ -73,7 +109,7 @@ namespace PoRumble.Views
                 return true;
             }
 
-            // Touch is the only way to restart on a phone, where there is no keyboard at all.
+            // Touch is the only confirmation on a phone, where there is no keyboard at all.
             // Ignored while the card is up, or the tap that picked a fighter would also start
             // the fight.
             Touchscreen touchscreen = Touchscreen.current;

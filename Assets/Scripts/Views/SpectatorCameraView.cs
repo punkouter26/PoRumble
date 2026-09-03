@@ -36,8 +36,11 @@ namespace PoRumble.Views
         [SerializeField] private Transform _followTarget;
 
         [Header("Framing")]
-        [Tooltip("Closest the camera will pull in, for the final one-on-one.")]
+        [Tooltip("Closest the camera will pull in on a landscape screen.")]
         [SerializeField] private float _minOrthographicSize = 6f;
+        [Tooltip("Closest the camera will pull in on a portrait screen. Deliberately smaller " +
+                 "than the landscape minimum - see the note on ResolveMinimumSize.")]
+        [SerializeField] private float _portraitMinOrthographicSize = 6f;
         [Tooltip("Widest the camera will pull out, for a full ten-way brawl. Sits above what " +
                  "the ring itself allows on a landscape screen, so the ring-fit rule is what " +
                  "actually binds; it only matters as a backstop on very tall displays.")]
@@ -140,7 +143,7 @@ namespace PoRumble.Views
 
             float desiredSize = Mathf.Clamp(
                 extent + _framingPadding,
-                _minOrthographicSize,
+                ResolveMinimumSize(aspect),
                 Mathf.Min(_maxOrthographicSize, maxByRing));
 
             if (!_initialised)
@@ -175,6 +178,25 @@ namespace PoRumble.Views
             {
                 _camera.Lens.OrthographicSize = _smoothedSize;
             }
+        }
+
+        /// <summary>
+        /// The closest the camera may pull in, which is not the same number in both
+        /// orientations.
+        ///
+        /// Orthographic size is half-HEIGHT, so a single minimum means two very different
+        /// framings: at 9 a 16:9 screen shows 32 world units across and a 9:16 phone shows 10.
+        /// The ring is 40 across, so the landscape number was doing its job, while the same
+        /// number in portrait produced a tall slot with a duel in the middle and most of the
+        /// frame empty above and below it.
+        ///
+        /// Portrait therefore carries its own, smaller minimum. On a phone the binding
+        /// dimension is width, and pulling in until the fighters fill it is what makes the
+        /// fight readable.
+        /// </summary>
+        private float ResolveMinimumSize(float aspect)
+        {
+            return aspect < 1f ? _portraitMinOrthographicSize : _minOrthographicSize;
         }
 
         private static float CurrentAspect()

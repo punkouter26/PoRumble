@@ -227,6 +227,12 @@ namespace PoRumble.Views
 
             switch (phase)
             {
+                case MatchFlowPhase.Title:
+                    _captionLabel.text = "PO RUMBLE";
+                    _promptLabel.text = StartPrompt();
+                    _resultLabel.text = string.Empty;
+                    break;
+
                 case MatchFlowPhase.Introducing:
                     // A restart clears the previous result, so the banner does not linger
                     // over the top of the next fight.
@@ -263,10 +269,29 @@ namespace PoRumble.Views
         /// </summary>
         private static string RestartPrompt()
         {
+            return IsTouchOnly() ? "TAP TO CONTINUE" : "PRESS  R  TO CONTINUE";
+        }
+
+        /// <summary>
+        /// The menu prompt. Names the fight card as well as the fight, because the card is the
+        /// only thing here a player can change and on a phone there is no key to discover.
+        /// </summary>
+        private static string StartPrompt()
+        {
+            return IsTouchOnly()
+                ? "TAP TO FIGHT      FIGHT CARD BELOW"
+                : "PRESS  ENTER  TO FIGHT      TAB  FOR THE CARD";
+        }
+
+        /// <summary>
+        /// Chosen from the devices actually present rather than from a platform define, so the
+        /// Editor still reads "PRESS" while a phone reads "TAP" - and so a desktop with a
+        /// touchscreen does not get told to tap when it has a keyboard sitting right there.
+        /// </summary>
+        private static bool IsTouchOnly()
+        {
             return UnityEngine.InputSystem.Touchscreen.current != null
-                && UnityEngine.InputSystem.Keyboard.current == null
-                    ? "TAP TO FIGHT AGAIN"
-                    : "PRESS  R  TO FIGHT AGAIN";
+                && UnityEngine.InputSystem.Keyboard.current == null;
         }
 
         /// <summary>

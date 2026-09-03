@@ -7,6 +7,10 @@
   so nesting them inside the top-left panel would make the panel's own layout depend on text
   that changes length every second.
 
+  The result banner sits in the centre stage for exactly that reason. It used to live in the
+  panel alongside the ten health rows, where it drew straight across them - a winner's name is
+  the largest text the game ever shows and the panel is the densest thing on screen.
+
   Everything here is picking-mode="Ignore". The HUD sits over a live ring and must never eat a
   click meant for the fight card panel sorted beneath it.
 -->
@@ -14,11 +18,11 @@
     <ui:VisualElement name="panel" class="match-hud" picking-mode="Ignore">
         <ui:Label name="survivors" class="text text--lg text--bold" picking-mode="Ignore" />
         <ui:VisualElement name="roster" class="match-hud__roster" picking-mode="Ignore" />
-        <ui:Label name="result" class="text text--xl text--bold result-banner" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="centre-stage" class="centre-stage" picking-mode="Ignore">
         <ui:Label name="caption" class="text text--display text--bold centre-stage__caption" picking-mode="Ignore" />
+        <ui:Label name="result" class="text text--xl text--bold result-banner" picking-mode="Ignore" />
         <ui:Label name="prompt" class="text text--md centre-stage__prompt" picking-mode="Ignore" />
     </ui:VisualElement>
 </ui:UXML>

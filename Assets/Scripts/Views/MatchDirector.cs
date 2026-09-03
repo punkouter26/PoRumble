@@ -94,7 +94,9 @@ namespace PoRumble.Views
                 .Subscribe(OnMatchPhaseChanged)
                 .AddTo(_disposables);
 
-            // Training has no intro: the fight is live from the first step.
+            // Training has no menu and no intro: the fight is live from the first step. The
+            // game scene starts on the title instead, which is where the fight card lives and
+            // the only place a phone can reach it.
             if (IsTraining)
             {
                 _flow.Phase.Value = MatchFlowPhase.Fighting;

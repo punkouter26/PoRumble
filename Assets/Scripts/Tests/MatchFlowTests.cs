@@ -29,6 +29,11 @@ namespace PoRumble.Tests
 
             _flowSystem = new MatchFlowSystem(_flow, _match, spawnSystem);
             _flowSystem.Configure(2, 5f);
+
+            // The loop now opens on the menu. These tests are about what happens once a fight
+            // has been asked for, so they start it here and leave the menu itself to
+            // TheLoopOpensAndClosesOnTheMenu below.
+            _flowSystem.TryStartFight();
         }
 
         [TearDown]
@@ -49,6 +54,30 @@ namespace PoRumble.Tests
             {
                 _flowSystem.Tick(0.02f);
             }
+        }
+
+        [Test]
+        public void TheLoopOpensAndClosesOnTheMenu()
+        {
+            MatchFlowModel fresh = new();
+            Assert.That(fresh.Phase.Value, Is.EqualTo(MatchFlowPhase.Title),
+                "the scene used to boot straight into a ten-way with no way to change the card");
+
+            SpawnSystem spawnSystem = new(_match, _config);
+            MatchFlowSystem system = new(fresh, _match, spawnSystem);
+            system.Configure(2, 5f);
+
+            // The menu waits for the player rather than a clock.
+            for (int frame = 0; frame < 300; frame++)
+            {
+                system.Tick(0.02f);
+            }
+
+            Assert.That(fresh.Phase.Value, Is.EqualTo(MatchFlowPhase.Title));
+            Assert.That(system.TryStartFight(), Is.True);
+            Assert.That(fresh.Phase.Value, Is.EqualTo(MatchFlowPhase.Introducing));
+            Assert.That(system.TryStartFight(), Is.False,
+                "a second confirmation must not restart the intro");
         }
 
         [Test]
@@ -132,7 +161,9 @@ namespace PoRumble.Tests
 
             Assert.That(_flowSystem.TryRestart(), Is.True);
 
-            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Introducing));
+            // Back to the menu rather than straight to the next bell: the fight card is the
+            // only thing a player can change between matches and the menu is where it lives.
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Title));
             Assert.That(_flow.MatchNumber.Value, Is.EqualTo(2));
             Assert.That(_match.Phase.Value, Is.EqualTo(MatchPhase.InProgress));
             Assert.That(boxer.IsAlive.Value, Is.True, "the fighters must come back up");
@@ -148,7 +179,16 @@ namespace PoRumble.Tests
             Run(2f);
             _flowSystem.TryRestart();
 
-            // The second match must count down exactly like the first, not drop straight in.
+            // A restart lands on the menu, and the menu waits: no amount of ticking may start
+            // a fight the player has not asked for.
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Title));
+            Run(4.2f);
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Title));
+            Assert.That(_flow.IsFightLive, Is.False);
+
+            // Once asked for, the second match must count down exactly like the first rather
+            // than dropping straight in.
+            Assert.That(_flowSystem.TryStartFight(), Is.True);
             Assert.That(_flow.IsFightLive, Is.False);
             Run(4.2f);
             Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Fighting));

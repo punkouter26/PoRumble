@@ -32,19 +32,24 @@
     --state-threat: rgb(255, 96, 84);
 
     /* Spacing scale. Every margin and padding in the HUD is one of these. */
-    --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
-    --space-4: 16px;
-    --space-5: 24px;
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 48px;
 
-    /* Type ramp */
-    --text-xs: 11px;
-    --text-sm: 13px;
-    --text-md: 15px;
-    --text-lg: 22px;
-    --text-xl: 34px;
-    --text-display: 90px;
+    /* Type ramp.
+
+       Sized against the panel's 1080x1920 portrait reference with match-width scaling, so a
+       USS pixel here is a device pixel on a 1080-wide phone. The previous ramp topped out at
+       34px for everything but the result banner, which on a phone is roughly 3% of the screen
+       width - legible on a monitor at a landscape aspect and not on the thing this ships to. */
+    --text-xs: 24px;
+    --text-sm: 28px;
+    --text-md: 32px;
+    --text-lg: 46px;
+    --text-xl: 68px;
+    --text-display: 150px;
 
     /* Families. Three voices, and the split is functional rather than decorative:
        Anton is the fight-poster display face and is unreadable below ~30px; Barlow
@@ -65,7 +70,7 @@
     --motion-base: 160ms;
     --motion-slow: 280ms;
 
-    --radius: 3px;
+    --radius: 8px;
 
     /* Touch controls. Sized generously: a thumb is far less precise than a cursor. */
     --touch-surface: rgba(244, 246, 250, 0.14);
@@ -74,11 +79,11 @@
     --touch-punch-down: rgba(235, 140, 71, 0.62);
     --touch-charge: rgba(250, 199, 64, 0.30);
     --touch-charge-down: rgba(255, 107, 51, 0.70);
-    --touch-button-size: 168px;
+    --touch-button-size: 220px;
 
     /* Roster card. The tile is sized so a face reads at a glance rather than as a thumbnail. */
-    --tile-width: 150px;
-    --portrait-size: 108px;
+    --tile-width: 300px;
+    --portrait-size: 216px;
     --tile-idle: rgba(244, 246, 250, 0.06);
     --tile-in: rgba(102, 217, 112, 0.16);
     --tile-in-border: rgb(102, 217, 112);
@@ -289,12 +294,43 @@
     letter-spacing: 1px;
 }
 
+/* The way into the fight card on a phone. Anchored bottom-centre, thumb-sized, and shown
+   only between matches - during a fight there is nothing it could usefully do. */
+.card-button {
+    position: absolute;
+    bottom: var(--space-5);
+    left: 50%;
+    translate: -50% 0;
+    min-width: 380px;
+    height: 108px;
+    color: var(--text-primary);
+    background-color: var(--surface-panel);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--state-charge);
+    border-right-color: var(--state-charge);
+    border-top-color: var(--state-charge);
+    border-bottom-color: var(--state-charge);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    letter-spacing: 3px;
+    transition-property: scale, background-color;
+    transition-duration: var(--motion-fast);
+}
+
+.card-button:hover { background-color: var(--tile-in); }
+.card-button:active { scale: 0.96; }
+
 /* ----------------------------------------------------------------- standings */
 .standings {
     position: absolute;
     right: var(--space-4);
     bottom: var(--space-4);
-    min-width: 240px;
+    min-width: 470px;
     background-color: var(--surface-panel);
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
@@ -340,7 +376,7 @@
 .match-hud__name {
     /* Wide enough for a contestant's name. It used to hold "#00" and nothing else, and a
        card of named fighters overflowed it silently. */
-    width: 84px;
+    width: 190px;
     color: var(--text-secondary);
     -unity-font-definition: var(--font-body);
     font-size: var(--text-xs);
@@ -348,8 +384,8 @@
 }
 
 .match-hud__bar {
-    width: 132px;
-    height: 9px;
+    width: 300px;
+    height: 20px;
 }
 
 /* The result banner and the countdown live dead centre and must never take a click. */
@@ -395,7 +431,7 @@
     position: absolute;
     left: var(--space-4);
     bottom: var(--space-4);
-    min-width: 300px;
+    min-width: 620px;
 }
 
 .player-hud {
@@ -417,9 +453,9 @@
     margin-top: var(--space-1);
 }
 
-.player-hud__bar { width: 196px; }
-.player-hud__bar--health { height: 15px; }
-.player-hud__bar--minor { height: 9px; }
+.player-hud__bar { width: 420px; }
+.player-hud__bar--health { height: 32px; }
+.player-hud__bar--minor { height: 20px; }
 
 .player-hud__counter {
     margin-top: var(--space-2);
@@ -455,7 +491,7 @@
     padding-bottom: var(--space-2);
     padding-left: var(--space-3);
     padding-right: var(--space-3);
-    min-width: 340px;
+    min-width: 620px;
 }
 
 .diag__title {
@@ -468,7 +504,7 @@
 }
 
 .diag__graph {
-    height: 46px;
+    height: 92px;
     background-color: var(--surface-scrim);
     margin-bottom: var(--space-2);
 }

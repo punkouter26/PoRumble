@@ -47,21 +47,25 @@ namespace PoRumble.Views
         private RatingModel _ratings;
         private RosterSystem _rosterSystem;
         private BoxerSpawnPoints _spawnPoints;
+        private MatchFlowModel _flow;
 
         private VisualElement _panel;
         private Label _footerLabel;
+        private Button _openButton;
 
         [Inject]
         public void Construct(
             RosterModel roster,
             RatingModel ratings,
             RosterSystem rosterSystem,
-            BoxerSpawnPoints spawnPoints)
+            BoxerSpawnPoints spawnPoints,
+            MatchFlowModel flow)
         {
             _roster = roster;
             _ratings = ratings;
             _rosterSystem = rosterSystem;
             _spawnPoints = spawnPoints;
+            _flow = flow;
         }
 
         private void Start()
@@ -95,6 +99,7 @@ namespace PoRumble.Views
 
             _panel = root.Q<VisualElement>("panel");
             _footerLabel = root.Q<Label>("footer");
+            _openButton = root.Q<Button>("open-card");
 
             if (_panel == null)
             {
@@ -107,9 +112,30 @@ namespace PoRumble.Views
 
             BuildTiles(root.Q<VisualElement>("grid"));
 
+            if (_openButton != null)
+            {
+                _openButton.clicked += () => _rosterSystem.Toggle();
+            }
+
             _roster.IsOpen.Subscribe(OnOpenChanged).AddTo(_disposables);
             _roster.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
             _ratings.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
+            _flow.Phase.Subscribe(_ => RefreshOpenButton()).AddTo(_disposables);
+        }
+
+        /// <summary>
+        /// Shows the way into the card only when the card can actually be used: between
+        /// matches, and never while it is already open on top of the button.
+        /// </summary>
+        private void RefreshOpenButton()
+        {
+            if (_openButton == null)
+            {
+                return;
+            }
+
+            bool available = _flow.CanOpenCard && !_roster.IsOpen.Value;
+            _openButton.style.display = available ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>
@@ -193,6 +219,8 @@ namespace PoRumble.Views
 
         private void OnOpenChanged(bool isOpen)
         {
+            RefreshOpenButton();
+
             if (_panel == null)
             {
                 return;

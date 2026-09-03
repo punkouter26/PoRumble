@@ -2,12 +2,18 @@
 <!--
   The fight card shell. Tiles are cloned into #grid from Templates/RosterTile.uxml.
 
+  #open-card is a sibling of the panel rather than a child, so it survives the panel being
+  hidden. It is the only way into the card on a phone, where there is no Tab key; the view
+  shows it between matches and hides it during a fight.
+
   Note the absence of picking-mode="Ignore" on the panel: this is the one screen in the game
   that is actually clicked, and the tiles inside it have to hit-test. The document root is set
   to Ignore from C# instead, so the card does not swallow clicks aimed at panels below it
   while it is closed.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Button name="open-card" text="FIGHT CARD" class="text text--md text--bold card-button" />
+
     <ui:VisualElement name="panel" class="roster">
         <ui:Label name="title" text="SELECT THE CARD" class="text text--lg text--bold roster__title" picking-mode="Ignore" />
         <ui:VisualElement name="grid" class="roster__grid" />

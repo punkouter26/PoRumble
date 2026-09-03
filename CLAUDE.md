@@ -478,6 +478,29 @@ from the models and drives a bare `CinemachineCamera` directly, so there is no p
 component to configure. Cinemachine is there for the brain blend and for impulse shake.
 `LensSettings.Orthographic` is read-only — projection comes from the brain's source camera.
 
+**The USS type ramp and spacing scale are sized for the 1080x1920 portrait reference,** which is
+what the panel actually uses with match-width scaling - so a USS pixel here is a device pixel on
+a 1080-wide phone. They were first authored against a landscape canvas and topped out at 34px for
+everything but the result banner, roughly 3% of a phone's screen width: legible on a monitor and
+not on the thing this ships to. The whole match panel measured 222x447 of a 1080x1920 screen
+before the rescale and 496x596 after.
+
+**`SafeAreaView` insets every panel, and nothing did before.** The survivor count sat 20px from
+the top of a 1920-tall screen, underneath the status bar on any phone that has one. It writes
+padding on each document's *root* rather than margins on the panels: the HUD anchors its panels
+absolutely, an absolutely positioned child resolves against its parent's padding box, so one
+write moves every corner-anchored panel at once. Two things it has to get right.
+`Screen.safeArea` can be larger than `Screen.width/height` - in the Editor it reports the whole
+display while `Screen` reports the Game view - so the fractions are clamped to [0, 0.5] or the
+insets come out negative and silently lose the base inset too. And it must keep retrying until
+every panel has resolved a layout: an early pass that skipped them all while caching the current
+screen size never runs again, which is exactly how it first shipped applying nothing at all.
+
+**The result banner lives in the centre stage, not in the match panel.** It sat in the panel
+alongside the ten health rows and drew straight across them - a winner's name is the largest text
+the game ever shows and that panel is the densest thing on screen. The centre stage exists
+precisely so text that changes length every second cannot disturb the panel's layout.
+
 **The HUD is structured in UXML and styled from `Assets/UI/Styles/porumble.uss`,** not built in
 C#. Layouts live in `Assets/UI/Layouts/`, with repeated rows cloned from templates under
 `Layouts/Templates/`; views look elements up by name and write only genuinely dynamic values (a
@@ -701,6 +724,12 @@ installs, launches and dumps the Unity log in one step.
   most of a ten-way brawl would be off-screen while the HUD still claimed ten were alive.
   `SpectatorCameraView.ClampToRing` then keeps the view inside the ropes on whichever axis the
   ring is larger, and centres it on the axis where it is not.
+- **The camera's minimum zoom is orientation-dependent too, for the same reason as the maximum.**
+  Orthographic size is half-*height*, so one minimum means two very different framings: at 9 a
+  16:9 screen shows 32 world units across and a 9:16 phone shows 10. The ring is 40 across, so
+  the landscape number was doing its job while the same number in portrait produced a tall slot
+  with a duel in the middle and most of the frame empty above and below it.
+  `_portraitMinOrthographicSize` is 6, because on a phone the binding dimension is width.
 - **`_maxOrthographicSize` is deliberately larger than any landscape screen needs (45).** The
   ring-fit rule is what actually binds; the field only matters as a backstop on very tall
   displays. Set it back down to ~21 and portrait can no longer pull out far enough to fit the
@@ -718,8 +747,17 @@ installs, launches and dumps the Unity log in one step.
   (HudPanelSettings, sorting order 5) and a `TouchControlsView` pointed at `porumble.uss`.
   The stick feeds move and aim together; there is no second stick, and a boxer that walks one
   way while facing another cannot land anything through the face arc anyway.
-- **`MatchHudView` picks its restart prompt from the devices present,** not from a platform
-  define, so the editor still reads "PRESS R" while a phone reads "TAP".
+- **`MatchHudView` picks its prompts from the devices present,** not from a platform define, so
+  the editor still reads "PRESS" while a phone reads "TAP" - and a desktop that happens to have
+  a touchscreen is not told to tap when it has a keyboard sitting right there.
+- **The fight card needs a button, because `Tab` does not exist on a phone.** For a long time
+  `RosterToggleRequested` read the Tab key and nothing else, which meant the entire
+  contestant-selection screen could not be opened in the shipping build - and could not have been
+  closed if it had been. The `#open-card` button in `RosterCard.uxml` is a sibling of the panel
+  so it survives the panel being hidden, and `RosterSelectionView` shows it only while
+  `MatchFlowModel.CanOpenCard` is true. A two-finger tap is the shortcut for anyone who finds it.
+  Both are gated between matches: re-seating the roster mid-fight would swap contestants into
+  chairs that are currently mid-punch.
 - **Two startup log lines are expected and harmless.** `ClassNotFoundException:
   AssetPackManager` is Unity looking for Play Asset Delivery, which a sideloaded APK does not
   use. A burst of `NullReferenceException` in `TensorProxy.Finalize` fires once as the first

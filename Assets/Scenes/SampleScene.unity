@@ -119,6 +119,51 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &157506118
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 157506120}
+  - component: {fileID: 157506119}
+  m_Layer: 0
+  m_Name: SafeArea
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &157506119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 157506118}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd4fb3bd442cc304c9da155a0a4c1b8a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.SafeAreaView
+  _extraInset: 12
+--- !u!4 &157506120
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 157506118}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &201994209
 GameObject:
   m_ObjectHideFlags: 0
@@ -7012,7 +7057,6 @@ GameObject:
   m_Component:
   - component: {fileID: 858920821}
   - component: {fileID: 858920822}
-  - component: {fileID: 858920823}
   m_Layer: 0
   m_Name: GameLifetimeScope
   m_TagString: Untagged
@@ -7052,18 +7096,6 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   _boxerConfig: {fileID: 11400000, guid: 23d1837d1e108bd439874d1955f3506d, type: 2}
---- !u!114 &858920823
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 858920820}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 30faa98c7e473b84d8d56e1a1262a8a7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.DebugInputView
 --- !u!1 &859852192
 GameObject:
   m_ObjectHideFlags: 0
@@ -17386,6 +17418,7 @@ MonoBehaviour:
   _camera: {fileID: 603022678}
   _followTarget: {fileID: 603022676}
   _minOrthographicSize: 9
+  _portraitMinOrthographicSize: 6
   _maxOrthographicSize: 45
   _framingPadding: 5
   _outsideRingMargin: 4
@@ -38959,3 +38992,4 @@ SceneRoots:
   - {fileID: 939135123}
   - {fileID: 1219598344}
   - {fileID: 1914777912}
+  - {fileID: 157506120}

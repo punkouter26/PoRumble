@@ -62,6 +62,10 @@ namespace PoRumble.Systems
 
             switch (_flow.Phase.Value)
             {
+                case MatchFlowPhase.Title:
+                    // The menu waits for the player rather than a clock. Nothing to advance.
+                    break;
+
                 case MatchFlowPhase.Introducing:
                     TickIntro();
                     break;
@@ -140,8 +144,13 @@ namespace PoRumble.Systems
         }
 
         /// <summary>
-        /// Re-racks the fighters and restarts the loop. Ignored unless the results are up, so
+        /// Re-racks the fighters and returns to the menu. Ignored unless the results are up, so
         /// a mashed restart key cannot cut a fight short.
+        ///
+        /// Lands on <see cref="MatchFlowPhase.Title"/> rather than going straight back into a
+        /// countdown. The card is the only thing a player can actually change between matches
+        /// and the menu is where it is reachable, so dropping them back at the bell would make
+        /// a ten-way exhibition the only thing the game can do.
         /// </summary>
         public bool TryRestart()
         {
@@ -154,6 +163,21 @@ namespace PoRumble.Systems
             _spawnSystem.ResetRoster(_boxerCount, _spawnRadius);
             _match.BeginNewEpisode();
             _flow.MatchNumber.Value++;
+            EnterPhase(MatchFlowPhase.Title);
+            return true;
+        }
+
+        /// <summary>
+        /// Starts a fight from the menu. Ignored anywhere else, so the tap that dismissed the
+        /// results cannot also be read as the tap that starts the next bout.
+        /// </summary>
+        public bool TryStartFight()
+        {
+            if (!_flow.CanStartFight)
+            {
+                return false;
+            }
+
             EnterPhase(MatchFlowPhase.Introducing);
             return true;
         }
