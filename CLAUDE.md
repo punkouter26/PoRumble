@@ -28,7 +28,9 @@ Renderer, so 3D lit materials will not light correctly.
 | Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 131 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 163 EditMode tests |
+| Evaluate | **PoRumble ▸ Evaluate Checkpoints…** plays each `.onnx` in a folder through the ten-way and writes `results/evaluation/*.json`. Select on `knockoutRate`, never on reward |
+| Parallel training | **PoRumble ▸ Build 8-Arena Training Scene** generates `Training10x8.unity` — eight rings, eight times the experience per step |
 
 **Art is in Git LFS.** A fresh clone that has not run `git lfs pull` leaves every `.png` as a
 129-byte pointer file, and Unity imports those as nothing at all: the sprites silently resolve
@@ -161,7 +163,7 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
   probe 0.9 units ahead and the gloves beyond it). Turn either off and the forward rays —
   the ones pointing where the boxer is about to punch — report the boxer's own `BoxerFace`
   at half a metre, permanently. `PerceptionSettingsTests` pins the first half.
-- **Spawn separation must stay inside `RayLength` (14).** Fighters that start further apart
+- **Spawn separation must stay inside `RayLength` (24).** Fighters that start further apart
   than their own sensors reach open every episode blind, wandering until something enters
   range. Ten-boxer rings are fine at `_spawnRadius: 15`; the 1v1 ring is not, which is why it
   spawns at 4.5.
@@ -190,15 +192,17 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
 |---|---|
 | `Assets/Scenes/SampleScene.unity` | The game: 40×40 ring, 10 boxers, HUD, feedback rig, spectator camera |
 | `Assets/Scenes/Training1v1.unity` | Curriculum stage 1: 20×14 ring, one learner against the scripted sparring partner, auto-restart. Spawn radius 4.5 — see the sensor-reach note below |
+| `Assets/Scenes/Training10.unity` | Curriculum stage 3: the 40×40 ten-way, auto-restart, no HUD or feedback rig |
+| `Assets/Scenes/Training10x{N}.unity` | **Generated, not hand-built.** N copies of the ten-way, 80 units apart, one `ArenaLifetimeScope` each. Build with **PoRumble ▸ Build 8-Arena Training Scene**; see *Parallel arenas* |
 
 Boxer prefab (`Assets/Prefabs/Boxer.prefab`) is an anatomical chain:
 
 ```
 Boxer (container, never moved)
 ├── Torso        kinematic Rigidbody2D — head, neck, shoulders, colliders, agent, ray sensor
-├── UpperArmL/R  HingeJoint2D → Torso   (shoulder, −20…80°)
+├── UpperArmL/R  HingeJoint2D → Torso   (shoulder, −45…80°; mirrored −80…45)
 ├── ForearmL/R   HingeJoint2D → UpperArm (elbow, 0…145°, cannot hyperextend)
-├── GloveL/R     HingeJoint2D → Forearm  (wrist, ±30°)
+├── GloveL/R     HingeJoint2D → Forearm  (wrist, ±25°, radial/ulnar deviation)
 └── ArmL/R       ArmView, servos the three hinges from the model's extension
 ```
 
@@ -208,6 +212,56 @@ than someone's back.
 
 ---
 
+## Parallel arenas
+
+`Training10x{N}.unity` is **generated**, never hand-edited: **PoRumble ▸ Build 8-Arena
+Training Scene** rebuilds it from `Training10.unity`. Throughput in ML-Agents is bounded by
+experiences per physics step, and both training scenes held exactly one ring.
+
+- **The offset lives in `MatchModel.ArenaCenter`, not in the transform hierarchy.** Forced,
+  not chosen: the torso is moved with `Rigidbody2D.MovePosition`, which is world-space and
+  ignores its parents, so offsetting an arena by re-parenting would move the drawn ring and
+  leave every fighter simulating on top of the arena next door. `ClampToArena`, `SpawnSystem`
+  and the agent's ring-position observation all read it; it is zero in both shipped scenes, so
+  nothing about them changes.
+- **Every arena gets its own message brokers.** Boxer ids restart at zero in each ring, so one
+  shared `PunchLandedMessage` stream would pay arena three's fighter 0 for damage arena one's
+  fighter 0 dealt - silently, and in a way that looks exactly like a policy learning something.
+  `ArenaInstaller.InstallMessaging` is called at the root *and* in each arena scope, where it
+  shadows the parent's.
+- **Spacing is 80 units and that is a minimum, not a preference.** The ring is 40 across and
+  `RayLength` is 24, so a fighter on the east rope can see 24 units past it. Under 64 it
+  perceives the fight next door - no crash, no warning, just a policy learning about opponents
+  it can never reach.
+- **`GameLifetimeScope` skips the per-ring half when arena children exist**, and only forces
+  `RatingSystem` in the single-ring case. `RatingSystem` takes a `MatchModel`, and in a
+  multi-arena scene there is no such thing at the root - there are eight. Training rates
+  nothing anyway, because `RosterModel.SeatOf` returns null without a fight card.
+- **VContainer binds a child scope by the serialized `parentReference` type, not by the
+  transform hierarchy**, and it *throws* if that parent has no container yet - it only
+  auto-builds a parent that is the VContainerSettings root. `GameLifetimeScope` is therefore
+  `[DefaultExecutionOrder(-5100)]` against `ArenaLifetimeScope`'s -5050, both earlier than
+  `LifetimeScope`'s own -5000.
+
+## Checkpoint evaluation
+
+**PoRumble ▸ Evaluate Checkpoints…** plays every imported `.onnx` in a folder through the
+ten-way and writes `results/evaluation/<name>.json`. Select on `knockoutRate`.
+
+- **It exists because reward cannot choose between checkpoints here**, and until it was built
+  nothing in the project recorded the number that can: `MatchEndedMessage.EndedOnTimeout` is
+  new. Finishing a match early truncates the episode and caps the damage reward still to be
+  accumulated, so reward mildly punishes winning quickly.
+- **The harness is gated on a request file** (`Temp/porumble_eval_request.json`), not on a
+  scene flag. The thing that starts an evaluation is an Editor script on the far side of a
+  domain reload and a play-mode transition, and a scene edited to carry a harness would go on
+  carrying it into every training run afterwards.
+- **ML-Agents writes checkpoints outside `Assets/`,** so Unity has not imported them and they
+  cannot be assigned to `BehaviorParameters`. Copy the ones to compare into
+  `Assets/ML-Agents/Models/` first; the picker says so when it finds none.
+- The evaluator **leaves the last checkpoint measured on the Boxer prefab.** Reassign the
+  shipping model before playing the game scene.
+
 ## ML-Agents
 
 - Behaviour name is **`PoRumbleBoxer`** and must match `BehaviorParameters` exactly.
@@ -216,20 +270,70 @@ than someone's back.
   growing it stops the model loading. The haymaker was
   therefore built as a side channel (`BoxerSystem.SetCharge`) rather than a third branch, and
   the counter window needs no action at all. Retrain before changing either.
-- Observations: `RayPerceptionSensorComponent2D` (17 rays, reach 24) plus 15 self scalars —
-  health, facing, move input, both arms' extension and readiness, survivors, stamina, ring
-  position and velocity. Rays are
-  used because the opponent count shrinks during a match and a fixed vector cannot encode a
+- Observations: `RayPerceptionSensorComponent2D` (17 rays, reach 24, **one stack**) plus 20
+  self scalars — health, facing, move input, both arms' extension and readiness, survivors,
+  stamina, ring position, velocity, **stun, bearing to the nearest opponent as cos/sin,
+  range to it, and whether a punch is in flight toward this boxer**. Rays are used because
+  the opponent count shrinks during a match and a fixed vector cannot encode a
   variable-length list.
+- **The last four scalars exist because the ray fan cannot express them.** `m_MaxRayDegrees`
+  is 180, so a boxer is blind behind it — deliberately, since a boxer is — but the nearest
+  opponent's *signed* bearing is exact where seventeen samples are coarse, and it survives
+  that opponent walking round the back. The incoming-punch scalar is what makes the slip
+  usable at all: `DodgeDuration` 0.3 against a 0.22 flight only leaves a window for something
+  that can see an arm start to travel, and until this went in nothing in the vector said an
+  arm was travelling. Only `ArmPhase.Extending` counts — a retracting arm is a punch that has
+  already resolved, and rewarding a slip against one teaches slipping after the damage.
+- **Ray observation stacks went 2 → 1, and batched raycasts on.** Two stacks of a
+  seventeen-ray fan is 170 floats of a 200-float vector, to say where things were five ticks
+  ago — weak temporal information next to the velocity and arm-phase scalars that are in
+  there explicitly. `m_UseBatchedRaycasts` was off, which left ten fighters' casts running
+  single-threaded.
 - Rewards: damage dealt/taken, elimination, win, an existential penalty (the ring does not
   shrink, so idling must cost), plus dense shaping for aiming at and holding range on the
   nearest opponent.
-- **`gamma` is 0.995, not the usual 0.99.** An episode is `MaxStep` 1500 physics steps at
-  `DecisionPeriod` 5 — 300 decisions. At 0.99 the +2 win bonus is worth 0.05 at the opening
-  bell, too faint to shape anything; 0.995 leaves it worth 0.22.
+- **Damage is denominated per knockout, not per point.** `_knockoutDamageReward` (0.6) is what
+  taking a *whole health bar* off somebody pays, divided by `MaxHealth` at the point of use.
+  It was 0.2 *per point of damage*, which at 30 HP made one knockout worth 6.0 against a win
+  bonus of 2 — the objective outscored three to one by its own scaffolding. That is the
+  mechanism behind the "reward mildly punishes winning quickly" note below: finishing early
+  truncates the episode and caps the damage still to be farmed. A nine-kill sweep is now
+  ~19 from eliminations, 6 from the win and ~5 from damage, so the outcome is most of the
+  return. A per-point figure also silently rescaled the entire reward function whenever
+  `MaxHealth` moved; a per-knockout one does not.
+- **The dense shaping fades out on a curriculum.** `shaping_scale` is an environment parameter
+  read once per episode in `OnEpisodeBegin`, stepping 1.0 → 0.5 → 0.0 over the first 30% of a
+  run. The three shaping terms were written for a policy whose ray sensor reported nothing but
+  its own torso; once a fighter can see, paying per step for *standing* at punching range
+  rewards hovering there without throwing. Measured on `progress`, not `reward` — a reward
+  threshold would have to be guessed against a reward function these lessons rescale, and
+  guessing low pins the run in lesson one for ever. Defaults to 1 with no trainer attached,
+  so the game is unaffected.
+- **`gamma` is 0.997, and the episode is 500 decisions — not 300.** `MaxStep` on the prefab
+  is **2500** at `DecisionPeriod` 5. All three configs asserted 1500 for the whole curriculum,
+  which made the real discount horizon 2.7× shorter than the tuning claimed: at 0.995 the win
+  bonus was worth `0.995^500 = 0.08` at the opening bell, not the 0.22 the comment promised.
+  0.997 restores it. **Read `MaxStep` off the prefab, never off a comment.**
+- **`time_horizon` is 256, not 128.** A horizon far below the discount horizon bootstraps the
+  value estimate before the terminal win reward can propagate into it, which is most of why
+  the win signal never showed up in the returns. Costs buffer memory, not compute.
+- **`keep_checkpoints` must cover the whole run, and did not.** `porumble_ffa.yaml` said it
+  "keeps the whole run, not a trailing window" while `max_steps / checkpoint_interval` was 50
+  against a `keep_checkpoints` of 15 — the last 1.5M of a 5M run. Given the note below that
+  the peak can appear at 1M and be gone by 4M, this was silently discarding the thing it was
+  written to preserve. It is now 80 (ffa, 8M @ 100k), 40 (ppo, 8M @ 200k) and 50 (spar). Any
+  change to `max_steps` or `checkpoint_interval` has to be checked against it.
 - **`VectorObservationSize` on the prefab must equal what `CollectObservations` writes.** It is
-  15. ML-Agents does not fail loudly on a mismatch in every path, and a compiled policy simply
-  refuses to load. Change one and you must change the other, and retrain.
+  **20** (it was 15). ML-Agents does not fail loudly on a mismatch in every path, and a
+  compiled policy simply refuses to load. Change one and you must change the other, and
+  retrain. Note the prefab also stacks the vector twice, so the network sees 40 of these.
+- **`PoRumbleBoxer.onnx` no longer matches this observation space and must be retrained.** The
+  vector went 15 -> 20 and the ray sensor from two stacks to one, so the compiled policy is
+  reading a layout it was never trained on. Measured in the ten-way after the change, mean
+  `dot(facing, toNearestOpponent)` sits at 0.26-0.39 against the 0.7+ a policy that is really
+  aiming produces - it fights, but poorly. The reward rebalance, the shaping curriculum and the
+  clash mechanic all invalidate it independently. Retrain the whole curriculum before judging
+  any of this on how the game plays.
 - **`PoRumbleBoxer.onnx` is the `ffa_v5` model** (~21M cumulative steps), trained 1v1 against the scripted
   partner to saturation and then transferred into the ten-way free-for-all. The policy it
   replaced (`PoRumbleBoxer_obs11_legacy.onnx`) was compiled against the old 11-wide vector
@@ -572,6 +676,40 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   **This changed what stops a punch, so the shipped policy is now slightly mis-calibrated** -
   it throws punches that used to land and now get arm-blocked. Accepted as retraining debt;
   the action vector is untouched, so `PoRumbleBoxer.onnx` still loads and still plays.
+- **`ArmView.ServoTo` must use `Mathf.DeltaAngle` and clamp the result.** `HingeJoint2D.jointAngle`
+  is cumulative and does not wrap at 180 - it keeps counting. A raw `target - jointAngle` is
+  therefore only correct while the joint has stayed inside one revolution, and the moment it
+  has not, the error is enormous, the servo asks for a proportionally larger speed and drives
+  the arm *further* out. Measured mid-fight with joints wound to -6543 degrees asking for
+  300,000 deg/s, gloves nine units from their own torso and never recovering. `_maxMotorSpeed`
+  (1800) is the backstop. This was latent for a long time and only became reachable when the
+  segment masses were cut; it would have been reachable eventually anyway.
+- **Segment masses are anatomical fractions of the torso, and the torque follows them.** Upper
+  arm 0.03, forearm 0.018, glove 0.012 against a torso of 1 - roughly a human's 2.7%, 1.6% and
+  0.6% of body mass. They were 0.16 / 0.09 / 0.07, which made the glove about ten times too
+  heavy relative to the body and the whole limb effectively rigid, so the "a wrist gives on
+  impact" intent in `ArmView` never actually happened. `_maxMotorTorque` dropped 1100 to 260
+  with them, since required torque scales with the inertia being moved.
+- **The four arm segments carry `CapsuleCollider2D` on a shared `BoxerArm` layer (18).** Not
+  the gloves - those had colliders long before the arms did, and other fighters' sensors have
+  always seen them. The arm layer is subtracted from *every* ray sensor's mask, not just its
+  owner's: an untagged collider still occludes a ray, and a raised guard sits directly in
+  front of the forward rays, so arms visible to perception would blind the fighter holding
+  them up. `BoxerSpawnPoints.IsolatePerception` skips colliders already on that layer rather
+  than moving them onto the per-boxer one.
+- **Self-collision is off except between the two arms.** `DisableSelfCollision` still ignores
+  every pair of a fighter's own colliders - a folded guard puts the gloves inside the torso and
+  the servo would spend every frame pushing against a contact it cannot win - and
+  `RestoreCrossArmCollision` then puts back exactly one set: left arm against right. That pair
+  is the mechanic, not a bug to suppress.
+- **Training scenes pose the arms without the solver.** `BoxerSpawnPoints._kinematicArms`
+  (gated on `AutoRestart`) makes `ArmView.SetKinematicDrive` stop the six bodies and six joints
+  per fighter - sixty of each in a ten-way, solved fifty times a second to draw a limb that
+  decides nothing - and drive the glove transform straight to the position `CombatMath` already
+  believes it occupies. Perception is then not merely close to the game's but identical to it,
+  so the speed costs no sim-to-real gap. It does mean the *physical* arm collision only exists
+  in the game scene; the model's clash rule is what governs training, and the clash rule is
+  what the policy learns from in either case.
 - **The arms carry no colliders, and that was tried the other way.** Blocking is decided in
   `CombatMath.ArmBlocks`, so the guard needs no physical presence to work. Giving the four arm
   segments `CapsuleCollider2D` to make limbs physically stop each other looked like the
@@ -582,6 +720,50 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   failure the sibling-arm layout exists to avoid, reached from the other direction. If it is
   ever attempted again the colliders must also stay off the perception layers, since an
   untagged collider still *occludes* a ray and a fighter's own guard would blind it.
+- **You cannot throw both fists at once, and nothing forbids it.** The gloves travel from
+  the chin (`GuardLateralOffset` 0.18) out to the centreline (`ArmLateralOffset` reduced by
+  `PunchConvergence` 0.85), which is how a straight punch is actually thrown - the hands cross
+  the middle. Two arms in flight therefore share one corridor, so `BoxerSystem.ArmsClash`
+  reports a clash whenever the *other* arm is `Extending` or `Retracting` at the moment this
+  one peaks: the punch is lost, both arms are `Stagger()`ed into their recovery, and
+  `PunchClashedMessage` pays the thrower `_clashPenalty`. `ThrowPunch` no longer refuses the
+  second fist. That rule used to be the mechanic; the anatomy is the mechanic now, so a policy
+  *learns* to punch one at a time instead of being told.
+  Three things fall out of this and all three are load-bearing:
+  - **The clash is judged on the other arm's phase, not on how close the gloves are.**
+    Measuring separation at the peak let two arms cycle in antiphase for ever, passing through
+    each other on the way past - which is precisely the thing that is supposed to be
+    impossible. Cooling down does not count, so a properly sequenced one-two is still
+    throwable.
+  - **Controllers must not make the mistake by accident.** `BoxerAgentView` withholds the
+    punch request from the keyboard, the touch stick *and* the scripted brains while either
+    fist is travelling. A held button is not a policy making a choice: without this it
+    reissues the request the instant the first arm comes home and the fighter knocks its own
+    fists together for the whole round. The discipline belongs in the input mapping; the
+    policy's two discrete branches stay deliberately unguarded, because being able to make
+    the mistake is what makes it learnable.
+  - **A converging punch lands from further out.** The glove now arrives 0.45 nearer the
+    opponent's spine, so the range at which one can reach a head went from 3.09 to 3.28. Twice
+    the arm reach is now *inside* that; `CounterWindowTests.GuardRange` had to move out to
+    find a separation where gloves meet but heads do not.
+  Guard geometry moved with it: the resting glove used to sit level with its own shoulder,
+  0.53 out to the side, which made the guard a point far off the centreline - so once punches
+  converged, almost nothing could be blocked. Shoulder-to-glove is now a diagonal across the
+  chest, which is both what a guard looks like and what it covers.
+- **Stun.** Landed damage banks trauma (`StunPerDamage`), shed at `StunDecayPerSecond`. Above
+  `StunThreshold` the fighter is wobbled: `StunnedMobilityScale` off its feet and its hands,
+  `StunnedTurnScale` off its turn. The turn is cut harder than the walk on purpose - losing
+  the ability to keep the guard pointed at the attacker is what opens the face arc, and it is
+  what makes pressing an advantage the right play instead of resetting to range. A knockout in
+  a real fight is trauma arriving faster than it can be shed, not a health bar reaching zero,
+  and without this a boxer on 1 HP fought exactly as well as one on 30. It also gives the
+  ten-way a way to actually finish, which is the metric checkpoints are selected on.
+  Stun is cleared by `ResetTo` and by `Eliminate`, or it poisons the next episode.
+- **A punch steps in.** `BoxerSystem.StepIntoPunch` adds `PunchLungeSpeed` along the facing
+  when a punch starts. Force comes from the legs and hips driving the shoulder through; an arm
+  extending off a static torso is the weakest way a human can throw one and it reads as a
+  reach. Added to velocity, not position, so the ring clamp, the overlap resolution and the
+  knockback all still apply.
 - **Counter window.** Blocking a punch opens `CounterWindowDuration` seconds during which your
   next landed punch takes `CounterDamageBonus`. Consumed by the punch that uses it, so one
   block buys exactly one counter. This applies to every fighter, the trained policy included —
