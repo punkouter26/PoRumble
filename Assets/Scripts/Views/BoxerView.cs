@@ -234,6 +234,18 @@ namespace PoRumble.Views
         /// </summary>
         private void Update()
         {
+            // A counter window is model state rather than an event: nothing publishes a message
+            // when one opens, so it has to be sampled here. Latching the flag rather than only
+            // reading it is what makes the outline appear at all - the loop below is gated on
+            // _effectsActive, and blocking a punch does no damage, so a fighter who opened a
+            // window and was not also being hit never woke the loop and never drew the outline.
+            // Latching also guarantees one more pass after the window closes, which is what
+            // clears the outline again.
+            if (_model != null && _model.HasCounterWindow)
+            {
+                _effectsActive = true;
+            }
+
             if (!_effectsActive)
             {
                 return;
@@ -254,8 +266,7 @@ namespace PoRumble.Views
                 stillActive = true;
             }
 
-            // A counter window is model state rather than an event, so it is sampled rather
-            // than subscribed to - there is no message published when one opens or expires.
+            // Keeps the loop alive for as long as the window is open, so the pulse animates.
             if (_model != null && _model.HasCounterWindow)
             {
                 stillActive = true;

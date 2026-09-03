@@ -7,3 +7,7 @@ C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef2
 C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_tiles.py
 C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_claudemd.py
 C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_claudemd2.py
+C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_camera.py
+C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_armblock.py
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Tests\ArmBlockTests.cs
+C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_claudemd3.py

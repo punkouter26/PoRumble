@@ -17392,6 +17392,9 @@ MonoBehaviour:
   _positionDamping: 2.5
   _zoomDamping: 1.8
   _playerBias: 0.35
+  _focusOnFight: 1
+  _focusRadius: 7
+  _focusSwitchMargin: 3
 --- !u!4 &1225692679
 Transform:
   m_ObjectHideFlags: 0

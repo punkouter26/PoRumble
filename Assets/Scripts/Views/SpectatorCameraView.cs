@@ -7,11 +7,19 @@ using VContainer;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// Frames the fight. Follows the centre of mass of everyone still standing and tightens as
-    /// the field thins, so ten boxers read as a brawl and the last two read as a duel.
+    /// Frames the fight. Picks one exchange to watch and follows it, rather than trying to hold
+    /// every fighter on screen at once.
     ///
-    /// The camera was previously a fixed transform pointed at the whole 40x40 ring, which
-    /// meant the fighters were always small and always far away no matter how few were left.
+    /// The camera was previously a fixed transform pointed at the whole 40x40 ring, which meant
+    /// the fighters were always small and always far away no matter how few were left. Fitting
+    /// the bounding box of everyone still standing fixed that only for the last two: with ten
+    /// boxers scattered over a 40x40 ring the box is the ring, so the camera sat at its widest
+    /// for most of a match and the fighters were a few pixels tall - unwatchable, which is the
+    /// state this replaces.
+    ///
+    /// So it picks a focus and frames the scrap around them. The focus is the human when there
+    /// is one, and otherwise the living boxer closest to being knocked out - that is where the
+    /// next elimination is coming from, and it is the most interesting thing on the canvas.
     ///
     /// Deliberately drives only a follow target and an orthographic size rather than using a
     /// CinemachineTargetGroup: the bounding box is computed straight from the models, which
@@ -49,9 +57,25 @@ namespace PoRumble.Views
 
         [Header("Player bias")]
         [Tooltip("How strongly the framing favours the human boxer over the rest of the " +
-                 "field. 0 frames everyone equally; 1 follows the player alone.")]
+                 "field. 0 frames everyone equally; 1 follows the player alone. Only used " +
+                 "when Focus On Fight is off - with it on, the human simply is the focus.")]
         [Range(0f, 1f)]
         [SerializeField] private float _playerBias = 0.35f;
+
+        [Header("Focus")]
+        [Tooltip("Frame one exchange rather than the whole field. Off reverts to fitting every " +
+                 "living fighter on screen, which in a ten-way means the entire ring.")]
+        [SerializeField] private bool _focusOnFight = true;
+
+        [Tooltip("How far from the focus another fighter can be and still be kept in frame, in " +
+                 "world units. Wide enough to hold a scrap together, short enough that someone " +
+                 "circling the far ropes does not drag the camera back out to the whole ring.")]
+        [SerializeField] private float _focusRadius = 7f;
+
+        [Tooltip("How much less health a rival needs before the camera abandons the fighter it " +
+                 "is watching. Without a margin the focus flips on almost every landed punch " +
+                 "and the framing jitters between exchanges.")]
+        [SerializeField] private int _focusSwitchMargin = 3;
 
         private MatchModel _match;
         private BoxerSpawnPoints _spawnPoints;
@@ -59,6 +83,13 @@ namespace PoRumble.Views
         private Vector2 _smoothedCenter;
         private float _smoothedSize;
         private bool _initialised;
+
+        /// <summary>
+        /// Who the camera is currently watching. Sticky across frames - see
+        /// <see cref="ResolveFocus"/>; re-picking the most hurt fighter every frame is what
+        /// makes a health-driven camera unusable.
+        /// </summary>
+        private int _focusId = -1;
 
         [Inject]
         public void Construct(MatchModel match, BoxerSpawnPoints spawnPoints)
@@ -89,6 +120,7 @@ namespace PoRumble.Views
             // a 2.2:1 phone screen a size that frames the ring vertically shows more than
             // twice the ring's width horizontally, which is most of what made the first
             // Android build look like it was pointed at a corner.
+            // Only the widest-allowed size uses the margin; see the clamp below.
             Vector2 bounds = _match.ArenaHalfExtent + Vector2.one * _outsideRingMargin;
             float aspect = CurrentAspect();
 
@@ -129,7 +161,14 @@ namespace PoRumble.Views
                     _smoothedSize, desiredSize, 1f - Mathf.Exp(-_zoomDamping * delta));
             }
 
-            Vector2 framed = ClampToRing(_smoothedCenter, _smoothedSize, bounds, aspect);
+            // Clamped to the ropes, not to `bounds`. The outside-ring margin exists so the
+            // corner posts and stools stay visible when the camera is pulled out far enough to
+            // show the whole ring; letting the *position* use it too means that at a focused
+            // zoom the same four units are a quarter of the screen of empty backdrop, which is
+            // what a tight framing must never spend its area on. When the view is wider than
+            // the ring, ClampToRing centres on that axis and the dressing is visible anyway.
+            Vector2 framed = ClampToRing(
+                _smoothedCenter, _smoothedSize, _match.ArenaHalfExtent, aspect);
             _followTarget.position = new Vector3(framed.x, framed.y, _followTarget.position.z);
 
             if (_camera != null)
@@ -180,11 +219,18 @@ namespace PoRumble.Views
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
             int humanId = _spawnPoints != null ? _spawnPoints.HumanBoxerId : -1;
 
+            BoxerModel focus = _focusOnFight ? ResolveFocus(boxers, humanId) : null;
+
             Vector2 min = new(float.MaxValue, float.MaxValue);
             Vector2 max = new(float.MinValue, float.MinValue);
-            int aliveCount = 0;
+            int framedCount = 0;
             Vector2 playerPosition = Vector2.zero;
             bool playerAlive = false;
+
+            // Whoever is nearest the focus is kept in frame no matter how far away they are.
+            // A focus fighter alone in shot is not a fight, and the moment the last two are
+            // circling at range is exactly when the camera must not cut one of them off.
+            BoxerModel nearest = focus == null ? null : NearestTo(boxers, focus);
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {
@@ -196,27 +242,40 @@ namespace PoRumble.Views
                 }
 
                 Vector2 position = boxer.Position;
-                min = Vector2.Min(min, position);
-                max = Vector2.Max(max, position);
-                aliveCount++;
 
                 if (boxer.Id == humanId)
                 {
                     playerPosition = position;
                     playerAlive = true;
                 }
+
+                if (focus != null)
+                {
+                    bool keep = boxer == focus
+                        || boxer == nearest
+                        || Vector2.Distance(position, focus.Position) <= _focusRadius;
+
+                    if (!keep)
+                    {
+                        continue;
+                    }
+                }
+
+                min = Vector2.Min(min, position);
+                max = Vector2.Max(max, position);
+                framedCount++;
             }
 
-            if (aliveCount == 0)
+            if (framedCount == 0)
             {
                 return false;
             }
 
             center = (min + max) * 0.5f;
 
-            // Lean toward the player so the person holding the controller is never the one
-            // pushed to the edge of frame.
-            if (playerAlive && _playerBias > 0f)
+            // Only meaningful without a focus: with one, the human already is the focus when
+            // they are alive, so biasing toward them again would double-count.
+            if (focus == null && playerAlive && _playerBias > 0f)
             {
                 center = Vector2.Lerp(center, playerPosition, _playerBias);
             }
@@ -228,6 +287,99 @@ namespace PoRumble.Views
             extent = Mathf.Max(size.y * 0.5f, size.x * 0.5f / CurrentAspect());
 
             return true;
+        }
+
+        /// <summary>
+        /// Chooses which fighter the camera watches.
+        ///
+        /// The human when there is one and they are standing - you should never have to hunt
+        /// for yourself. Otherwise the living boxer on the least health, because that is where
+        /// the next knockout is coming from.
+        ///
+        /// Sticky, and that is the whole difficulty of a health-driven camera. Health changes
+        /// several times a second across ten fighters, so re-picking the lowest every frame
+        /// swings the camera across the ring on almost every landed punch. The current focus is
+        /// only given up when it dies or when a rival is <see cref="_focusSwitchMargin"/> HP
+        /// worse off, which makes switching a real event rather than a tie-break.
+        /// </summary>
+        private BoxerModel ResolveFocus(IReadOnlyList<BoxerModel> boxers, int humanId)
+        {
+            BoxerModel human = null;
+            BoxerModel current = null;
+            BoxerModel weakest = null;
+
+            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
+            {
+                BoxerModel boxer = boxers[boxerIndex];
+
+                if (!boxer.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                if (boxer.Id == humanId)
+                {
+                    human = boxer;
+                }
+
+                if (boxer.Id == _focusId)
+                {
+                    current = boxer;
+                }
+
+                if (weakest == null || boxer.Health.Value < weakest.Health.Value)
+                {
+                    weakest = boxer;
+                }
+            }
+
+            if (human != null)
+            {
+                _focusId = human.Id;
+                return human;
+            }
+
+            if (weakest == null)
+            {
+                _focusId = -1;
+                return null;
+            }
+
+            // Hold the current focus unless someone is decisively worse off.
+            if (current != null && weakest.Health.Value > current.Health.Value - _focusSwitchMargin)
+            {
+                return current;
+            }
+
+            _focusId = weakest.Id;
+            return weakest;
+        }
+
+        /// <summary>The closest living boxer to <paramref name="focus"/>, excluding it.</summary>
+        private static BoxerModel NearestTo(IReadOnlyList<BoxerModel> boxers, BoxerModel focus)
+        {
+            BoxerModel nearest = null;
+            float bestSqr = float.MaxValue;
+
+            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
+            {
+                BoxerModel boxer = boxers[boxerIndex];
+
+                if (boxer == focus || !boxer.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                float sqr = (boxer.Position - focus.Position).sqrMagnitude;
+
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = boxer;
+                }
+            }
+
+            return nearest;
         }
     }
 }

@@ -651,7 +651,6 @@ namespace PoRumble.Systems
         {
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
             float blockRange = _config.GloveRadius * 2f;
-            float blockRangeSqr = blockRange * blockRange;
             float nearMiss = _config.HeadRadius * NEAR_MISS_SCALE;
             float nearMissSqr = nearMiss * nearMiss;
 
@@ -666,16 +665,23 @@ namespace PoRumble.Systems
                     continue;
                 }
 
-                // Blocked: the incoming glove ran into one of the defender's own gloves.
+                // Blocked: the incoming glove ran into one of the defender's arms.
+                //
+                // Tested along the whole limb, shoulder to glove, rather than against the fist
+                // alone. A punch used to pass straight through a forearm held across the body
+                // and land clean on the face behind it - the arms had no presence in the maths
+                // at all, and none in the physics either, since only the gloves carry colliders.
                 Vector2 leftGlove = GetGlovePosition(target, target.LeftArm);
                 Vector2 rightGlove = GetGlovePosition(target, target.RightArm);
+                Vector2 leftShoulder = GetShoulderPosition(target, target.LeftArm);
+                Vector2 rightShoulder = GetShoulderPosition(target, target.RightArm);
 
                 // A fighter mid-slip is not holding a guard up; the punch went past, it was
                 // not stopped. Falling through here is what makes a dodged punch report as an
                 // evade rather than handing the slipper a counter window it did not earn.
                 if (!target.IsDodging &&
-                    ((glovePosition - leftGlove).sqrMagnitude <= blockRangeSqr ||
-                     (glovePosition - rightGlove).sqrMagnitude <= blockRangeSqr))
+                    (CombatMath.ArmBlocks(glovePosition, leftShoulder, leftGlove, blockRange) ||
+                     CombatMath.ArmBlocks(glovePosition, rightShoulder, rightGlove, blockRange)))
                 {
                     // Stopping a punch buys a moment in which your own counts for more. This
                     // is what turns holding a guard up from a way to lose slowly into a way
@@ -704,6 +710,21 @@ namespace PoRumble.Systems
         }
 
         private const float NEAR_MISS_SCALE = 2.2f;
+
+        /// <summary>
+        /// Where an arm meets the body - the glove position at zero extension.
+        ///
+        /// Together with <see cref="GetGlovePosition"/> this gives the segment the arm
+        /// occupies, which is what a punch is blocked against.
+        /// </summary>
+        public Vector2 GetShoulderPosition(BoxerModel boxer, ArmModel arm)
+        {
+            Vector2 facing = boxer.Facing.normalized;
+            Vector2 lateral = new(-facing.y, facing.x);
+            float lateralSign = arm.Side == ArmSide.Left ? 1f : -1f;
+
+            return boxer.Position + lateral * (lateralSign * _config.ArmLateralOffset);
+        }
 
         /// <summary>Glove tip position for an arm at its current extension.</summary>
         public Vector2 GetGlovePosition(BoxerModel boxer, ArmModel arm)

@@ -536,6 +536,28 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   the ordinary jab, and the swing itself is slower — that telegraph is the counterplay. A
   release below `MinChargeToRelease` throws an ordinary punch, so tapping is never a wasted
   input.
+- **A guard is the whole arm, not the fist.** `BoxerSystem.ResolvePunch` blocks on the distance
+  from the incoming glove to the *segment* shoulder-to-glove (`CombatMath.ArmBlocks`), not to
+  the defender's glove alone. Before this a punch passed straight through a forearm held across
+  the body and landed clean on the face behind it: the arms had no presence in the maths, and
+  none in the physics either, since only the gloves and the torso carried colliders.
+  The arm is a straight line in the model even though it is drawn with a bent elbow -
+  `GetGlovePosition` places the glove along `facing` at a lateral offset and the elbow lives
+  only in `ArmView`'s servo - so blocking is judged against the line the model believes in.
+  At extension 0 the segment collapses to a point at the shoulder, which is correct: a tucked
+  arm must not guard the whole reach it would have had if it were thrown.
+  **This changed what stops a punch, so the shipped policy is now slightly mis-calibrated** -
+  it throws punches that used to land and now get arm-blocked. Accepted as retraining debt;
+  the action vector is untouched, so `PoRumbleBoxer.onnx` still loads and still plays.
+- **Arm colliders live on Ignore Raycast (layer 2), and that is load-bearing.** The four arm
+  segments carry `CapsuleCollider2D` sized to the drawn sprite so limbs physically stop each
+  other. They must stay invisible to the ray sensors: an untagged collider still *occludes* a
+  ray - it reports "something is here" without matching a detectable tag - so putting the arms
+  on a perception layer would have every fighter's own guard blocking its view of the opponent
+  it is guarding against. That is a change to the observation vector, not just to the physics,
+  and a compiled policy is built against the vector it was trained on. The sensor's
+  `RayLayerMask` already excludes layer 2, and `IsolatePerception` is written to skip any
+  collider already parked there rather than sweeping it onto the per-boxer layer.
 - **Counter window.** Blocking a punch opens `CounterWindowDuration` seconds during which your
   next landed punch takes `CounterDamageBonus`. Consumed by the punch that uses it, so one
   block buys exactly one counter. This applies to every fighter, the trained policy included —
@@ -654,6 +676,23 @@ installs, launches and dumps the Unity log in one step.
 
 ### Things that are easy to get wrong
 
+- **The camera watches one exchange, not the whole field.** Fitting the bounding box of every
+  living fighter works only for the last two: with ten boxers scattered over a 40x40 ring the
+  box *is* the ring, so the camera sat at its widest for most of a match and the fighters were
+  a few pixels tall. `SpectatorCameraView` now picks a focus - the human if there is one, else
+  the living boxer on the least health, since that is where the next elimination is coming from
+  - and frames that fighter, their nearest opponent, and anyone inside `_focusRadius`. Typical
+  orthographic size went from ~24 to ~9.
+  Two details make it usable rather than nauseating. The focus is **sticky**: health changes
+  several times a second across ten fighters, so re-picking the lowest every frame swings the
+  camera across the ring on almost every landed punch - it is only given up when the current
+  focus dies or a rival is `_focusSwitchMargin` HP worse off. And the nearest opponent is kept
+  in frame regardless of the radius, because a focus fighter alone in shot is not a fight.
+- **Position is clamped to the ropes, not to `_outsideRingMargin`.** That margin exists so the
+  corner posts and stools stay visible when the camera is pulled out far enough to show the
+  whole ring. Letting the *position* clamp use it too meant that at a focused zoom the same
+  four units became a quarter of the screen of empty backdrop. When the view is wider than the
+  ring, `ClampToRing` centres on that axis and the dressing is visible anyway.
 - **The camera framing rule is orientation-dependent, and has to be.** The ring is square and
   no screen is. Landscape crops to fill: the camera pulls out only until the view is as wide
   as the ring, so the fighters stay large and the camera pans over the ring's height. Portrait

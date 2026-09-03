@@ -132,6 +132,49 @@ namespace PoRumble.Models
 
             return new HitResult(true, damage, isCloseRange);
         }
+
+
+        /// <summary>
+        /// Shortest distance from a point to the line segment ab.
+        ///
+        /// Lives here rather than in BoxerSystem because it is the whole of what makes an arm
+        /// block work, and blocking is combat resolution: it has to be testable without a scene
+        /// for the same reason the face arc is.
+        /// </summary>
+        public static float DistanceToSegment(Vector2 point, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float lengthSqr = ab.sqrMagnitude;
+
+            // A retracted arm is a zero-length segment sitting at the shoulder. Projecting onto it
+            // would divide by zero, and the honest answer is simply the distance to that point.
+            if (lengthSqr < 1e-6f)
+            {
+                return (point - a).magnitude;
+            }
+
+            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / lengthSqr);
+            return (point - (a + ab * t)).magnitude;
+        }
+
+        /// <summary>
+        /// Whether an incoming glove is stopped by a defender's arm.
+        ///
+        /// The arm is treated as the whole limb from shoulder to glove, not just the fist on the
+        /// end of it. Testing the glove alone - which is what this replaced - meant a punch could
+        /// pass straight through a forearm held across the body and land clean on the face behind
+        /// it, which is the one thing a guard is for.
+        ///
+        /// The defender's arm is a straight segment in the model even though it is drawn with a
+        /// bent elbow: BoxerSystem.GetGlovePosition places the glove along `facing` at a lateral
+        /// offset, and the elbow exists only in ArmView's servo. Blocking therefore has to be
+        /// judged against the straight line the model believes in, or the maths and the picture
+        /// would disagree about where the arm is.
+        /// </summary>
+        public static bool ArmBlocks(Vector2 incomingGlove, Vector2 shoulder, Vector2 glove, float blockRadius)
+        {
+            return DistanceToSegment(incomingGlove, shoulder, glove) <= blockRadius;
+        }
     }
 
     /// <summary>Plain value copy of the tuning data, so CombatMath stays free of ScriptableObject.</summary>
