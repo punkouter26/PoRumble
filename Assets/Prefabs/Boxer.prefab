@@ -1296,6 +1296,7 @@ MonoBehaviour:
   _cockDepth: 0.35
   _cockFraction: 0.22
   _servoGain: 60
+  _maxMotorSpeed: 1800
   _maxMotorTorque: 260
   _elbowTorqueScale: 0.55
   _wristTorqueScale: 0.2
@@ -1544,6 +1545,7 @@ MonoBehaviour:
   _cockDepth: 0.35
   _cockFraction: 0.22
   _servoGain: 60
+  _maxMotorSpeed: 1800
   _maxMotorTorque: 260
   _elbowTorqueScale: 0.55
   _wristTorqueScale: 0.2
@@ -1711,6 +1713,7 @@ MonoBehaviour:
   _rangeShapingWeight: 0.4
   _shapingScaleParameter: shaping_scale
   _punchCost: 0.002
+  _clashPenalty: 0.05
   _humanControlled: 0
   _scriptedBot: 0
 --- !u!114 &2830912935214447116

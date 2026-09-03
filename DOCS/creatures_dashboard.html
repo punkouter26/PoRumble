@@ -210,10 +210,12 @@ footer { border-top:2px solid var(--ink); padding-top:16px; margin-top:40px;
     <div><span class="k">Steps trained</span><span class="v">430k</span>
       <span class="n">167 steps/sec</span></div>
   </div>
-  <div class="note"><b>The shipped model cannot load against the current game.</b>
+  <div class="note"><b>The shipped model is reading a layout it was never trained on.</b>
   It declares 200 encoder inputs (<span class="mono">obs_0[170] + obs_1[30]</span>); the rebuilt
-  observation space emits 125. Everything below describes the game as it is now — the network
-  in <span class="mono">Assets/ML-Agents/Models/</span> is one revision behind it.</div>
+  observation space emits 125. It does <i>not</i> refuse to load — ML-Agents logs no error and the
+  fighters play, aiming at 0.33–0.57 against the 0.7+ of a healthy policy. Degraded, not broken.
+  A 595k-step replacement measured <i>worse</i> (−0.24 to +0.06): stage 1 does not transfer to a
+  ten-way, which is what the curriculum is for.</div>
 </section>
 
 <!-- ============================= EXECUTIVE ============================= -->

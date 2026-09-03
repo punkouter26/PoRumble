@@ -8,7 +8,7 @@
 
 ## Tier 1 — 30-second summary
 
-One network, 119,313 parameters, drives every AI fighter in the ring. It is currently **blocked from promotion**: the observation space was rebuilt (20 scalars, single ray stack) and the compiled model still declares the old one (15 scalars, double ray stack), so its inputs no longer describe the game it plays. A replacement is in training.
+One network, 119,313 parameters, drives every AI fighter in the ring. The observation space was rebuilt (20 scalars, single ray stack) and the compiled model still declares the old one (15 scalars, double ray stack), so its inputs no longer describe the game it plays. It runs anyway — ML-Agents raises no error — but **degraded**, aiming at 0.33–0.57 where a healthy policy manages 0.7+. A 595k-step replacement was trained and measured **worse** than it (−0.24 to +0.06): stage 1 does not transfer to a ten-way. Finish the curriculum before promoting anything.
 
 There are **no ArticulationBody or ConfigurableJoint rigs in this project.** Every fighter is a 2D chain of six `HingeJoint2D` revolute joints driven by velocity-target motors. That is the honest answer to Matrix B, and the sections below give the real components rather than mapping them onto 3D equivalents they do not have.
 
@@ -26,7 +26,7 @@ There are **no ArticulationBody or ConfigurableJoint rigs in this project.** Eve
 | **Parameters** | **119,313** |
 | **Run ID** | `ffa_v5`, ~21M cumulative steps (recorded in CLAUDE.md; `results/` is absent from this clone, so the figure is **documented, not independently verified here**) |
 | **Final mean reward** | ~6.05–6.12 on the ten-way (same caveat — from project notes, not from a local TensorBoard event file) |
-| **Promotion status** | **BLOCKED** — see the shape mismatch below |
+| **Promotion status** | **Shipped, but mis-calibrated** — see the shape mismatch below |
 
 ### Input / output tensors — read from the file, not assumed
 
@@ -54,7 +54,7 @@ There are **no ArticulationBody or ConfigurableJoint rigs in this project.** Eve
 
 Graph ops present: `Add, ArgMax, Clip, Concat, Constant, Div, Exp, Gemm, Identity, Log, Mul, Multinomial, RandomNormalLike, Sigmoid, Slice, Softmax, Sub`. No convolution, no recurrence — `memory_size` is 0 and there is no LSTM, so the policy is purely reactive over a 2-frame stack.
 
-### Why promotion is blocked
+### The shape mismatch — and what actually happens
 
 The model declares `obs_0[170] + obs_1[30]` = **200 encoder inputs**. The current build emits:
 
@@ -62,7 +62,11 @@ The model declares `obs_0[170] + obs_1[30]` = **200 encoder inputs**. The curren
 - vector sensor: **20** scalars × 2 stacks = **40**
 - **total 125**
 
-125 ≠ 200. Measured in the live ten-way after the change, mean `dot(facing, toNearestOpponent)` sits at **0.26–0.39** against the **0.7+** a genuinely aiming policy produces. The reward rebalance, the shaping curriculum and the punch-clash mechanic each invalidate it independently. `PoRumbleBoxer_obs11_legacy.onnx`, referenced in project notes, is **not present in this clone**.
+125 ≠ 200. **It does not refuse to load.** ML-Agents logs no error and the fighters play — measured
+in `SampleScene`, mean `dot(facing, toNearestOpponent)` is **0.33–0.57**, against the **0.7+** a
+genuinely aiming policy produces. So the honest description is *degraded, not broken*: enough of the
+ray block still lines up that aiming partly survives, but it is reading a layout it was never
+trained on. The reward rebalance, the shaping curriculum and the punch-clash mechanic each invalidate it independently. `PoRumbleBoxer_obs11_legacy.onnx`, referenced in project notes, is **not present in this clone**.
 
 ### In-flight run
 
@@ -71,9 +75,23 @@ The model declares `obs_0[170] + obs_1[30]` = **200 encoder inputs**. The curren
 | Run ID | `pr_v6_spar_01` |
 | Config | `Assets/Config/porumble_spar.yaml` (stage 1b — learner vs scripted partner) |
 | Scene | `Assets/Scenes/Training1v1.unity` |
-| Status | training; no ONNX exported yet |
-| Curve | −3.206 (step 10k) → **3.799 peak** (step 420k) |
-| Throughput | 167 steps/s |
+| Status | complete — 6 checkpoints, final at `results/pr_v6_spar_01/PoRumbleBoxer.onnx` |
+| Curve | −3.206 (step 10k) → **4.835 peak** (step 490k) |
+| Throughput | 167 steps/s · 595,490 steps in 60 minutes |
+| Checkpoints | 6, in `results/pr_v6_spar_01/PoRumbleBoxer/` |
+
+**Measured head to head, it is worse than the model it would replace.** Same scene, same
+conditions, `SampleScene` with the full card:
+
+| Model | Steps | Trained on | Aim quality |
+|---|---|---|---|
+| `PoRumbleBoxer` (`ffa_v5`) | ~21M | ten-way | **0.33 – 0.57** |
+| `pr_v6_spar_01` | 595k | 1v1 vs scripted | **−0.24 – +0.06** |
+
+Below zero is worse than random — it is facing *away* from the nearest opponent as often as toward
+it. 595k steps of stage 1 against a single scripted partner in a 20×14 ring does not transfer to a
+40×40 ten-way, and the curriculum exists precisely because it does not. Finish stage 1, then
+`--initialize-from` into the free-for-all before comparing again.
 
 ---
 
