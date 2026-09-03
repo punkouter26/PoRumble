@@ -6722,9 +6722,9 @@ MonoBehaviour:
   m_LightOrder: 0
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
-  m_NormalMapDistance: 3
-  m_NormalMapQuality: 2
-  m_UseNormalMap: 0
+  m_NormalMapDistance: 1.6
+  m_NormalMapQuality: 0
+  m_UseNormalMap: 1
   m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
   m_ShadowSoftness: 0.3
@@ -12301,9 +12301,9 @@ MonoBehaviour:
   m_LightOrder: 0
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
-  m_NormalMapDistance: 3
-  m_NormalMapQuality: 2
-  m_UseNormalMap: 0
+  m_NormalMapDistance: 1.6
+  m_NormalMapQuality: 0
+  m_UseNormalMap: 1
   m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
   m_ShadowSoftness: 0.3
@@ -17455,9 +17455,9 @@ MonoBehaviour:
   m_LightOrder: 0
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
-  m_NormalMapDistance: 3
-  m_NormalMapQuality: 2
-  m_UseNormalMap: 0
+  m_NormalMapDistance: 1.6
+  m_NormalMapQuality: 0
+  m_UseNormalMap: 1
   m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
   m_ShadowSoftness: 0.3
@@ -22690,7 +22690,7 @@ ParticleSystemRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 94e5317687256c842aa2717949a59634, type: 2}
+  - {fileID: 2100000, guid: e2a7eca0c992bda4593f5285b2e6b9c7, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -27732,9 +27732,9 @@ MonoBehaviour:
   m_LightOrder: 0
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
-  m_NormalMapDistance: 3
-  m_NormalMapQuality: 2
-  m_UseNormalMap: 0
+  m_NormalMapDistance: 1.6
+  m_NormalMapQuality: 0
+  m_UseNormalMap: 1
   m_ShadowsEnabled: 1
   m_ShadowIntensity: 0.45
   m_ShadowSoftness: 0.3
@@ -28433,7 +28433,7 @@ ParticleSystem:
     startLifetime:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.22
+      scalar: 0.18
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -28486,7 +28486,7 @@ ParticleSystem:
     startSpeed:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 7
+      scalar: 6
       minScalar: 5
       maxCurve:
         serializedVersion: 2
@@ -28604,7 +28604,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 0.35
+      scalar: 0.11
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -33128,8 +33128,8 @@ ParticleSystemRenderer:
   m_MinParticleSize: 0
   m_MaxParticleSize: 0.5
   m_CameraVelocityScale: 0
-  m_VelocityScale: 0.12
-  m_LengthScale: 3.5
+  m_VelocityScale: 0.05
+  m_LengthScale: 2.2
   m_SortingFudge: 0
   m_NormalDirection: 1
   m_ShadowBias: 0
@@ -33307,9 +33307,9 @@ MonoBehaviour:
   m_LightOrder: 0
   m_AlphaBlendOnOverlap: 0
   m_OverlapOperation: 0
-  m_NormalMapDistance: 3
-  m_NormalMapQuality: 2
-  m_UseNormalMap: 0
+  m_NormalMapDistance: 1.6
+  m_NormalMapQuality: 0
+  m_UseNormalMap: 1
   m_ShadowsEnabled: 0
   m_ShadowIntensity: 0.75
   m_ShadowSoftness: 0.3

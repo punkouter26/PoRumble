@@ -5,3 +5,5 @@ C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef2
 C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_uxml_player.py
 C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_uxml_rest.py
 C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_tiles.py
+C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_claudemd.py
+C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_claudemd2.py
