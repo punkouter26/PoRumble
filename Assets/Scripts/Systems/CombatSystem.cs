@@ -63,6 +63,7 @@ namespace PoRumble.Systems
             }
 
             target.ApplyDamage(message.Damage);
+            AccumulateStun(target, message.Damage);
             ApplyKnockback(target, message);
             _damagedPublisher.Publish(new BoxerDamagedMessage(target.Id, target.Health.Value));
 
@@ -77,6 +78,22 @@ namespace PoRumble.Systems
             {
                 _eliminatedPublisher.Publish(new BoxerEliminatedMessage(target.Id, message.AttackerId));
             }
+        }
+
+        /// <summary>
+        /// Banks the trauma a landed punch did, on top of the health it took.
+        ///
+        /// Scored off the damage actually dealt, which already has the attacker's power and
+        /// the target's chin folded into it - so a granite-chinned fighter is harder to wobble
+        /// for exactly the same reason it is harder to hurt, without a second attribute
+        /// saying so.
+        ///
+        /// Capped, so a haymaker cannot bank a wobble that outlasts the exchange that earned
+        /// it: the point of the mechanic is a window to be exploited, not a stun-lock.
+        /// </summary>
+        private void AccumulateStun(BoxerModel target, int damage)
+        {
+            target.Stun = Mathf.Min(_config.MaxStun, target.Stun + _config.StunPerDamage * damage);
         }
 
         /// <summary>

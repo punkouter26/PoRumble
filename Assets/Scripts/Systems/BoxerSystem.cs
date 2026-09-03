@@ -19,6 +19,7 @@ namespace PoRumble.Systems
         private readonly IPublisher<PunchLandedMessage> _punchPublisher;
         private readonly IPublisher<PunchEvadedMessage> _evadedPublisher;
         private readonly IPublisher<PunchBlockedMessage> _blockedPublisher;
+        private readonly IPublisher<PunchClashedMessage> _clashedPublisher;
         private readonly IPublisher<HaymakerThrownMessage> _haymakerPublisher;
         private readonly IPublisher<BoxerDodgedMessage> _dodgedPublisher;
 
@@ -35,6 +36,7 @@ namespace PoRumble.Systems
             IPublisher<PunchLandedMessage> punchPublisher,
             IPublisher<PunchEvadedMessage> evadedPublisher,
             IPublisher<PunchBlockedMessage> blockedPublisher,
+            IPublisher<PunchClashedMessage> clashedPublisher,
             IPublisher<HaymakerThrownMessage> haymakerPublisher,
             IPublisher<BoxerDodgedMessage> dodgedPublisher)
         {
@@ -43,6 +45,7 @@ namespace PoRumble.Systems
             _punchPublisher = punchPublisher;
             _evadedPublisher = evadedPublisher;
             _blockedPublisher = blockedPublisher;
+            _clashedPublisher = clashedPublisher;
             _haymakerPublisher = haymakerPublisher;
             _dodgedPublisher = dodgedPublisher;
         }
@@ -191,9 +194,9 @@ namespace PoRumble.Systems
         /// <summary>
         /// True while either fist is away from the body - travelling out or drawing back.
         ///
-        /// A boxer throws one punch at a time. Both arms firing together let a fighter double
-        /// the damage it could put out for the same stamina, and read on screen as a shove
-        /// rather than a punch.
+        /// Only the slip consults this now: a fighter cannot duck out of a punch it has
+        /// already committed the shoulders to. Throwing a second punch is no longer refused
+        /// here - see <see cref="ThrowPunch"/> and <see cref="ArmsClash"/>.
         /// </summary>
         private static bool IsAnyArmOut(BoxerModel boxer)
         {
@@ -207,15 +210,17 @@ namespace PoRumble.Systems
             return arm.Phase == ArmPhase.Extending || arm.Phase == ArmPhase.Retracting;
         }
 
-        /// <summary>Starts a swing on the requested arm, or the other one if it is busy.</summary>
+        /// <summary>
+        /// Starts a swing on the requested arm, or the other one if it is busy.
+        ///
+        /// Deliberately does *not* refuse while the other fist is out. Throwing both at once
+        /// used to be forbidden by a rule here; it is now forbidden by the anatomy instead -
+        /// the gloves converge on the centreline as they extend, so two arms at full stretch
+        /// run into each other and the punch is lost to a clash. A fighter that throws one at
+        /// a time does so because it learned to, which is the whole point.
+        /// </summary>
         private bool ThrowPunch(BoxerModel boxer, ArmSide side, float chargeLevel)
         {
-            // One fist out at a time, whoever is asking - human, scripted brain or policy.
-            if (IsAnyArmOut(boxer))
-            {
-                return false;
-            }
-
             // A slip is a commitment too. Punching out of one would make the invulnerability
             // window a free offensive option rather than a defensive trade.
             if (boxer.IsDodging)
@@ -229,7 +234,21 @@ namespace PoRumble.Systems
             {
                 requested.TryPunch(chargeLevel);
                 SpendPunchStamina(boxer);
+                StepIntoPunch(boxer);
                 return true;
+            }
+
+            // The requested arm is busy. Falling through to the other one is the alternation
+            // that makes a held punch button work - but only while nothing is already out.
+            //
+            // Without that guard a held button becomes a clash machine: the first tick throws
+            // the left, the next finds the left busy and throws the right into it, and the
+            // fighter spends the whole round knocking its own fists together. Throwing both at
+            // once has to be something a controller *asks* for by naming the second arm, not
+            // something the convenience path does behind its back.
+            if (IsAnyArmOut(boxer))
+            {
+                return false;
             }
 
             ArmModel other = side == ArmSide.Left ? boxer.RightArm : boxer.LeftArm;
@@ -238,10 +257,29 @@ namespace PoRumble.Systems
             {
                 other.TryPunch(chargeLevel);
                 SpendPunchStamina(boxer);
+                StepIntoPunch(boxer);
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Carries the body forward as the punch leaves. Force in a punch comes from the legs
+        /// and the hips driving the shoulder through; an arm extending off a static torso is
+        /// the weakest way a human can throw one, and it reads on screen as a reach rather
+        /// than a strike.
+        ///
+        /// Added to velocity rather than to position, so the ring clamp, the overlap
+        /// resolution and the knockback all still apply, and the step decays under
+        /// Deceleration instead of teleporting anyone.
+        /// </summary>
+        private void StepIntoPunch(BoxerModel boxer)
+        {
+            // A slipping boxer cannot throw, so there is no case where this fights the dodge
+            // burst - but a wobbled or spent one steps in with correspondingly less behind it.
+            float effort = StaminaScale(boxer) * MobilityScale(boxer);
+            boxer.Velocity += boxer.Facing.normalized * (_config.PunchLungeSpeed * effort);
         }
 
         private const float WORKING_RECOVERY_SCALE = 0.5f;
@@ -267,6 +305,7 @@ namespace PoRumble.Systems
                 }
 
                 TickDodge(boxer, deltaTime);
+                TickStun(boxer, deltaTime);
                 TickMovement(boxer, deltaTime);
                 TickStamina(boxer, deltaTime);
                 TickCounterWindow(boxer, deltaTime);
@@ -302,7 +341,7 @@ namespace PoRumble.Systems
                 return;
             }
 
-            float effort = StaminaScale(boxer) * boxer.Attributes.Speed;
+            float effort = StaminaScale(boxer) * boxer.Attributes.Speed * MobilityScale(boxer);
 
             // A cocked haymaker plants the feet. Without this cost, charging would be free
             // and there would be no reason ever to throw an ordinary punch.
@@ -321,7 +360,13 @@ namespace PoRumble.Systems
             if (boxer.Facing.sqrMagnitude > Mathf.Epsilon && boxer.DesiredFacing.sqrMagnitude > Mathf.Epsilon)
             {
                 float commitment = IsCommitted(boxer) ? _config.CommittedTurnScale : 1f;
-                float maxTurn = _config.TurnSpeedDegrees * effort * commitment * deltaTime;
+
+                // A wobbled boxer loses the feet before it loses the hands, so the turn is
+                // cut harder than the walk is. Losing the ability to keep the guard pointed
+                // at the attacker is what actually opens the face arc up, and it is why
+                // pressing a hurt opponent beats resetting to range.
+                float wobble = IsStunned(boxer) ? _config.StunnedTurnScale : 1f;
+                float maxTurn = _config.TurnSpeedDegrees * effort * commitment * wobble * deltaTime;
                 float delta = Vector2.SignedAngle(boxer.Facing, boxer.DesiredFacing);
                 float applied = Mathf.Clamp(delta, -maxTurn, maxTurn);
                 boxer.ApplyTurn(Rotate(boxer.Facing.normalized, applied));
@@ -474,6 +519,43 @@ namespace PoRumble.Systems
             }
         }
 
+        /// <summary>
+        /// Sheds accumulated trauma. A knockout in a real fight is damage arriving faster
+        /// than it can be shed, not a health bar reaching zero, so the decay rate is what
+        /// decides whether a wobble has to be earned with a combination or falls out of one
+        /// lucky shot.
+        /// </summary>
+        private void TickStun(BoxerModel boxer, float deltaTime)
+        {
+            if (boxer.Stun <= 0f)
+            {
+                return;
+            }
+
+            boxer.Stun = Mathf.Max(0f, boxer.Stun - _config.StunDecayPerSecond * deltaTime);
+        }
+
+        /// <summary>True while the boxer is wobbled: hurt enough to be visibly compromised.</summary>
+        public bool IsStunned(BoxerModel boxer)
+        {
+            return boxer.Stun >= _config.StunThreshold;
+        }
+
+        /// <summary>
+        /// Accumulated stun as a 0..1 fraction of the ceiling, for the agent to observe. A
+        /// boxer knows perfectly well when its own legs have gone.
+        /// </summary>
+        public float StunFraction(BoxerModel boxer)
+        {
+            return Mathf.Clamp01(boxer.Stun / Mathf.Max(0.01f, _config.MaxStun));
+        }
+
+        /// <summary>Speed and acceleration multiplier from being wobbled.</summary>
+        private float MobilityScale(BoxerModel boxer)
+        {
+            return IsStunned(boxer) ? _config.StunnedMobilityScale : 1f;
+        }
+
         /// <summary>Runs down the window opened by a block.</summary>
         private static void TickCounterWindow(BoxerModel boxer, float deltaTime)
         {
@@ -542,17 +624,20 @@ namespace PoRumble.Systems
         private Vector2 ClampToArena(Vector2 position)
         {
             Vector2 limit = _match.ArenaHalfExtent - new Vector2(_config.BodyRadius, _config.BodyRadius);
+            Vector2 center = _match.ArenaCenter;
 
             return new Vector2(
-                Mathf.Clamp(position.x, -limit.x, limit.x),
-                Mathf.Clamp(position.y, -limit.y, limit.y));
+                Mathf.Clamp(position.x, center.x - limit.x, center.x + limit.x),
+                Mathf.Clamp(position.y, center.y - limit.y, center.y + limit.y));
         }
 
         private void TickArm(BoxerModel attacker, ArmModel arm, float deltaTime)
         {
             // A spent boxer's arms are heavier: every phase stretches out, so the punch rate
-            // falls as stamina does and the two settle at an equilibrium.
-            float slow = 1f / Mathf.Max(0.01f, StaminaScale(attacker));
+            // falls as stamina does and the two settle at an equilibrium. Being wobbled
+            // stretches them further - but by less than it costs the feet, because a hurt
+            // fighter can still swing while it can no longer stay square.
+            float slow = 1f / Mathf.Max(0.01f, StaminaScale(attacker) * MobilityScale(attacker));
 
             // A charged swing winds up visibly slower. That delay is the counterplay: it is
             // the window in which an opponent can read the haymaker and step out of it.
@@ -564,10 +649,58 @@ namespace PoRumble.Systems
                 _config.ArmRetractDuration * slow,
                 _config.ArmCooldownDuration * slow);
 
-            if (arm.ReachedPeakThisTick)
+            if (!arm.ReachedPeakThisTick)
             {
-                ResolvePunch(attacker, arm);
+                return;
             }
+
+            // Checked before the hit, because a punch that ran into the other fist never
+            // arrived at all.
+            if (ArmsClash(attacker, arm))
+            {
+                ResolveClash(attacker, arm);
+                return;
+            }
+
+            ResolvePunch(attacker, arm);
+        }
+
+        /// <summary>
+        /// True when this boxer's own two gloves are close enough to have run into each other.
+        ///
+        /// Measured between the two glove positions rather than assumed from the phases,
+        /// because the punch paths converge: how close the fists come depends on how far
+        /// through its travel the other arm is, and a quick one-two with the second punch
+        /// starting as the first recovers passes cleanly. Only throwing them genuinely
+        /// together clashes, which is exactly the distinction a fighter has to learn.
+        /// </summary>
+        private bool ArmsClash(BoxerModel boxer, ArmModel arm)
+        {
+            ArmModel other = arm.Side == ArmSide.Left ? boxer.RightArm : boxer.LeftArm;
+
+            // Any part of the other arm's stroke, not merely the moment the gloves are
+            // closest. Both hands travel from the chin out to the same centreline, so they
+            // share that corridor for the whole flight - measuring only the separation at
+            // peak let two arms cycle in antiphase for ever, passing through each other on
+            // the way past, which is exactly the thing that is supposed to be impossible.
+            //
+            // Cooling down does not count: the fist is home at the guard by then, which is
+            // what leaves a properly sequenced one-two throwable.
+            return other.Phase == ArmPhase.Extending || other.Phase == ArmPhase.Retracting;
+        }
+
+        /// <summary>
+        /// Both fists ran into each other. No damage, and both arms are knocked into their
+        /// recovery rather than back to idle, so the mistake costs a beat of offence.
+        /// </summary>
+        private void ResolveClash(BoxerModel boxer, ArmModel arm)
+        {
+            Vector2 position = GetGlovePosition(boxer, arm);
+
+            boxer.LeftArm.Stagger();
+            boxer.RightArm.Stagger();
+
+            _clashedPublisher.Publish(new PunchClashedMessage(boxer.Id, position));
         }
 
         /// <summary>
@@ -726,16 +859,31 @@ namespace PoRumble.Systems
             return boxer.Position + lateral * (lateralSign * _config.ArmLateralOffset);
         }
 
-        /// <summary>Glove tip position for an arm at its current extension.</summary>
+        /// <summary>
+        /// Glove tip position for an arm at its current extension.
+        ///
+        /// The lateral offset shrinks as the arm extends, so the fist travels in toward the
+        /// centreline rather than out along a rail parallel to the spine. That is how a
+        /// straight punch is actually thrown, and it is what makes throwing both at once
+        /// impossible: at full stretch the two gloves are closer together than one glove is
+        /// wide, so they clash. Forward reach is untouched, so the damage bands and every
+        /// range the config is tuned against are exactly what they were.
+        /// </summary>
         public Vector2 GetGlovePosition(BoxerModel boxer, ArmModel arm)
         {
             Vector2 facing = boxer.Facing.normalized;
             Vector2 lateral = new(-facing.y, facing.x);
             float lateralSign = arm.Side == ArmSide.Left ? 1f : -1f;
 
+            // From the chin out to the centreline. Both ends are close to the spine, which is
+            // the point: the shoulder is what sits wide, and the hand travels between two
+            // places that are not.
+            float thrown = _config.ArmLateralOffset * (1f - _config.PunchConvergence);
+            float offset = Mathf.Lerp(_config.GuardLateralOffset, thrown, arm.Extension);
+
             return boxer.Position
                    + facing * (_config.ArmReach * arm.Extension)
-                   + lateral * (lateralSign * _config.ArmLateralOffset);
+                   + lateral * (lateralSign * offset);
         }
 
         private BoxerModel FindBoxer(int boxerId)

@@ -48,7 +48,7 @@ namespace PoRumble.Systems
             }
 
             int winnerId = aliveCount == 1 ? _match.ResolveLeaderId() : MatchModel.NO_WINNER;
-            EndMatch(winnerId);
+            EndMatch(winnerId, false);
         }
 
         /// <summary>Time-limit resolution: the highest-health survivor wins, an exact tie draws.</summary>
@@ -59,13 +59,13 @@ namespace PoRumble.Systems
                 return;
             }
 
-            EndMatch(_match.ResolveLeaderId());
+            EndMatch(_match.ResolveLeaderId(), true);
         }
 
-        private void EndMatch(int winnerId)
+        private void EndMatch(int winnerId, bool endedOnTimeout)
         {
             _match.End(winnerId);
-            _endedPublisher.Publish(new MatchEndedMessage(winnerId));
+            _endedPublisher.Publish(new MatchEndedMessage(winnerId, endedOnTimeout));
         }
 
         public void Dispose()

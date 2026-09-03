@@ -25,6 +25,8 @@ MonoBehaviour:
   _armCooldownDuration: 0.12
   _armReach: 1.6
   _armLateralOffset: 0.53
+  _punchConvergence: 0.85
+  _guardLateralOffset: 0.18
   _moveSpeed: 5
   _acceleration: 18
   _deceleration: 12

@@ -30,6 +30,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<PunchClashedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
@@ -129,6 +130,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<PunchClashedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
@@ -168,6 +170,7 @@ namespace PoRumble.Tests
                 container.Resolve<IPublisher<PunchLandedMessage>>(),
                 container.Resolve<IPublisher<PunchEvadedMessage>>(),
                 container.Resolve<IPublisher<PunchBlockedMessage>>(),
+                container.Resolve<IPublisher<PunchClashedMessage>>(),
                 container.Resolve<IPublisher<HaymakerThrownMessage>>(),
                 container.Resolve<IPublisher<BoxerDodgedMessage>>());
 

@@ -40,6 +40,14 @@ namespace PoRumble.Views
         [SerializeField] private Vector2 _arenaHalfExtent = new(20f, 20f);
         [Tooltip("Restart automatically when the match resolves. Required for training.")]
         [SerializeField] private bool _autoRestart;
+
+        [Tooltip("Pose the arms straight from the model instead of servoing them through the " +
+                 "2D solver. Six dynamic bodies and six hinge joints per fighter - sixty of " +
+                 "each in a ten-way - are solved every physics step to draw a limb that " +
+                 "decides nothing: hits resolve in CombatMath and the segments carry no " +
+                 "colliders. Only meaningful alongside Auto Restart, and ignored without it, " +
+                 "because the game is the case where somebody is actually looking at the arm.")]
+        [SerializeField] private bool _kinematicArms = true;
         [Tooltip("Boxer id handed to the keyboard. -1 leaves every boxer under AI control.")]
         [SerializeField] private int _humanBoxerId = -1;
         [Tooltip("Boxer ids driven by the hand-written sparring brain rather than a policy. " +
@@ -72,6 +80,19 @@ namespace PoRumble.Views
         /// </summary>
         private const string BOXER_LAYER_PREFIX = "BoxerBody";
 
+        /// <summary>
+        /// Layer the four arm segments' colliders live on, shared by every fighter.
+        ///
+        /// Shared rather than per-boxer on purpose: it is subtracted from *every* ray sensor's
+        /// mask, not just its owner's. An untagged collider still occludes a ray, and a raised
+        /// guard sits directly in front of the forward rays - the ones pointing where the
+        /// boxer is about to punch - so arms that were visible to perception would blind the
+        /// fighter holding them up. Gloves are deliberately not on this layer: they carried
+        /// colliders long before the arms did, and other fighters' sensors have always seen
+        /// them.
+        /// </summary>
+        private const string ARM_LAYER = "BoxerArm";
+
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
 
@@ -96,6 +117,15 @@ namespace PoRumble.Views
         private bool HasPreplacedBoxers => _preplacedBoxers != null && _preplacedBoxers.Length > 0;
         public float SpawnRadius => _spawnRadius;
         public Vector2 ArenaHalfExtent => _arenaHalfExtent;
+
+        /// <summary>
+        /// Where this arena's ring sits in the world, taken from this object's own transform.
+        ///
+        /// Zero in both of the scenes that predate parallel arenas, so nothing about them
+        /// changes; a duplicated training arena carries its offset here instead of trying to
+        /// express it through parenting, which Rigidbody2D would ignore.
+        /// </summary>
+        public Vector2 ArenaCenter => transform.position;
         public bool AutoRestart => _autoRestart;
 
         /// <summary>Boxer the keyboard drives, or -1. The player HUD needs to know who to watch.</summary>
@@ -175,6 +205,11 @@ namespace PoRumble.Views
 
                     IsolatePerception(view, agent, boxer.Id);
                     DisableSelfCollision(view);
+
+                    // Gated on AutoRestart rather than standing alone: a training scene is
+                    // precisely the case where nobody is watching the limb, and it is the
+                    // only case where the solver cost is worth trading a drawn arm for.
+                    view.SetKinematicArms(_autoRestart && _kinematicArms);
                     _agents.Add(agent);
                 }
 
@@ -274,7 +309,43 @@ namespace PoRumble.Views
                     Physics2D.IgnoreCollision(colliders[first], colliders[second], true);
                 }
             }
+
+            RestoreCrossArmCollision(view);
         }
+
+        /// <summary>
+        /// Puts back the one set of self-collisions a fighter is supposed to have: its left
+        /// arm against its right.
+        ///
+        /// Everything else stays off. A folded guard puts the gloves inside the torso's own
+        /// collider, and the servo then spends every frame pushing against a contact it can
+        /// never win - which is what DisableSelfCollision was written for. But the two arms
+        /// running into each other is not a bug to be suppressed, it is the mechanic: the
+        /// gloves converge on the centreline as they extend, so throwing both fists at once
+        /// puts them in the same place, and that has to be something a fighter can feel.
+        /// </summary>
+        private static void RestoreCrossArmCollision(BoxerView view)
+        {
+            _leftArmColliders.Clear();
+            _rightArmColliders.Clear();
+            view.CollectArmColliders(_leftArmColliders, _rightArmColliders);
+
+            for (int left = 0; left < _leftArmColliders.Count; left++)
+            {
+                for (int right = 0; right < _rightArmColliders.Count; right++)
+                {
+                    Physics2D.IgnoreCollision(_leftArmColliders[left], _rightArmColliders[right], false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Scratch lists for <see cref="RestoreCrossArmCollision"/>. Static and reused: this
+        /// runs once per boxer at spawn, but allocating two lists per fighter to throw them
+        /// away immediately is exactly the habit the performance rules exist to prevent.
+        /// </summary>
+        private static readonly List<Collider2D> _leftArmColliders = new();
+        private static readonly List<Collider2D> _rightArmColliders = new();
 
         /// <summary>
         /// Moves one boxer's colliders onto a layer of its own and masks that layer out of
@@ -299,18 +370,37 @@ namespace PoRumble.Views
                 return;
             }
 
+            int armLayer = LayerMask.NameToLayer(ARM_LAYER);
             Collider2D[] colliders = view.GetComponentsInChildren<Collider2D>(true);
 
             for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
             {
-                colliders[colliderIndex].gameObject.layer = layer;
+                GameObject owner = colliders[colliderIndex].gameObject;
+
+                // Arm segments keep the shared arm layer. Moving them onto this fighter's own
+                // layer would make them invisible to this fighter's rays and visible to
+                // everybody else's, which is precisely backwards: an arm is the one part that
+                // must occlude nobody's perception.
+                if (armLayer >= 0 && owner.layer == armLayer)
+                {
+                    continue;
+                }
+
+                owner.layer = layer;
             }
 
             // Subtracted from whatever the prefab authored rather than replacing it, so the
             // sensor keeps ignoring Ignore Raycast and anything else deliberately masked out.
             if (agent.TryGetComponent(out RayPerceptionSensorComponent2D sensor))
             {
-                sensor.RayLayerMask = sensor.RayLayerMask.value & ~(1 << layer);
+                int mask = sensor.RayLayerMask.value & ~(1 << layer);
+
+                if (armLayer >= 0)
+                {
+                    mask &= ~(1 << armLayer);
+                }
+
+                sensor.RayLayerMask = mask;
             }
         }
 

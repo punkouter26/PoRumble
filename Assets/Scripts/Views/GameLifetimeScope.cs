@@ -1,4 +1,3 @@
-using MessagePipe;
 using PoRumble.Models;
 using PoRumble.Systems;
 using UnityEngine;
@@ -7,35 +6,37 @@ using VContainer.Unity;
 
 namespace PoRumble.Views
 {
-    /// <summary>Single place where every dependency is bound and resolved.</summary>
+    /// <summary>
+    /// Single place where every dependency is bound and resolved.
+    ///
+    /// Two shapes, decided by what is in the scene. With no <see cref="ArenaLifetimeScope"/>
+    /// children this registers the ring itself as well as everything shared, which is exactly
+    /// what it always did and what both shipped scenes still do. With arena children it
+    /// registers only the shared half and lets each arena own its own fight, so a training
+    /// scene can run several rings at once.
+    /// </summary>
+    // Earlier than LifetimeScope's own -5000, so this scope has built before any
+    // ArenaLifetimeScope awakes. VContainer resolves a child's parent with Find(type) and
+    // *throws* when that parent has no container yet - it only auto-builds a parent that is
+    // the VContainerSettings root, which this is not. Unity does not otherwise order Awake
+    // between a parent object and its children.
+    [DefaultExecutionOrder(-5100)]
     public sealed class GameLifetimeScope : LifetimeScope
     {
         [SerializeField] private BoxerConfig _boxerConfig;
 
         protected override void Configure(IContainerBuilder builder)
         {
-            MessagePipeOptions options = builder.RegisterMessagePipe();
-            builder.RegisterMessageBroker<PunchLandedMessage>(options);
-            builder.RegisterMessageBroker<PunchEvadedMessage>(options);
-            builder.RegisterMessageBroker<PunchBlockedMessage>(options);
-            builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
-            builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
-            builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
-            builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
-            builder.RegisterMessageBroker<MatchEndedMessage>(options);
+            // Registered at the root whether or not arenas exist, because the shared systems
+            // below subscribe to them. In a multi-arena scene each arena shadows these with
+            // brokers of its own, and the root pair is then only what RatingSystem listens on.
+            ArenaInstaller.InstallMessaging(builder);
 
             builder.RegisterInstance(_boxerConfig);
-            builder.Register<MatchModel>(Lifetime.Singleton);
             builder.Register<TouchInputModel>(Lifetime.Singleton);
-            builder.Register<MatchFlowModel>(Lifetime.Singleton);
             builder.Register<RosterModel>(Lifetime.Singleton);
             builder.Register<RatingModel>(Lifetime.Singleton);
 
-            builder.Register<BoxerSystem>(Lifetime.Singleton).AsSelf();
-            builder.Register<CombatSystem>(Lifetime.Singleton).AsSelf();
-            builder.Register<MatchSystem>(Lifetime.Singleton).AsSelf();
-            builder.Register<MatchFlowSystem>(Lifetime.Singleton).AsSelf();
-            builder.Register<SpawnSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<RosterSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<RatingSystem>(Lifetime.Singleton).AsSelf();
 
@@ -43,23 +44,31 @@ namespace PoRumble.Views
             // registered as an instance; RatingSystem only ever sees the interface.
             builder.Register<IRatingStore>(_ => new FileRatingStore(), Lifetime.Singleton);
 
-            // Scene components the systems depend on.
-            builder.RegisterComponentInHierarchy<BoxerSpawnPoints>();
+            // One ring, installed here. A multi-arena scene skips this and each
+            // ArenaLifetimeScope installs its own; nothing else about the root changes.
+            bool singleRing = !HasArenaChildren();
 
-            builder.RegisterEntryPoint<MatchDirector>();
+            if (singleRing)
+            {
+                ArenaInstaller.Install(builder, null);
+            }
 
-            // VContainer resolves lazily. CombatSystem and MatchSystem only ever subscribe to
-            // messages, so nothing injects them and they would never be constructed - meaning
-            // punches would silently do nothing. Force them to exist when the container builds.
             builder.RegisterBuildCallback(container =>
             {
-                container.Resolve<CombatSystem>();
-                container.Resolve<MatchSystem>();
-
-                // Same reason as the two above: RatingSystem only subscribes to messages, so
-                // nothing injects it and VContainer would never construct it - every match
-                // would resolve with the standings silently untouched.
-                container.Resolve<RatingSystem>();
+                // RatingSystem only subscribes to messages, so nothing injects it and
+                // VContainer would never construct it - every match would resolve with the
+                // standings silently untouched.
+                //
+                // Only in a single-ring scene, though. RatingSystem takes a MatchModel, and in
+                // a multi-arena scene there is no such thing at the root - there are eight of
+                // them, one per arena. Forcing it here throws on the first frame. Nothing is
+                // lost: arenas exist only for training, training scenes carry no fight card,
+                // and RosterModel.SeatOf returns null without one, so the league table would
+                // stay empty in any case.
+                if (singleRing)
+                {
+                    container.Resolve<RatingSystem>();
+                }
 
                 // Presentation components are all optional: the training scenes deliberately
                 // have no HUD, no camera rig and no feedback layer, and
@@ -76,6 +85,21 @@ namespace PoRumble.Views
                 InjectOptional<StandingsHudView>(container);
                 InjectOptional<KnockoutMoodView>(container);
             });
+        }
+
+        /// <summary>
+        /// True when this scene splits its rings into arena scopes.
+        ///
+        /// Searched under this object rather than across the scene, because "is this scope the
+        /// parent of some arenas" is the actual question, and TrainingArenaBuilder always
+        /// parents an arena here even though what really binds the two is the arena's
+        /// serialized parentReference. Inactive children count: an
+        /// arena disabled to shrink a run still has to be excluded from the single-ring path,
+        /// or the root would register a second, competing MatchDirector.
+        /// </summary>
+        private bool HasArenaChildren()
+        {
+            return GetComponentInChildren<ArenaLifetimeScope>(true) != null;
         }
 
         /// <summary>

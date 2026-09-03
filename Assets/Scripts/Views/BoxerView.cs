@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MessagePipe;
 using PoRumble.Models;
 using UnityEngine;
@@ -196,12 +197,48 @@ namespace PoRumble.Views
 
             if (_leftArmView != null)
             {
-                _leftArmView.Bind(_model.LeftArm);
+                _leftArmView.Bind(_model, _model.LeftArm);
             }
 
             if (_rightArmView != null)
             {
-                _rightArmView.Bind(_model.RightArm);
+                _rightArmView.Bind(_model, _model.RightArm);
+            }
+        }
+
+        /// <summary>
+        /// Fills the two lists with this boxer's left and right arm colliders.
+        ///
+        /// The spawner needs the split, not the union: these are the only self-collisions a
+        /// fighter keeps, because its own two fists have to be able to run into each other.
+        /// </summary>
+        public void CollectArmColliders(List<Collider2D> left, List<Collider2D> right)
+        {
+            if (_leftArmView != null)
+            {
+                _leftArmView.CollectColliders(left);
+            }
+
+            if (_rightArmView != null)
+            {
+                _rightArmView.CollectColliders(right);
+            }
+        }
+
+        /// <summary>
+        /// Poses both arms straight from the model rather than servoing them through the
+        /// physics solver. Training scenes only - see <see cref="ArmView.SetKinematicDrive"/>.
+        /// </summary>
+        public void SetKinematicArms(bool kinematic)
+        {
+            if (_leftArmView != null)
+            {
+                _leftArmView.SetKinematicDrive(kinematic);
+            }
+
+            if (_rightArmView != null)
+            {
+                _rightArmView.SetKinematicDrive(kinematic);
             }
         }
 

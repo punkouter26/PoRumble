@@ -138,14 +138,45 @@ namespace PoRumble.Models
         }
     }
 
+    /// <summary>
+    /// A fighter threw both fists at once and they ran into each other.
+    ///
+    /// Because the gloves converge on the centreline as they extend, two arms at full stretch
+    /// occupy the same piece of air. The punch is lost and both arms are knocked into their
+    /// recovery, which is the cost that teaches a policy to throw one at a time rather than
+    /// being told to by a rule in the system.
+    /// </summary>
+    public readonly struct PunchClashedMessage
+    {
+        public readonly int BoxerId;
+        public readonly Vector2 Position;
+
+        public PunchClashedMessage(int boxerId, Vector2 position)
+        {
+            BoxerId = boxerId;
+            Position = position;
+        }
+    }
+
     public readonly struct MatchEndedMessage
     {
         /// <summary>MatchModel.NO_WINNER (-1) for a draw.</summary>
         public readonly int WinnerId;
 
-        public MatchEndedMessage(int winnerId)
+        /// <summary>
+        /// True when the bell decided it rather than a knockout finishing it.
+        ///
+        /// The distinction is the metric checkpoints are actually selected on, and until now
+        /// nothing recorded it: reward and the objective pull apart here, because finishing a
+        /// match early truncates the episode and caps the damage that can be accumulated, so
+        /// picking on reward reliably prefers the policy that finishes fewer fights.
+        /// </summary>
+        public readonly bool EndedOnTimeout;
+
+        public MatchEndedMessage(int winnerId, bool endedOnTimeout)
         {
             WinnerId = winnerId;
+            EndedOnTimeout = endedOnTimeout;
         }
     }
 }

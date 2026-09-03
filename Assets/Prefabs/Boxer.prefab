@@ -48,7 +48,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.07
+  m_Mass: 0.012
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -407,7 +407,8 @@ GameObject:
   - component: {fileID: 3478209065333683190}
   - component: {fileID: 6646007883932994142}
   - component: {fileID: 4629081725792536831}
-  m_Layer: 0
+  - component: {fileID: 6612815292483256734}
+  m_Layer: 18
   m_Name: UpperArmR
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -442,7 +443,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.16
+  m_Mass: 0.03
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -483,6 +484,43 @@ HingeJoint2D:
   m_AngleLimits:
     m_LowerAngle: -45
     m_UpperAngle: 80
+--- !u!70 &6612815292483256734
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370735861253734283}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.365}
+  m_Size: {x: 0.28, y: 0.73}
+  m_Direction: 0
 --- !u!1 &540464607181756986
 GameObject:
   m_ObjectHideFlags: 0
@@ -562,7 +600,8 @@ GameObject:
   - component: {fileID: 9147421699382460536}
   - component: {fileID: 4850162119348247646}
   - component: {fileID: 9047673578425693031}
-  m_Layer: 0
+  - component: {fileID: 8232076468260211055}
+  m_Layer: 18
   m_Name: UpperArmL
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -597,7 +636,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.16
+  m_Mass: 0.03
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -638,6 +677,43 @@ HingeJoint2D:
   m_AngleLimits:
     m_LowerAngle: -80
     m_UpperAngle: 45
+--- !u!70 &8232076468260211055
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 565702491724992607}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.365}
+  m_Size: {x: 0.28, y: 0.73}
+  m_Direction: 0
 --- !u!1 &609089028288181360
 GameObject:
   m_ObjectHideFlags: 0
@@ -778,7 +854,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.07
+  m_Mass: 0.012
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -1045,7 +1121,8 @@ GameObject:
   - component: {fileID: 3092952972195360117}
   - component: {fileID: 8018707319586159134}
   - component: {fileID: 3811948717388974597}
-  m_Layer: 0
+  - component: {fileID: 4315965248816917188}
+  m_Layer: 18
   m_Name: ForearmR
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1080,7 +1157,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.09
+  m_Mass: 0.018
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -1121,6 +1198,43 @@ HingeJoint2D:
   m_AngleLimits:
     m_LowerAngle: 0
     m_UpperAngle: 145
+--- !u!70 &4315965248816917188
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2082817959237015394}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.39}
+  m_Size: {x: 0.28, y: 0.78}
+  m_Direction: 0
 --- !u!1 &4318542333326462909
 GameObject:
   m_ObjectHideFlags: 0
@@ -1172,6 +1286,7 @@ MonoBehaviour:
   _shoulderPunchAngle: 0
   _elbowGuardAngle: 125
   _elbowPunchAngle: 8
+  _shoulderDriveAngle: 34
   _wristGuardAngle: 25
   _wristPunchAngle: 0
   _mirror: 0
@@ -1181,7 +1296,7 @@ MonoBehaviour:
   _cockDepth: 0.35
   _cockFraction: 0.22
   _servoGain: 60
-  _maxMotorTorque: 1100
+  _maxMotorTorque: 260
   _elbowTorqueScale: 0.55
   _wristTorqueScale: 0.2
 --- !u!1 &4558874778711609569
@@ -1419,6 +1534,7 @@ MonoBehaviour:
   _shoulderPunchAngle: 0
   _elbowGuardAngle: 103
   _elbowPunchAngle: 8
+  _shoulderDriveAngle: 16
   _wristGuardAngle: 25
   _wristPunchAngle: 0
   _mirror: 1
@@ -1428,7 +1544,7 @@ MonoBehaviour:
   _cockDepth: 0.35
   _cockFraction: 0.22
   _servoGain: 60
-  _maxMotorTorque: 1100
+  _maxMotorTorque: 260
   _elbowTorqueScale: 0.55
   _wristTorqueScale: 0.2
 --- !u!1 &6652157053363623272
@@ -1549,7 +1665,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.Policies.BehaviorParameters
   m_BrainParameters:
-    VectorObservationSize: 15
+    VectorObservationSize: 20
     NumStackedVectorObservations: 2
     m_ActionSpec:
       m_NumContinuousActions: 4
@@ -1583,15 +1699,17 @@ MonoBehaviour:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
   MaxStep: 2500
-  _damageDealtReward: 0.2
+  _knockoutDamageReward: 0.6
   _evadeReward: 0.03
   _blockReward: 0.015
-  _damageTakenPenalty: 0.02
-  _eliminationReward: 1
-  _eliminatedPenalty: 0.75
+  _knockoutDamagePenalty: 0.4
+  _eliminationReward: 1.5
+  _eliminatedPenalty: 1
+  _winReward: 6
   _aimShapingWeight: 0.6
   _approachShapingWeight: 0.25
   _rangeShapingWeight: 0.4
+  _shapingScaleParameter: shaping_scale
   _punchCost: 0.002
   _humanControlled: 0
   _scriptedBot: 0
@@ -1634,9 +1752,9 @@ MonoBehaviour:
   m_RayLayerMask:
     serializedVersion: 2
     m_Bits: 4294967291
-  m_ObservationStacks: 2
+  m_ObservationStacks: 1
   m_AlternatingRayOrder: 1
-  m_UseBatchedRaycasts: 0
+  m_UseBatchedRaycasts: 1
   rayHitColor: {r: 1, g: 0, b: 0, a: 1}
   rayMissColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!114 &7446848903476554774
@@ -2076,7 +2194,8 @@ GameObject:
   - component: {fileID: 6503918741320673665}
   - component: {fileID: 1000319839004648447}
   - component: {fileID: 4022942578818272044}
-  m_Layer: 0
+  - component: {fileID: 967126149347393481}
+  m_Layer: 18
   m_Name: ForearmL
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2111,7 +2230,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.09
+  m_Mass: 0.018
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -2152,3 +2271,40 @@ HingeJoint2D:
   m_AngleLimits:
     m_LowerAngle: -145
     m_UpperAngle: 0
+--- !u!70 &967126149347393481
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8090068710320923599}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.39}
+  m_Size: {x: 0.28, y: 0.78}
+  m_Direction: 0

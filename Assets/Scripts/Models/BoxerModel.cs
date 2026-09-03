@@ -62,6 +62,17 @@ namespace PoRumble.Models
         public bool CanDodge => DodgeWindow <= 0f && DodgeCooldown <= 0f;
 
         /// <summary>
+        /// Accumulated trauma, shed over the following second or so. Above
+        /// <see cref="BoxerConfig.StunThreshold"/> the boxer is wobbled: slower on its feet
+        /// and much slower to turn, so the guard stops tracking the attacker.
+        ///
+        /// A plain float rather than a ReactiveProperty, for the same reason
+        /// <see cref="CounterWindow"/> is one: it changes on every single tick and waking a
+        /// subscriber sixty times a second to redraw nothing is pure waste.
+        /// </summary>
+        public float Stun { get; set; }
+
+        /// <summary>
         /// Physical differences from the shipped tuning — power, chin, speed, breath.
         ///
         /// Set once when a contestant takes this seat and read by the systems every tick. It
@@ -136,6 +147,7 @@ namespace PoRumble.Models
             Charge.Value = 0f;
             ChargeInput = false;
             CounterWindow = 0f;
+            Stun = 0f;
             DodgeWindow = 0f;
             DodgeCooldown = 0f;
             DodgeDirection = Vector2.zero;
@@ -157,6 +169,7 @@ namespace PoRumble.Models
             Charge.Value = 0f;
             ChargeInput = false;
             CounterWindow = 0f;
+            Stun = 0f;
             DodgeWindow = 0f;
             DodgeCooldown = 0f;
             LeftArm.ForceRetract();

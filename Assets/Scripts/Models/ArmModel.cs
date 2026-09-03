@@ -111,6 +111,25 @@ namespace PoRumble.Models
             }
         }
 
+        /// <summary>
+        /// Knocks the arm out of a swing and straight into its recovery.
+        ///
+        /// Unlike <see cref="ForceRetract"/> this does not free the arm to throw again: the
+        /// phase becomes CoolingDown, so the ordinary cooldown has to elapse first. That is
+        /// the whole cost of clashing your own fists together - if a clash simply reset both
+        /// arms to idle, throwing both at once would be free and the fighter would never have
+        /// a reason to stop doing it.
+        /// </summary>
+        public void Stagger()
+        {
+            Extension = 0f;
+            Windup = 0f;
+            ChargeLevel = 0f;
+            ReachedPeakThisTick = false;
+            Phase = ArmPhase.CoolingDown;
+            _phaseElapsed = 0f;
+        }
+
         /// <summary>Forces the arm back to rest, e.g. when its owner is eliminated.</summary>
         public void ForceRetract()
         {

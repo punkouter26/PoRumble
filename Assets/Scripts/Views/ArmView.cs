@@ -1,5 +1,8 @@
+using System.Collections.Generic;
 using PoRumble.Models;
+using PoRumble.Systems;
 using UnityEngine;
+using VContainer;
 
 namespace PoRumble.Views
 {
@@ -35,6 +38,18 @@ namespace PoRumble.Views
         [SerializeField] private float _elbowGuardAngle = 45f;
         [Tooltip("Never zero: elbows do not hyperextend.")]
         [SerializeField] private float _elbowPunchAngle = 0f;
+
+        [Tooltip("Peak extra shoulder rotation through the middle of the swing, added on top " +
+                 "of the guard-to-punch angles above. Power in a punch comes from the " +
+                 "shoulder driving through, not from the elbow straightening: without this " +
+                 "the shoulder travelled 15 degrees to the elbow's 117 and every punch was an " +
+                 "elbow flick down the centreline, identical on both arms.\n\n" +
+                 "Applied on a sine envelope that is zero at both ends of the swing, so the " +
+                 "guard pose and the fully extended pose are byte-identical to what they were " +
+                 "and the drawn glove still arrives exactly where CombatMath resolves the " +
+                 "hit. All of the motion is in between, which is where an arc reads.")]
+        [Range(0f, 90f)]
+        [SerializeField] private float _shoulderDriveAngle = 26f;
 
         [Header("Wrist")]
         [SerializeField] private float _wristGuardAngle = 0f;
@@ -76,6 +91,15 @@ namespace PoRumble.Views
         [Header("Servo")]
         [SerializeField] private float _servoGain = 90f;
 
+        [Tooltip("Ceiling on the speed the servo will ask a joint for, in degrees per second. " +
+                 "Not a nicety - it is what stops a runaway. HingeJoint2D.jointAngle is " +
+                 "cumulative and unbounded: it does not wrap at 180, it keeps counting. If a " +
+                 "joint is ever driven past its limit hard enough to get round, the raw " +
+                 "difference between target and jointAngle grows without bound, the servo asks " +
+                 "for a proportionally larger speed, and the arm spins itself off the body. " +
+                 "Measured mid-fight with joints at -6543 degrees asking for 300,000 deg/s.")]
+        [SerializeField] private float _maxMotorSpeed = 1800f;
+
         [Tooltip("Torque available at the shoulder, the strongest joint in the arm.")]
         [SerializeField] private float _maxMotorTorque = 4000f;
 
@@ -93,10 +117,107 @@ namespace PoRumble.Views
         [SerializeField] private float _wristTorqueScale = 0.2f;
 
         private ArmModel _model;
+        private BoxerModel _boxer;
+        private BoxerSystem _boxerSystem;
 
-        public void Bind(ArmModel model)
+        /// <summary>
+        /// True when the limb is posed straight from the model instead of being servoed by
+        /// the physics solver. See <see cref="SetKinematicDrive"/>.
+        /// </summary>
+        private bool _kinematic;
+
+        [Inject]
+        public void Construct(BoxerSystem boxerSystem)
         {
+            _boxerSystem = boxerSystem;
+        }
+
+        public void Bind(BoxerModel boxer, ArmModel model)
+        {
+            _boxer = boxer;
             _model = model;
+        }
+
+        /// <summary>
+        /// Swaps the arm between being servoed by the physics solver and being posed directly
+        /// from the model.
+        ///
+        /// The arms are cosmetic: every hit is resolved by CombatMath against the model's own
+        /// extension, and the segments carry no colliders. In a training scene that makes six
+        /// dynamic bodies and six hinge joints per fighter - sixty of each in a ten-way -
+        /// solved fifty times a second for a picture nobody is looking at.
+        ///
+        /// Turning it off drives the glove transform straight to the position CombatMath
+        /// already believes it occupies. That is the one part of the arm that has to stay
+        /// truthful, because a glove collider still occludes other fighters' rays; posing it
+        /// from the model means perception is not merely close to the game's but identical to
+        /// it, so nothing about this trades a sim-to-real gap for the speed.
+        /// </summary>
+        public void SetKinematicDrive(bool kinematic)
+        {
+            _kinematic = kinematic;
+            ApplyJoint(_shoulderJoint, kinematic);
+            ApplyJoint(_elbowJoint, kinematic);
+            ApplyJoint(_wristJoint, kinematic);
+        }
+
+        /// <summary>
+        /// Adds this arm's own colliders to the list.
+        ///
+        /// Read off the joints rather than from serialized fields, so the arm cannot end up
+        /// describing a set of segments it is not actually driving. Used by the spawner to
+        /// decide which self-collisions to keep: a fighter's two arms must stop each other,
+        /// while every other pair of its own parts must not.
+        /// </summary>
+        public void CollectColliders(List<Collider2D> results)
+        {
+            AddColliders(_shoulderJoint, results);
+            AddColliders(_elbowJoint, results);
+            AddColliders(_wristJoint, results);
+        }
+
+        private static void AddColliders(HingeJoint2D joint, List<Collider2D> results)
+        {
+            if (joint == null)
+            {
+                return;
+            }
+
+            Rigidbody2D body = joint.attachedRigidbody;
+
+            if (body == null)
+            {
+                return;
+            }
+
+            Collider2D[] colliders = body.GetComponents<Collider2D>();
+
+            for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
+            {
+                results.Add(colliders[colliderIndex]);
+            }
+        }
+
+        /// <summary>
+        /// Stops one joint and the body it drives. Both halves are needed: disabling the
+        /// joint alone leaves a free dynamic body that the solver still integrates, and it
+        /// would drift away from the arm it is supposed to be part of.
+        /// </summary>
+        private static void ApplyJoint(HingeJoint2D joint, bool kinematic)
+        {
+            if (joint == null)
+            {
+                return;
+            }
+
+            joint.enabled = !kinematic;
+
+            Rigidbody2D body = joint.attachedRigidbody;
+
+            if (body != null)
+            {
+                body.simulated = !kinematic;
+            }
         }
 
         private void FixedUpdate()
@@ -109,12 +230,24 @@ namespace PoRumble.Views
             // Winding up drives extension negative, which cocks the arm back behind its
             // guard pose. LerpUnclamped rather than Lerp: the clamped form would pin the
             // wind-up at the guard angle and the telegraph would be invisible.
+            if (_kinematic)
+            {
+                PoseGloveFromModel();
+                return;
+            }
+
             float extension = ShapeStrike(_model.Extension) - _model.Windup * _windupPullback;
             float sign = _mirror ? -1f : 1f;
 
+            // The shoulder's own contribution, peaking mid-swing and vanishing at both ends.
+            // Keyed to the model's linear extension rather than to the shaped one, so the
+            // envelope is exactly zero at the guard pose and exactly zero at full reach
+            // whatever ShapeStrike does in between.
+            float drive = _shoulderDriveAngle * Mathf.Sin(Mathf.PI * Mathf.Clamp01(_model.Extension));
+
             ServoTo(
                 _shoulderJoint,
-                sign * Mathf.LerpUnclamped(_shoulderGuardAngle, _shoulderPunchAngle, extension),
+                sign * (Mathf.LerpUnclamped(_shoulderGuardAngle, _shoulderPunchAngle, extension) + drive),
                 _maxMotorTorque);
             ServoTo(
                 _elbowJoint,
@@ -132,6 +265,26 @@ namespace PoRumble.Views
                 // and outlive the punch.
                 _gloveTrail.emitting = _model.Extension >= _trailThreshold;
             }
+        }
+
+        /// <summary>
+        /// Puts the glove exactly where the combat maths says it is. Used only while the
+        /// solver is switched off; the upper arm and forearm are left where they were, which
+        /// is why this is for training scenes and not for anything anybody looks at.
+        /// </summary>
+        private void PoseGloveFromModel()
+        {
+            if (_wristJoint == null || _boxer == null || _boxerSystem == null)
+            {
+                return;
+            }
+
+            Transform glove = _wristJoint.transform;
+            Vector2 target = _boxerSystem.GetGlovePosition(_boxer, _model);
+
+            // Z is preserved rather than zeroed: sorting order in a 2D scene rides on it.
+            Vector3 position = glove.position;
+            glove.position = new Vector3(target.x, target.y, position.z);
         }
 
         /// <summary>
@@ -174,10 +327,14 @@ namespace PoRumble.Views
                 return;
             }
 
-            float error = targetAngle - joint.jointAngle;
+            // DeltaAngle, not subtraction. jointAngle accumulates without wrapping, so a raw
+            // difference is only correct while the joint has stayed inside one revolution -
+            // and the moment it has not, the error is enormous and the servo drives the arm
+            // further out rather than back.
+            float error = Mathf.DeltaAngle(joint.jointAngle, targetAngle);
 
             JointMotor2D motor = joint.motor;
-            motor.motorSpeed = error * _servoGain;
+            motor.motorSpeed = Mathf.Clamp(error * _servoGain, -_maxMotorSpeed, _maxMotorSpeed);
             motor.maxMotorTorque = maxTorque;
             joint.motor = motor;
         }

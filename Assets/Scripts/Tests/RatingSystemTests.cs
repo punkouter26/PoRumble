@@ -105,7 +105,7 @@ namespace PoRumble.Tests
             }
 
             _match.End(winnerId);
-            _container.Resolve<IPublisher<MatchEndedMessage>>().Publish(new MatchEndedMessage(winnerId));
+            _container.Resolve<IPublisher<MatchEndedMessage>>().Publish(new MatchEndedMessage(winnerId, false));
         }
 
         private float RatingOf(int seat)

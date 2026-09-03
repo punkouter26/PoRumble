@@ -36,7 +36,16 @@ namespace PoRumble.Tests
         /// neither reaches the other's head, close enough that the gloves collide. Two fully
         /// extended arms touch at exactly twice the reach.
         /// </summary>
-        private float GuardRange => _config.ArmReach * 2f;
+        /// <summary>
+        /// A separation where two thrown gloves meet but neither reaches a head.
+        ///
+        /// The window is narrow and it moved. Gloves meet at twice the reach, so the margin
+        /// above that is what keeps the heads out of range - and punches now converge on the
+        /// centreline as they extend, which means a glove arrives 0.45 nearer the opponent's
+        /// spine than it used to and the range at which one can land went from 3.09 to 3.28.
+        /// Twice the reach on the nose is now inside that; it was outside it before.
+        /// </summary>
+        private float GuardRange => _config.ArmReach * 2f + 0.2f;
 
         [SetUp]
         public void SetUp()
@@ -46,6 +55,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<PunchClashedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             _container = builder.Build();
@@ -59,6 +69,7 @@ namespace PoRumble.Tests
                 _container.Resolve<IPublisher<PunchLandedMessage>>(),
                 _container.Resolve<IPublisher<PunchEvadedMessage>>(),
                 _container.Resolve<IPublisher<PunchBlockedMessage>>(),
+                _container.Resolve<IPublisher<PunchClashedMessage>>(),
                 _container.Resolve<IPublisher<HaymakerThrownMessage>>(),
                 _container.Resolve<IPublisher<BoxerDodgedMessage>>());
 

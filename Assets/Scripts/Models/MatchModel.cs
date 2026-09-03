@@ -21,6 +21,18 @@ namespace PoRumble.Models
 
         /// <summary>Half width/height of the ring interior. Boxers are clamped inside it.</summary>
         public Vector2 ArenaHalfExtent { get; set; } = new(20f, 20f);
+
+        /// <summary>
+        /// Where this ring sits in the world. Zero for a scene with one arena in it, which is
+        /// every scene that shipped before parallel training arenas existed.
+        ///
+        /// It has to live in the model rather than in the transform hierarchy, and that is
+        /// forced rather than chosen: the torso is moved with Rigidbody2D.MovePosition, which
+        /// is world-space and ignores its parents entirely, so offsetting an arena by
+        /// re-parenting it would move the drawn ring and leave every fighter simulating on
+        /// top of the arena next door.
+        /// </summary>
+        public Vector2 ArenaCenter { get; set; }
         public ReactiveProperty<MatchPhase> Phase { get; } = new(MatchPhase.InProgress);
         public int WinnerId { get; private set; } = NO_WINNER;
 

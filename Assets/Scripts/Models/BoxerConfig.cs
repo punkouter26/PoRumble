@@ -64,10 +64,12 @@ namespace PoRumble.Models
         [SerializeField] private float _committedTurnScale = 0.4f;
 
         [Header("Stamina")]
-        [Tooltip("Stamina spent per punch thrown. Doubled from 0.035 when boxers were limited " +
-                 "to one fist out at a time: that halved throughput to ~2.2 punches/sec, and " +
-                 "at the old cost the 0.077/s drain sat below the 0.09/s recovery, so " +
-                 "punching paid for itself and stamina stopped meaning anything.")]
+        [Tooltip("Stamina spent per punch thrown. Stays at 0.07 even though one fist at a " +
+                 "time is no longer enforced: a held button still alternates, because the " +
+                 "fall-through to the other arm is refused while either fist is out. " +
+                 "Throughput under ordinary play is therefore the ~2.2 punches/sec this was " +
+                 "tuned against. A fighter that deliberately names both arms doubles the " +
+                 "drain, and clashes for its trouble.")]
         [SerializeField] private float _punchStaminaCost = 0.07f;
         [Tooltip("Stamina spent per second at full sprint.")]
         [SerializeField] private float _moveStaminaCost = 0.05f;
@@ -132,6 +134,65 @@ namespace PoRumble.Models
                  "at which one can actually land.")]
         [SerializeField] private float _dodgeThreatRangeScale = 1.35f;
 
+        [Header("Punch mechanics")]
+        [Tooltip("How far the glove travels toward the centreline as the arm extends, as a " +
+                 "fraction of the shoulder's lateral offset. 0 punches on two parallel rails " +
+                 "0.53 either side of the spine, which is what a boxer's arms emphatically do " +
+                 "not do: a straight punch crosses the middle, which is why you cannot throw " +
+                 "both at once.\n\n" +
+                 "At 0.85 the two gloves finish 0.16 apart at full extension - inside a glove " +
+                 "diameter, so simultaneous punches physically clash - without ever being " +
+                 "exactly coincident, which would give the block maths a zero-length vector.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _punchConvergence = 0.85f;
+
+        [Tooltip("Sideways distance from the spine to a glove at rest. The shoulder stays out " +
+                 "at Arm Lateral Offset; the hand does not, because a guard is carried at the " +
+                 "chin. The model used to put the resting glove level with its own shoulder, " +
+                 "which made the guard a point 0.53 out to the side - so once punches began " +
+                 "converging on the centreline they arrived nowhere near it and almost nothing " +
+                 "could be blocked. Shoulder-to-glove is now a diagonal across the chest, " +
+                 "which is both what a guard looks like and what it covers.")]
+        [SerializeField] private float _guardLateralOffset = 0.18f;
+
+        [Tooltip("Forward speed a thrown punch carries the body into, before stamina. A punch " +
+                 "is delivered by stepping into it - the arm alone is the weakest way a human " +
+                 "can generate force - so throwing one commits the feet as well as the " +
+                 "shoulders. Small: this is a step, not a lunge, and it decays under " +
+                 "Deceleration within about a tenth of a second.")]
+        [SerializeField] private float _punchLungeSpeed = 1.2f;
+
+        [Header("Stun")]
+        [Tooltip("Stun accumulated per point of damage taken. A knockout in a real fight is " +
+                 "an accumulation of trauma inside a short window, not a health bar reaching " +
+                 "zero, and without this a boxer on 1 HP fights exactly as well as one on 30.")]
+        [SerializeField] private float _stunPerDamage = 0.16f;
+
+        [Tooltip("Stun shed per second. Sets how long a window has to be exploited before it " +
+                 "closes; at 0.5 a two-damage punch is fully cleared in under a second, so " +
+                 "wobbling somebody takes a combination rather than one lucky shot.")]
+        [SerializeField] private float _stunDecayPerSecond = 0.5f;
+
+        [Tooltip("Accumulated stun above which the boxer is visibly wobbled. Reachable in " +
+                 "roughly three or four landed punches inside a second.")]
+        [Range(0.1f, 2f)]
+        [SerializeField] private float _stunThreshold = 0.6f;
+
+        [Tooltip("Speed and acceleration multiplier while wobbled. This is what makes " +
+                 "pressing an advantage the correct play rather than resetting to range.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _stunnedMobilityScale = 0.55f;
+
+        [Tooltip("Turn rate multiplier while wobbled. Lower than the mobility scale: losing " +
+                 "the ability to keep the guard pointed at the attacker is what actually " +
+                 "opens the face arc up.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _stunnedTurnScale = 0.4f;
+
+        [Tooltip("Ceiling on accumulated stun, so a haymaker cannot bank a wobble that " +
+                 "outlasts the exchange that earned it.")]
+        [SerializeField] private float _maxStun = 1.5f;
+
         [Header("Counter")]
         [Tooltip("Seconds after blocking a punch during which your next landed punch counts " +
                  "as a counter. Rewards reading the opponent rather than mashing.")]
@@ -175,6 +236,15 @@ namespace PoRumble.Models
         public float DodgeStaminaCost => _dodgeStaminaCost;
         public float DodgeSpeedScale => _dodgeSpeedScale;
         public float DodgeThreatRangeScale => _dodgeThreatRangeScale;
+        public float PunchConvergence => _punchConvergence;
+        public float GuardLateralOffset => _guardLateralOffset;
+        public float PunchLungeSpeed => _punchLungeSpeed;
+        public float StunPerDamage => _stunPerDamage;
+        public float StunDecayPerSecond => _stunDecayPerSecond;
+        public float StunThreshold => _stunThreshold;
+        public float StunnedMobilityScale => _stunnedMobilityScale;
+        public float StunnedTurnScale => _stunnedTurnScale;
+        public float MaxStun => _maxStun;
         public float CounterWindowDuration => _counterWindowDuration;
         public int CounterDamageBonus => _counterDamageBonus;
 

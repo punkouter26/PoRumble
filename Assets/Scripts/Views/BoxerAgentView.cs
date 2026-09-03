@@ -9,6 +9,7 @@ using Unity.MLAgents.Policies;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 using VContainer;
 
 namespace PoRumble.Views
@@ -26,17 +27,33 @@ namespace PoRumble.Views
     public sealed class BoxerAgentView : Agent
     {
         [Header("Reward shaping")]
-        [Tooltip("Per point of damage landed on an opponent's face. The face arc is the only " +
-                 "way to score, so this is the core objective.")]
-        [SerializeField] private float _damageDealtReward = 0.35f;
+        [Tooltip("Paid for taking a full health bar off one opponent, spread over the punches " +
+                 "that did it. Denominated per knockout rather than per point of damage on " +
+                 "purpose: a per-point figure silently rescales the whole reward function " +
+                 "whenever Max Health moves, and at 30 HP the old 0.2/point made a single " +
+                 "knockout worth 6.0 against a win bonus of 2. The objective was outscored " +
+                 "three to one by its own scaffolding, which is why the policy preferred long " +
+                 "matches: finishing one early truncates the damage it could still farm.")]
+        [FormerlySerializedAs("_damageDealtReward")]
+        [SerializeField] private float _knockoutDamageReward = 0.6f;
         [Tooltip("For slipping a punch that nearly landed.")]
         [SerializeField] private float _evadeReward = 0.03f;
         [Tooltip("For stopping a punch on the gloves. Less than slipping it: the punch still " +
                  "arrived, it just did not get through.")]
         [SerializeField] private float _blockReward = 0.015f;
-        [SerializeField] private float _damageTakenPenalty = 0.02f;
-        [SerializeField] private float _eliminationReward = 0.5f;
+        [Tooltip("Charged for losing a full health bar, on the same per-knockout scale as the " +
+                 "damage reward. Deliberately below it: a fighter that valued its own health " +
+                 "as highly as an opponent's would rather run out the clock than trade.")]
+        [FormerlySerializedAs("_damageTakenPenalty")]
+        [SerializeField] private float _knockoutDamagePenalty = 0.4f;
+        [SerializeField] private float _eliminationReward = 1.5f;
         [SerializeField] private float _eliminatedPenalty = 1.0f;
+
+        [Tooltip("Paid to the last fighter standing. With the damage terms denominated per " +
+                 "knockout, a nine-kill sweep is worth about 19 from eliminations and 5 from " +
+                 "damage, so this has to be large enough that the outcome - not the damage " +
+                 "farmed on the way - is what the return is mostly made of.")]
+        [SerializeField] private float _winReward = 6f;
 
         [Header("Dense shaping")]
         [Tooltip("Reward per step for pointing at the nearest opponent. Without this the agent " +
@@ -51,8 +68,24 @@ namespace PoRumble.Views
         [Tooltip("Extra reward per step for sitting at the distance a punch can actually land.")]
         [SerializeField] private float _rangeShapingWeight = 0.4f;
 
+        [Tooltip("Environment parameter that scales all three dense shaping terms, so a " +
+                 "curriculum can fade the scaffolding out. It was written for a policy that " +
+                 "could not see an opponent at all; once one can, paying per step for " +
+                 "*standing* at punching range rewards hovering there without throwing " +
+                 "anything. Defaults to 1 when no trainer is connected, so the game is " +
+                 "unaffected.")]
+        [SerializeField] private string _shapingScaleParameter = "shaping_scale";
+
         [Tooltip("Penalty per punch thrown, so flailing is not free.")]
         [SerializeField] private float _punchCost = 0.002f;
+
+        [Tooltip("Penalty for running your own two fists into each other. Throwing both at " +
+                 "once is no longer refused by BoxerSystem - the gloves converge on the " +
+                 "centreline as they extend, so simultaneous punches physically clash and are " +
+                 "both lost. The lost punch is most of the cost; this is the immediate signal " +
+                 "that makes the lesson learnable in far fewer episodes than waiting for the " +
+                 "damage that never arrived to show up in the return.")]
+        [SerializeField] private float _clashPenalty = 0.05f;
 
         [Tooltip("Keyboard control for this boxer instead of a policy. Inference only — " +
                  "never enable during a training run.")]
@@ -101,6 +134,14 @@ namespace PoRumble.Views
         /// <summary>Physics ticks between decisions, read off the DecisionRequester.</summary>
         private int _decisionPeriod = 1;
 
+        /// <summary>
+        /// Current multiplier on the dense shaping terms, resolved once per episode from the
+        /// trainer's environment parameters. Read at the episode boundary rather than per
+        /// step: it cannot change mid-episode, and a dictionary lookup on every physics tick
+        /// of every agent is pure waste.
+        /// </summary>
+        private float _shapingScale = 1f;
+
         // Kept so the handlers can be put back on re-enable. Disabling an agent and enabling
         // it again used to drop every reward message permanently: OnDisable disposed the
         // subscriptions and nothing ever resubscribed, so the boxer went on fighting while
@@ -108,11 +149,13 @@ namespace PoRumble.Views
         private ISubscriber<PunchLandedMessage> _punchSubscriber;
         private ISubscriber<PunchEvadedMessage> _evadedSubscriber;
         private ISubscriber<PunchBlockedMessage> _blockedSubscriber;
+        private ISubscriber<PunchClashedMessage> _clashedSubscriber;
         private ISubscriber<BoxerEliminatedMessage> _eliminatedSubscriber;
 
         private IDisposable _punchSubscription;
         private IDisposable _evadedSubscription;
         private IDisposable _blockedSubscription;
+        private IDisposable _clashedSubscription;
         private IDisposable _eliminatedSubscription;
 
         private int _boxerId = -1;
@@ -127,6 +170,7 @@ namespace PoRumble.Views
             ISubscriber<PunchLandedMessage> punchSubscriber,
             ISubscriber<PunchEvadedMessage> evadedSubscriber,
             ISubscriber<PunchBlockedMessage> blockedSubscriber,
+            ISubscriber<PunchClashedMessage> clashedSubscriber,
             ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber)
         {
             _boxerSystem = boxerSystem;
@@ -138,6 +182,7 @@ namespace PoRumble.Views
             _punchSubscriber = punchSubscriber;
             _evadedSubscriber = evadedSubscriber;
             _blockedSubscriber = blockedSubscriber;
+            _clashedSubscriber = clashedSubscriber;
             _eliminatedSubscriber = eliminatedSubscriber;
 
             // Injection happens after the object is already enabled, so OnEnable cannot be
@@ -159,6 +204,7 @@ namespace PoRumble.Views
             _punchSubscription = _punchSubscriber.Subscribe(OnPunchLanded);
             _evadedSubscription = _evadedSubscriber.Subscribe(OnPunchEvaded);
             _blockedSubscription = _blockedSubscriber.Subscribe(OnPunchBlocked);
+            _clashedSubscription = _clashedSubscriber.Subscribe(OnPunchClashed);
             _eliminatedSubscription = _eliminatedSubscriber.Subscribe(OnBoxerEliminated);
         }
 
@@ -362,12 +408,29 @@ namespace PoRumble.Views
             }
         }
 
+        /// <summary>
+        /// Picks up the trainer's current shaping scale for the episode about to run.
+        ///
+        /// Read here rather than per step because it cannot change mid-episode, and because
+        /// EnvironmentParameters is a dictionary lookup that would otherwise run on every
+        /// physics tick of every agent. Falls back to 1 whenever no Academy is initialised or
+        /// no trainer is connected, which is every case outside a training run - so the game
+        /// keeps the shaping exactly as authored.
+        /// </summary>
+        public override void OnEpisodeBegin()
+        {
+            _shapingScale = Academy.IsInitialized
+                ? Academy.Instance.EnvironmentParameters.GetWithDefault(_shapingScaleParameter, 1f)
+                : 1f;
+        }
+
         public override void CollectObservations(VectorSensor sensor)
         {
-            // Opponents and walls are perceived by RayPerceptionSensorComponent2D, which handles
-            // the roster shrinking from nine opponents to zero. Only self-state goes here.
+            // Walls and the shape of the field are perceived by RayPerceptionSensorComponent2D,
+            // which handles the roster shrinking from nine opponents to zero. Self-state, and
+            // the few facts about the nearest opponent that a ray fan cannot express, go here.
             //
-            // Fifteen floats. Changing this count means changing VectorObservationSize on the
+            // Twenty floats. Changing this count means changing VectorObservationSize on the
             // prefab to match and retraining: a policy compiled against the old width will not
             // load at all.
             if (_model == null)
@@ -383,6 +446,10 @@ namespace PoRumble.Views
                 sensor.AddObservation(0f);                  // stamina
                 sensor.AddObservation(Vector2.zero);        // position in ring
                 sensor.AddObservation(Vector2.zero);        // velocity
+                sensor.AddObservation(0f);                  // stun
+                sensor.AddObservation(Vector2.zero);        // bearing to nearest opponent
+                sensor.AddObservation(0f);                  // range to nearest opponent
+                sensor.AddObservation(0f);                  // incoming punch
                 return;
             }
 
@@ -400,14 +467,135 @@ namespace PoRumble.Views
             // as a distance in some direction; they do not say which corner the boxer is in,
             // and being cornered is the single most important positional fact in boxing.
             Vector2 half = _match.ArenaHalfExtent;
+            Vector2 local = _model.Position - _match.ArenaCenter;
             sensor.AddObservation(new Vector2(
-                _model.Position.x / Mathf.Max(0.01f, half.x),
-                _model.Position.y / Mathf.Max(0.01f, half.y)));
+                local.x / Mathf.Max(0.01f, half.x),
+                local.y / Mathf.Max(0.01f, half.y)));
 
             // Momentum. Movement accelerates and coasts, so intent and actual travel come
             // apart; without this the policy cannot tell that it is still sliding into a
             // punch it meant to step away from.
             sensor.AddObservation(_model.Velocity / Mathf.Max(0.01f, _config.MoveSpeed));
+
+            // Proprioception of trauma. A boxer knows when its own legs have gone, and the
+            // fact changes which move is correct - press, or cover up - so it cannot be left
+            // to be inferred from a health bar that says nothing about how fast it emptied.
+            sensor.AddObservation(_boxerSystem.StunFraction(_model));
+
+            ScanOpponents(out BoxerModel nearest, out float distance, out float threat);
+
+            if (nearest == null)
+            {
+                sensor.AddObservation(Vector2.zero);
+                sensor.AddObservation(0f);
+                sensor.AddObservation(0f);
+                return;
+            }
+
+            // Bearing to the nearest opponent, as the cosine and sine of the angle off the
+            // facing. The rays already say something is out there, but only inside the
+            // forward hemisphere they sweep and only at the resolution of seventeen samples.
+            // This is exact, it is signed - so left and right are distinguishable rather than
+            // merely off-centre - and it survives the opponent being directly behind, which
+            // a 180-degree ray fan cannot represent at all.
+            Vector2 facing = _model.Facing.normalized;
+            Vector2 toOpponent = (nearest.Position - _model.Position).normalized;
+            sensor.AddObservation(new Vector2(
+                Vector2.Dot(facing, toOpponent),
+                facing.x * toOpponent.y - facing.y * toOpponent.x));
+
+            float reach = Mathf.Max(0.01f, _match.ArenaHalfExtent.magnitude * 2f);
+            sensor.AddObservation(Mathf.Clamp01(distance / reach));
+
+            // A punch already in flight and pointed this way. Without it the slip is
+            // unusable to a policy: DodgeDuration is 0.3s against a 0.22s punch, so the
+            // window only exists for something that can see an arm start to travel - and
+            // nothing in the observation vector said an arm was travelling.
+            sensor.AddObservation(threat);
+        }
+
+        /// <summary>
+        /// One pass over the roster for the two things that need it: the nearest living
+        /// opponent, and whether anybody has a punch on its way to this boxer.
+        ///
+        /// Combined because both run on every physics tick of every agent - ten fighters
+        /// scanning ten models, fifty times a second - and walking the same list twice for
+        /// the same data is exactly the waste that ends up on a profiler.
+        /// </summary>
+        private void ScanOpponents(out BoxerModel nearest, out float distance, out float threat)
+        {
+            nearest = null;
+            threat = 0f;
+            float bestSqr = float.MaxValue;
+            float threatRange = _boxerSystem.DodgeThreatRange;
+            float threatRangeSqr = threatRange * threatRange;
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+
+            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
+            {
+                BoxerModel other = boxers[boxerIndex];
+
+                if (other.Id == _boxerId || !other.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                Vector2 offset = other.Position - _model.Position;
+                float sqr = offset.sqrMagnitude;
+
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    nearest = other;
+                }
+
+                if (sqr > threatRangeSqr)
+                {
+                    continue;
+                }
+
+                threat = Mathf.Max(threat, IncomingPunch(other, -offset));
+            }
+
+            distance = nearest == null ? 0f : Mathf.Sqrt(bestSqr);
+        }
+
+        /// <summary>
+        /// How far through its travel an opponent's punch is, provided that punch is coming
+        /// this way. Zero when neither arm is extending, or when the attacker is facing
+        /// somewhere else entirely.
+        ///
+        /// Only the Extending phase counts. A retracting arm is a punch that has already
+        /// resolved, and treating it as a threat would teach the policy to slip after the
+        /// damage had been taken.
+        /// </summary>
+        private static float IncomingPunch(BoxerModel attacker, Vector2 towardSelf)
+        {
+            if (towardSelf.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return 0f;
+            }
+
+            // A punch travels down the attacker's facing, so one aimed at somebody else is
+            // not a threat however close it happens to land.
+            if (Vector2.Dot(attacker.Facing.normalized, towardSelf.normalized) < 0.5f)
+            {
+                return 0f;
+            }
+
+            float extension = 0f;
+
+            if (attacker.LeftArm.Phase == ArmPhase.Extending)
+            {
+                extension = attacker.LeftArm.Extension;
+            }
+
+            if (attacker.RightArm.Phase == ArmPhase.Extending)
+            {
+                extension = Mathf.Max(extension, attacker.RightArm.Extension);
+            }
+
+            return extension;
         }
 
         public override void OnActionReceived(ActionBuffers actions)
@@ -506,8 +694,13 @@ namespace PoRumble.Views
                 continuous[1] = intent.Move.y;
                 continuous[2] = intent.Aim.x;
                 continuous[3] = intent.Aim.y;
-                discrete[0] = intent.PunchLeft ? 1 : 0;
-                discrete[1] = intent.PunchRight ? 1 : 0;
+
+                // Same discipline as the human path below: a scripted brain asks for a punch
+                // without knowing whether the other fist is still out, and would otherwise
+                // clash its way through every round.
+                bool armFree = !IsAnyArmTravelling();
+                discrete[0] = intent.PunchLeft && armFree ? 1 : 0;
+                discrete[1] = intent.PunchRight && armFree ? 1 : 0;
 
                 // Charging and slipping ride their own channels rather than extra action
                 // branches, so the trained policy's action vector is left untouched.
@@ -558,10 +751,35 @@ namespace PoRumble.Views
             continuous[2] = horizontal;
             continuous[3] = vertical;
 
-            // One request is enough. BoxerSystem falls through to whichever arm is free, and
-            // only one fist may be out at a time, so asking for both would change nothing.
-            discrete[0] = punch ? 1 : 0;
+            // One request is enough, and it is withheld while a fist is already travelling.
+            //
+            // BoxerSystem no longer refuses a second punch - the arms clash instead, which is
+            // what a policy has to learn to avoid. A held button is not a policy: it would
+            // reissue the request the instant the first arm came home and knock the fighter's
+            // own fists together for the whole round. The discipline belongs here, in the
+            // mapping from an input to an intent, not in the physics.
+            discrete[0] = punch && !IsAnyArmTravelling() ? 1 : 0;
             discrete[1] = 0;
+        }
+
+        /// <summary>
+        /// True while either fist is away from the guard.
+        ///
+        /// Used only by the hand-driven paths. The policy is deliberately free to throw into
+        /// its own arm and be punished for it; a person holding a button is not making that
+        /// choice and should not be charged for it.
+        /// </summary>
+        private bool IsAnyArmTravelling()
+        {
+            if (_model == null)
+            {
+                return false;
+            }
+
+            return _model.LeftArm.Phase == ArmPhase.Extending
+                   || _model.LeftArm.Phase == ArmPhase.Retracting
+                   || _model.RightArm.Phase == ArmPhase.Extending
+                   || _model.RightArm.Phase == ArmPhase.Retracting;
         }
 
         /// <summary>
@@ -570,14 +788,21 @@ namespace PoRumble.Views
         /// </summary>
         private void ApplyShapingRewards()
         {
-            BoxerModel nearest = FindNearestLivingOpponent(out float distance);
+            // Zero once the curriculum has faded the scaffolding out, at which point none of
+            // the work below is worth doing at all.
+            if (_shapingScale <= 0f)
+            {
+                return;
+            }
+
+            ScanOpponents(out BoxerModel nearest, out float distance, out _);
 
             if (nearest == null)
             {
                 return;
             }
 
-            float steps = Mathf.Max(1, MaxStep);
+            float steps = Mathf.Max(1, MaxStep) / _shapingScale;
             Vector2 toOpponent = nearest.Position - _model.Position;
 
             if (toOpponent.sqrMagnitude > Mathf.Epsilon)
@@ -606,43 +831,19 @@ namespace PoRumble.Views
             AddReward(_rangeShapingWeight * rangeScore / steps);
         }
 
-        private BoxerModel FindNearestLivingOpponent(out float distance)
-        {
-            BoxerModel nearest = null;
-            float bestSqr = float.MaxValue;
-            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
-
-            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
-            {
-                BoxerModel other = boxers[boxerIndex];
-
-                if (other.Id == _boxerId || !other.IsAlive.Value)
-                {
-                    continue;
-                }
-
-                float sqr = (other.Position - _model.Position).sqrMagnitude;
-
-                if (sqr < bestSqr)
-                {
-                    bestSqr = sqr;
-                    nearest = other;
-                }
-            }
-
-            distance = nearest == null ? 0f : Mathf.Sqrt(bestSqr);
-            return nearest;
-        }
-
         private void OnPunchLanded(PunchLandedMessage message)
         {
+            // Per point of a health bar rather than per point of damage, so changing
+            // MaxHealth retunes the fight without silently rescaling the reward function.
+            float perPoint = 1f / Mathf.Max(1, _config.MaxHealth);
+
             if (message.AttackerId == _boxerId)
             {
-                AddReward(_damageDealtReward * message.Damage);
+                AddReward(_knockoutDamageReward * perPoint * message.Damage);
             }
             else if (message.TargetId == _boxerId)
             {
-                AddReward(-_damageTakenPenalty * message.Damage);
+                AddReward(-_knockoutDamagePenalty * perPoint * message.Damage);
             }
         }
 
@@ -664,6 +865,15 @@ namespace PoRumble.Views
             }
         }
 
+        /// <summary>Running your own fists together costs the punch, and a little besides.</summary>
+        private void OnPunchClashed(PunchClashedMessage message)
+        {
+            if (message.BoxerId == _boxerId)
+            {
+                AddReward(-_clashPenalty);
+            }
+        }
+
         private void OnBoxerEliminated(BoxerEliminatedMessage message)
         {
             if (message.BoxerId == _boxerId)
@@ -681,7 +891,7 @@ namespace PoRumble.Views
         {
             if (winnerId == _boxerId)
             {
-                AddReward(2f);
+                AddReward(_winReward);
             }
         }
 
@@ -691,10 +901,12 @@ namespace PoRumble.Views
             _punchSubscription?.Dispose();
             _evadedSubscription?.Dispose();
             _blockedSubscription?.Dispose();
+            _clashedSubscription?.Dispose();
             _eliminatedSubscription?.Dispose();
             _punchSubscription = null;
             _evadedSubscription = null;
             _blockedSubscription = null;
+            _clashedSubscription = null;
             _eliminatedSubscription = null;
         }
     }

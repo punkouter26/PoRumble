@@ -171,7 +171,7 @@ namespace PoRumble.Views
             // what a tight framing must never spend its area on. When the view is wider than
             // the ring, ClampToRing centres on that axis and the dressing is visible anyway.
             Vector2 framed = ClampToRing(
-                _smoothedCenter, _smoothedSize, _match.ArenaHalfExtent, aspect);
+                _smoothedCenter, _smoothedSize, _match.ArenaHalfExtent, _match.ArenaCenter, aspect);
             _followTarget.position = new Vector3(framed.x, framed.y, _followTarget.position.z);
 
             if (_camera != null)
@@ -212,18 +212,23 @@ namespace PoRumble.Views
         /// When the view is wider than the ring on an axis, it is centred on that axis instead
         /// of clamped - there is nothing to pan to.
         /// </summary>
-        private static Vector2 ClampToRing(Vector2 center, float orthographicSize, Vector2 bounds, float aspect)
+        private static Vector2 ClampToRing(
+            Vector2 center, float orthographicSize, Vector2 bounds, Vector2 ringCenter, float aspect)
         {
             float halfHeight = orthographicSize;
             float halfWidth = orthographicSize * aspect;
 
+            // Relative to where the ring actually is. Zero in the game scene, which is the
+            // only place this view exists - but the ring stopped being guaranteed to sit on
+            // the origin when training gained parallel arenas, and a camera that assumed it
+            // did would be a trap for whoever puts a spectator view on one.
             center.x = halfWidth >= bounds.x
-                ? 0f
-                : Mathf.Clamp(center.x, -bounds.x + halfWidth, bounds.x - halfWidth);
+                ? ringCenter.x
+                : Mathf.Clamp(center.x, ringCenter.x - bounds.x + halfWidth, ringCenter.x + bounds.x - halfWidth);
 
             center.y = halfHeight >= bounds.y
-                ? 0f
-                : Mathf.Clamp(center.y, -bounds.y + halfHeight, bounds.y - halfHeight);
+                ? ringCenter.y
+                : Mathf.Clamp(center.y, ringCenter.y - bounds.y + halfHeight, ringCenter.y + bounds.y - halfHeight);
 
             return center;
         }

@@ -83,6 +83,9 @@ namespace PoRumble.Views
         public void Start()
         {
             _match.ArenaHalfExtent = _spawnPoints.ArenaHalfExtent;
+
+            // Before SpawnRoster, which places the opening positions around it.
+            _match.ArenaCenter = _spawnPoints.ArenaCenter;
             _spawnSystem.SpawnRoster(_spawnPoints.BoxerCount, _spawnPoints.SpawnRadius);
             _spawnPoints.BuildViews(_match.Boxers);
             _flowSystem.Configure(_spawnPoints.BoxerCount, _spawnPoints.SpawnRadius);

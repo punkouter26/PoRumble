@@ -95,7 +95,8 @@ namespace PoRumble.Systems
             float radius = spawnRadius * (1f + NextSigned() * RADIUS_JITTER);
             float radians = degrees * Mathf.Deg2Rad;
 
-            position = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * radius;
+            position = _match.ArenaCenter
+                       + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * radius;
 
             // Inward, give or take. Built from the angle rather than by negating the offset,
             // so the result is already a unit vector.

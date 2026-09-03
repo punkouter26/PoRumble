@@ -23,6 +23,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<PunchClashedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             _container = builder.Build();
@@ -35,6 +36,7 @@ namespace PoRumble.Tests
                 _container.Resolve<IPublisher<PunchLandedMessage>>(),
                 _container.Resolve<IPublisher<PunchEvadedMessage>>(),
                 _container.Resolve<IPublisher<PunchBlockedMessage>>(),
+                _container.Resolve<IPublisher<PunchClashedMessage>>(),
                 _container.Resolve<IPublisher<HaymakerThrownMessage>>(),
                 _container.Resolve<IPublisher<BoxerDodgedMessage>>());
         }
@@ -96,6 +98,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchLandedMessage>(options);
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
+            builder.RegisterMessageBroker<PunchClashedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
@@ -139,6 +142,41 @@ namespace PoRumble.Tests
             Run(2f);
             Assert.That(_match.Boxers[0].Velocity.magnitude, Is.GreaterThan(firstTick),
                 "should build up speed over time");
+        }
+
+        /// <summary>
+        /// Throwing the second fist into the first is no longer refused by the system - the
+        /// arms run into each other instead. A fighter that does it on every tick lands
+        /// nothing and empties itself, which is the cost that makes one-at-a-time worth
+        /// learning rather than worth being told.
+        /// </summary>
+        [Test]
+        public void SpammingBothFistsIsPunished()
+        {
+            BoxerModel boxer = _match.Boxers[0];
+            BoxerModel opponent = _match.Boxers[1];
+
+            // Right in front, square on, at a range a clean punch would land at.
+            boxer.Position = Vector2.zero;
+            boxer.Facing = Vector2.up;
+            opponent.Position = new Vector2(0f, 2.4f);
+            opponent.Facing = Vector2.down;
+
+            int landed = 0;
+            _container.Resolve<ISubscriber<PunchLandedMessage>>().Subscribe(_ => landed++);
+
+            for (int tick = 0; tick < 500; tick++)
+            {
+                _boxerSystem.Punch(0, ArmSide.Left);
+                _boxerSystem.Punch(0, ArmSide.Right);
+                _boxerSystem.Tick(0.02f);
+            }
+
+            Assert.That(landed, Is.Zero,
+                "a fighter throwing both fists together landed something; the clash has to " +
+                "cost the punch or there is nothing to learn from");
+            Assert.That(boxer.Stamina.Value, Is.LessThan(0.15f),
+                "throwing both fists together has to be expensive as well as useless");
         }
 
         [Test]
@@ -188,9 +226,19 @@ namespace PoRumble.Tests
             BoxerModel boxer = _match.Boxers[0];
             _match.Boxers[1].Position = new Vector2(100f, 100f);
 
+            // Punching as a competent fighter does: the next one goes out once the last fist
+            // is home. Asking on every single tick regardless is a different test - see
+            // SpammingBothFistsIsPunished - and it is now punished rather than merely tiring.
             for (int tick = 0; tick < 1500; tick++)
             {
-                _boxerSystem.Punch(0, ArmSide.Left);
+                if (boxer.LeftArm.Phase != ArmPhase.Extending
+                    && boxer.LeftArm.Phase != ArmPhase.Retracting
+                    && boxer.RightArm.Phase != ArmPhase.Extending
+                    && boxer.RightArm.Phase != ArmPhase.Retracting)
+                {
+                    _boxerSystem.Punch(0, ArmSide.Left);
+                }
+
                 _boxerSystem.Tick(0.02f);
             }
 
