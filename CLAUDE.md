@@ -549,15 +549,16 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   **This changed what stops a punch, so the shipped policy is now slightly mis-calibrated** -
   it throws punches that used to land and now get arm-blocked. Accepted as retraining debt;
   the action vector is untouched, so `PoRumbleBoxer.onnx` still loads and still plays.
-- **Arm colliders live on Ignore Raycast (layer 2), and that is load-bearing.** The four arm
-  segments carry `CapsuleCollider2D` sized to the drawn sprite so limbs physically stop each
-  other. They must stay invisible to the ray sensors: an untagged collider still *occludes* a
-  ray - it reports "something is here" without matching a detectable tag - so putting the arms
-  on a perception layer would have every fighter's own guard blocking its view of the opponent
-  it is guarding against. That is a change to the observation vector, not just to the physics,
-  and a compiled policy is built against the vector it was trained on. The sensor's
-  `RayLayerMask` already excludes layer 2, and `IsolatePerception` is written to skip any
-  collider already parked there rather than sweeping it onto the per-boxer layer.
+- **The arms carry no colliders, and that was tried the other way.** Blocking is decided in
+  `CombatMath.ArmBlocks`, so the guard needs no physical presence to work. Giving the four arm
+  segments `CapsuleCollider2D` to make limbs physically stop each other looked like the
+  matching half of the change and had to be reverted: the segments are dynamic bodies driven by
+  `HingeJoint2D` motors, so a solid collider makes the drawn pose a product of contact forces
+  rather than of the model's extension. Every cross-boxer touch pushed a limb while the servo
+  drove back against it, and the arms visibly oscillated - the same "jointed limbs drift"
+  failure the sibling-arm layout exists to avoid, reached from the other direction. If it is
+  ever attempted again the colliders must also stay off the perception layers, since an
+  untagged collider still *occludes* a ray and a fighter's own guard would blind it.
 - **Counter window.** Blocking a punch opens `CounterWindowDuration` seconds during which your
   next landed punch takes `CounterDamageBonus`. Consumed by the punch that uses it, so one
   block buys exactly one counter. This applies to every fighter, the trained policy included —

@@ -72,13 +72,6 @@ namespace PoRumble.Views
         /// </summary>
         private const string BOXER_LAYER_PREFIX = "BoxerBody";
 
-        /// <summary>
-        /// Unity's built-in layer 2. The ray sensors' mask already excludes it, which is what
-        /// makes it the right parking spot for a collider that must exist to physics and not
-        /// to perception.
-        /// </summary>
-        private const int IGNORE_RAYCAST_LAYER = 2;
-
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
 
@@ -310,20 +303,6 @@ namespace PoRumble.Views
 
             for (int colliderIndex = 0; colliderIndex < colliders.Length; colliderIndex++)
             {
-                // Anything the prefab deliberately parked on Ignore Raycast stays there.
-                //
-                // The arm segments carry colliders so limbs physically stop each other, but
-                // they must stay invisible to the ray sensor. An untagged collider still
-                // occludes a ray - it reports as "something is here" without matching a
-                // detectable tag - so moving the arms onto a perception layer would have every
-                // fighter's own guard blocking its view of the opponent it is guarding against.
-                // That is a change to the observation vector, not just to the physics, and the
-                // compiled policy is built against the vector it was trained on.
-                if (colliders[colliderIndex].gameObject.layer == IGNORE_RAYCAST_LAYER)
-                {
-                    continue;
-                }
-
                 colliders[colliderIndex].gameObject.layer = layer;
             }
 

@@ -3,25 +3,29 @@
   "branch": "main",
   "workflow_phase": "",
   "modified_files": [
+    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_armblock.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_boxerview.py",
+    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_camera.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_claudemd.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_claudemd2.py",
+    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_claudemd3.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_diag.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_feedback2.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_tiles.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_uxml_match.py",
     "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_uxml_player.py",
-    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_uxml_rest.py"
+    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\8cef211a-3f3e-413d-9dd0-fd73bf590717\\scratchpad\\patch_uxml_rest.py",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Tests\\ArmBlockTests.cs"
   ],
   "recent_commits": [
-    "faec960 Make the normal maps actually light, and fix the particle materials",
-    "280d1c9 ...",
-    "1bc4d4f .."
+    "13a63ef Arms stop punches, and the camera watches the fight",
+    "4e7065c Session state churn",
+    "faec960 Make the normal maps actually light, and fix the particle materials"
   ],
-  "session_duration": "587m 7s",
+  "session_duration": "697m 18s",
   "tool_calls": 0,
   "warnings_count": 0,
-  "saved_at": "2026-09-03T12:35:58Z",
+  "saved_at": "2026-09-03T14:26:09Z",
   "plan": {},
   "verification": {},
   "agent_context": {}
