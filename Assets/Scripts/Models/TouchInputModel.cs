@@ -25,6 +25,13 @@ namespace PoRumble.Models
         public bool ChargeHeld { get; set; }
 
         /// <summary>
+        /// Set for one frame when the slip button is pressed, and cleared by whoever consumed
+        /// it. An edge rather than a held flag: a slip is a single committed action with its
+        /// own window and cooldown, so holding the button must not queue a stream of them.
+        /// </summary>
+        public bool DodgeRequested { get; set; }
+
+        /// <summary>
         /// True once the on-screen controls exist and are driving input. Lets the agent ignore
         /// this model entirely on desktop rather than having touch state fight the keyboard.
         /// </summary>
@@ -36,6 +43,7 @@ namespace PoRumble.Models
             Move = Vector2.zero;
             PunchHeld = false;
             ChargeHeld = false;
+            DodgeRequested = false;
         }
     }
 }

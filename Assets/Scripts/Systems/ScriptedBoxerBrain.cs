@@ -15,21 +15,39 @@ namespace PoRumble.Systems
         /// <summary>Hold the haymaker wind-up. Released the tick this goes back to false.</summary>
         public readonly bool Charge;
 
+        /// <summary>
+        /// Start a slip this tick. An edge rather than a held state: BoxerSystem.Dodge owns
+        /// the window and the cooldown, so asking twice inside one slip changes nothing.
+        /// </summary>
+        public readonly bool Dodge;
+
         public BoxerIntent(Vector2 move, Vector2 aim, bool punchLeft, bool punchRight)
-            : this(move, aim, punchLeft, punchRight, false)
+            : this(move, aim, punchLeft, punchRight, false, false)
         {
         }
 
         public BoxerIntent(Vector2 move, Vector2 aim, bool punchLeft, bool punchRight, bool charge)
+            : this(move, aim, punchLeft, punchRight, charge, false)
+        {
+        }
+
+        public BoxerIntent(
+            Vector2 move,
+            Vector2 aim,
+            bool punchLeft,
+            bool punchRight,
+            bool charge,
+            bool dodge)
         {
             Move = move;
             Aim = aim;
             PunchLeft = punchLeft;
             PunchRight = punchRight;
             Charge = charge;
+            Dodge = dodge;
         }
 
-        public static BoxerIntent Idle => new(Vector2.zero, Vector2.zero, false, false, false);
+        public static BoxerIntent Idle => new(Vector2.zero, Vector2.zero, false, false, false, false);
     }
 
     /// <summary>
@@ -115,6 +133,11 @@ namespace PoRumble.Systems
             Vector2 toTarget = target.Position - self.Position;
             Vector2 trueAim = toTarget.sqrMagnitude > Mathf.Epsilon ? toTarget.normalized : self.Facing;
 
+            // Read before anything else this tick: a bot that has spotted an incoming punch
+            // should slip it rather than continue with whatever it had planned. Cheap enough
+            // to evaluate every decision - it is a loop over a roster of ten.
+            bool slip = DecideDodge(match, self);
+
             // Reaction delay: a weaker tier keeps aiming where the opponent used to be, which
             // is most of what makes it beatable without making it look broken.
             _reactionTimer -= deltaTime;
@@ -152,7 +175,7 @@ namespace PoRumble.Systems
                 // Circle away and keep the guard toward the opponent while catching breath.
                 Vector2 retreat = -aim;
                 Vector2 strafe = new(-aim.y, aim.x);
-                return new BoxerIntent((retreat + strafe * 0.6f).normalized, aim, false, false, false);
+                return new BoxerIntent((retreat + strafe * 0.6f).normalized, aim, false, false, false, slip);
             }
 
             // Hold the range where a punch can actually reach the head. An aggressive tier
@@ -188,7 +211,33 @@ namespace PoRumble.Systems
             // wind-up is held, so asking for both would silently throw the punch away.
             bool throwPunch = opening && !charge;
 
-            return new BoxerIntent(move, aim, throwPunch, throwPunch, charge);
+            return new BoxerIntent(move, aim, throwPunch, throwPunch, charge, slip);
+        }
+
+        /// <summary>
+        /// Decides whether to slip a punch the bot can see coming.
+        ///
+        /// Rolled fresh every decision rather than held, because BoxerSystem.Dodge owns the
+        /// cooldown: a bot that keeps asking while it is still slipping simply gets refused,
+        /// and one that keeps asking while a haymaker is cocked at it eventually gets out of
+        /// the way - which is exactly the reaction the telegraph is meant to provoke.
+        /// </summary>
+        private bool DecideDodge(MatchModel match, BoxerModel self)
+        {
+            if (_settings.DodgeDiscipline <= 0f || !self.CanDodge)
+            {
+                return false;
+            }
+
+            float threatRange =
+                (_config.ArmReach + _config.HeadOffset + _config.BodyRadius) * _config.DodgeThreatRangeScale;
+
+            if (!ThreatMath.IsPunchIncoming(match.Boxers, self, threatRange, _config.MinChargeToRelease))
+            {
+                return false;
+            }
+
+            return NextFloat() < _settings.DodgeDiscipline;
         }
 
         /// <summary>

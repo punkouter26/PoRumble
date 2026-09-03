@@ -59,6 +59,13 @@ namespace PoRumble.Views
                  "ten-way palette.")]
         [SerializeField] private bool _useRoleColors;
 
+        [Tooltip("The full card of selectable contestants. When any are assigned they replace " +
+                 "the Roster Tiers path entirely: each boxer is seated from the roster " +
+                 "instead, and gets that contestant's face, colour, style and attributes. " +
+                 "Leave empty in the training scenes - a run must learn against the " +
+                 "unmodified policy.")]
+        [SerializeField] private FighterProfile[] _fighterProfiles = Array.Empty<FighterProfile>();
+
         /// <summary>
         /// Prefix of the per-boxer collider layers, one per roster slot, that
         /// <see cref="IsolatePerception"/> moves each fighter's own colliders onto.
@@ -67,8 +74,22 @@ namespace PoRumble.Views
 
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
+
+        /// <summary>
+        /// One entry per view, in seat order, holding null where a view has no agent.
+        /// <see cref="_agents"/> is the compacted list the director iterates and cannot carry
+        /// the gaps, but seating has to line up with <see cref="_views"/> exactly.
+        /// </summary>
+        private readonly List<BoxerAgentView> _seatAgents = new();
         private IObjectResolver _resolver;
+        private RosterModel _roster;
         private bool _built;
+
+        /// <summary>True when a card of contestants was assigned, so the roster drives seating.</summary>
+        private bool HasRoster => _fighterProfiles != null && _fighterProfiles.Length > 0;
+
+        /// <summary>The contestants this scene can field, for the roster screen to list.</summary>
+        public IReadOnlyList<FighterProfile> FighterProfiles => _fighterProfiles;
 
         public int BoxerCount => HasPreplacedBoxers ? _preplacedBoxers.Length : _boxerCount;
 
@@ -81,9 +102,17 @@ namespace PoRumble.Views
         public int HumanBoxerId => _humanBoxerId;
 
         [Inject]
-        public void Construct(IObjectResolver resolver)
+        public void Construct(IObjectResolver resolver, RosterModel roster)
         {
             _resolver = resolver;
+            _roster = roster;
+
+            // Published here rather than in BuildViews so the roster screen can list the card
+            // before a single boxer exists.
+            if (HasRoster)
+            {
+                _roster.SetAvailable(_fighterProfiles);
+            }
         }
 
         public IReadOnlyList<BoxerAgentView> Agents => _agents;
@@ -128,28 +157,14 @@ namespace PoRumble.Views
                     agent.Bind(boxer);
 
                     bool isHuman = boxer.Id == _humanBoxerId;
-                    BrainProfile profile = isHuman
-                        ? null
-                        : NextTierProfile(ref tierIndex, ref tierRemaining);
-
-                    bool listedAsScripted = Array.IndexOf(_scriptedBoxerIds, boxer.Id) >= 0;
-
-                    if (listedAsScripted && profile == null)
-                    {
-                        profile = _defaultProfile;
-                    }
-
-                    // A boxer is hand-written if a tier claimed it or the id was listed
-                    // explicitly. Everyone else keeps the trained policy.
-                    bool scripted = !isHuman && (listedAsScripted || profile != null);
-
-                    agent.SetBrainProfile(profile);
-                    agent.SetScriptedBot(scripted);
                     agent.SetHumanControlled(isHuman);
 
-                    if (_useRoleColors)
+                    // A card of contestants replaces the tier path outright: who fights, how
+                    // and with what face is the roster's business, and SeatRoster does all of
+                    // it in one place so a re-deal between matches runs the same code.
+                    if (!HasRoster)
                     {
-                        view.SetRoleColor(scripted);
+                        ApplyTier(view, agent, boxer, isHuman, ref tierIndex, ref tierRemaining);
                     }
 
                     IsolatePerception(view, agent, boxer.Id);
@@ -157,7 +172,78 @@ namespace PoRumble.Views
                     _agents.Add(agent);
                 }
 
+                _seatAgents.Add(agent);
                 _views.Add(view);
+            }
+
+            SeatRoster();
+        }
+
+        /// <summary>
+        /// Deals the selected contestants round the ring and dresses every boxer as whoever
+        /// landed in its chair.
+        ///
+        /// Safe to call again between matches, which is the point: changing the card must not
+        /// mean tearing down and respawning ten agents. Everything it touches - face, colour,
+        /// controller, style, attributes - is a reconfiguration of an object that already
+        /// exists.
+        /// </summary>
+        public void SeatRoster()
+        {
+            if (!HasRoster || _roster == null)
+            {
+                return;
+            }
+
+            _roster.AssignSeats(_views.Count);
+
+            for (int seat = 0; seat < _views.Count; seat++)
+            {
+                FighterProfile profile = _roster.SeatOf(seat);
+                _views[seat].ApplyIdentity(profile);
+
+                BoxerAgentView agent = _seatAgents[seat];
+
+                if (agent != null)
+                {
+                    agent.ApplyFighter(profile);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The pre-roster path: fills the undercard from the difficulty tiers. Still the only
+        /// path the training scenes take, and the reason they can omit a card entirely.
+        /// </summary>
+        private void ApplyTier(
+            BoxerView view,
+            BoxerAgentView agent,
+            BoxerModel boxer,
+            bool isHuman,
+            ref int tierIndex,
+            ref int tierRemaining)
+        {
+            BrainProfile profile = isHuman
+                ? null
+                : NextTierProfile(ref tierIndex, ref tierRemaining);
+
+            bool listedAsScripted = Array.IndexOf(_scriptedBoxerIds, boxer.Id) >= 0;
+
+            if (listedAsScripted && profile == null)
+            {
+                profile = _defaultProfile;
+            }
+
+            // A boxer is hand-written if a tier claimed it or the id was listed explicitly.
+            // Everyone else keeps the trained policy.
+            bool scripted = !isHuman && (listedAsScripted || profile != null);
+
+            agent.SetBrainProfile(profile);
+            agent.SetScriptedBot(scripted);
+
+            if (_useRoleColors)
+            {
+                view.SetRoleColor(scripted);
             }
         }
 

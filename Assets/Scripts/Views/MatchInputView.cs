@@ -1,3 +1,4 @@
+using PoRumble.Models;
 using PoRumble.Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -21,17 +22,29 @@ namespace PoRumble.Views
     public sealed class MatchInputView : MonoBehaviour
     {
         private MatchFlowSystem _flowSystem;
+        private RosterSystem _rosterSystem;
+        private RosterModel _roster;
 
         [Inject]
-        public void Construct(MatchFlowSystem flowSystem)
+        public void Construct(MatchFlowSystem flowSystem, RosterSystem rosterSystem, RosterModel roster)
         {
             _flowSystem = flowSystem;
+            _rosterSystem = rosterSystem;
+            _roster = roster;
         }
 
         private void Update()
         {
             if (_flowSystem == null)
             {
+                return;
+            }
+
+            // The card, before the restart: opening it must not also be read as a request to
+            // start the next match.
+            if (RosterToggleRequested())
+            {
+                _rosterSystem.Toggle();
                 return;
             }
 
@@ -43,7 +56,14 @@ namespace PoRumble.Views
             }
         }
 
-        private static bool RestartRequested()
+        private static bool RosterToggleRequested()
+        {
+            Keyboard keyboard = Keyboard.current;
+
+            return keyboard != null && keyboard.tabKey.wasPressedThisFrame;
+        }
+
+        private bool RestartRequested()
         {
             Keyboard keyboard = Keyboard.current;
 
@@ -54,9 +74,13 @@ namespace PoRumble.Views
             }
 
             // Touch is the only way to restart on a phone, where there is no keyboard at all.
+            // Ignored while the card is up, or the tap that picked a fighter would also start
+            // the fight.
             Touchscreen touchscreen = Touchscreen.current;
 
-            return touchscreen != null && touchscreen.primaryTouch.press.wasPressedThisFrame;
+            return touchscreen != null
+                   && !_roster.IsOpen.Value
+                   && touchscreen.primaryTouch.press.wasPressedThisFrame;
         }
     }
 }

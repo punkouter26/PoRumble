@@ -16,6 +16,10 @@ namespace PoRumble.Views
 
         [Tooltip("Every renderer making up this boxer: head, limbs and fists.")]
         [SerializeField] private Renderer[] _renderers;
+
+        [Tooltip("The head, so a contestant's face can be drawn on it. Must also appear in " +
+                 "Renderers - this reference only says which of them is the head.")]
+        [SerializeField] private SpriteRenderer _headRenderer;
         [SerializeField] private ArmView _leftArmView;
         [SerializeField] private ArmView _rightArmView;
         [SerializeField] private Color _eliminatedColor = new(0.22f, 0.24f, 0.22f, 1f);
@@ -57,6 +61,16 @@ namespace PoRumble.Views
         private MaterialPropertyBlock _propertyBlock;
         private Color _aliveColor = Color.white;
 
+        /// <summary>
+        /// What the head is tinted while its owner is standing. White once a face is on it: a
+        /// photograph carries its own colour, and multiplying it by the trunk colour only
+        /// makes it muddy. It still darkens on elimination, which reads correctly.
+        /// </summary>
+        private Color _headAliveColor = Color.white;
+
+        /// <summary>The generic head, kept so a re-seated boxer can be given its face back.</summary>
+        private Sprite _defaultHeadSprite;
+
         private float _flashRemaining;
         private float _dissolveElapsed;
         private bool _dissolving;
@@ -73,6 +87,37 @@ namespace PoRumble.Views
             // MaterialPropertyBlock rather than .material, so tinting never clones the
             // material and every boxer keeps batching against the shared one.
             _propertyBlock = new MaterialPropertyBlock();
+
+            if (_headRenderer != null)
+            {
+                _defaultHeadSprite = _headRenderer.sprite;
+            }
+        }
+
+        /// <summary>
+        /// Dresses this boxer as a given contestant: its face on the head and its colour on
+        /// the body.
+        ///
+        /// Called again whenever the roster is re-dealt, so it has to be able to undo itself -
+        /// a seat that used to hold a face and now holds a plain fighter must get the generic
+        /// head back, which is why the original sprite is kept.
+        /// </summary>
+        public void ApplyIdentity(FighterProfile profile)
+        {
+            bool hasFace = profile != null && profile.Face != null;
+
+            if (_headRenderer != null)
+            {
+                _headRenderer.sprite = hasFace ? profile.Face : _defaultHeadSprite;
+            }
+
+            _aliveColor = profile != null
+                ? profile.Tint
+                : BoxerPalette[Mathf.Max(0, _model == null ? 0 : _model.Id) % BoxerPalette.Length];
+
+            _headAliveColor = hasFace ? Color.white : _aliveColor;
+
+            Tint(_model == null || _model.IsAlive.Value);
         }
 
         /// <summary>
@@ -82,7 +127,8 @@ namespace PoRumble.Views
         public void SetRoleColor(bool isScripted)
         {
             _aliveColor = isScripted ? _scriptedColor : _rlColor;
-            Tint(_model == null || _model.IsAlive.Value ? _aliveColor : _eliminatedColor);
+            _headAliveColor = _aliveColor;
+            Tint(_model == null || _model.IsAlive.Value);
         }
 
         /// <summary>Called by the spawner once the model exists.</summary>
@@ -90,6 +136,7 @@ namespace PoRumble.Views
         {
             _model = model;
             _aliveColor = BoxerPalette[model.Id % BoxerPalette.Length];
+            _headAliveColor = _aliveColor;
 
             _model.IsAlive
                 .Subscribe(OnAliveChanged)
@@ -186,7 +233,7 @@ namespace PoRumble.Views
 
         private void OnAliveChanged(bool isAlive)
         {
-            Tint(isAlive ? _aliveColor : _eliminatedColor);
+            Tint(isAlive);
 
             if (isAlive)
             {
@@ -256,12 +303,19 @@ namespace PoRumble.Views
             }
         }
 
-        private void Tint(Color color)
+        /// <summary>
+        /// Recolours every part. The head is passed separately from the body because a face
+        /// sprite must not be multiplied by the trunk colour while its owner is standing.
+        /// </summary>
+        private void Tint(bool isAlive)
         {
             if (_renderers == null)
             {
                 return;
             }
+
+            Color bodyColor = isAlive ? _aliveColor : _eliminatedColor;
+            Color headColor = isAlive ? _headAliveColor : _eliminatedColor;
 
             for (int rendererIndex = 0; rendererIndex < _renderers.Length; rendererIndex++)
             {
@@ -271,6 +325,8 @@ namespace PoRumble.Views
                 {
                     continue;
                 }
+
+                Color color = _headRenderer != null && target == _headRenderer ? headColor : bodyColor;
 
                 // Sprite shaders ignore _BaseColor, so the parts are tinted via SpriteRenderer
                 // .color instead. That does not clone the material either, and unlike a

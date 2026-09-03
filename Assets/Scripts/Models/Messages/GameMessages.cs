@@ -95,6 +95,25 @@ namespace PoRumble.Models
         }
     }
 
+    /// <summary>
+    /// A boxer slipped: the invulnerability window opened. Published at the start of the
+    /// slip rather than when something misses, so the whoosh and the lean play whether or
+    /// not a punch was actually coming.
+    /// </summary>
+    public readonly struct BoxerDodgedMessage
+    {
+        public readonly int BoxerId;
+        public readonly Vector2 Position;
+        public readonly Vector2 Direction;
+
+        public BoxerDodgedMessage(int boxerId, Vector2 position, Vector2 direction)
+        {
+            BoxerId = boxerId;
+            Position = position;
+            Direction = direction;
+        }
+    }
+
     public readonly struct BoxerDamagedMessage
     {
         public readonly int BoxerId;

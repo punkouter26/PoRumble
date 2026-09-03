@@ -128,6 +128,17 @@ namespace PoRumble.Views
             // fist allowed out at a time, a second button would have nothing to do.
             AddHoldButton(cluster, "PUNCH", "touch-button--punch", held => _touch.PunchHeld = held);
             AddHoldButton(cluster, "POWER", "touch-button--charge", held => _touch.ChargeHeld = held);
+
+            // The slip is an edge, not a hold: it has its own window and cooldown, so a held
+            // thumb must not queue a stream of them. Raised on press and left for the agent
+            // to consume on the next frame.
+            AddHoldButton(cluster, "SLIP", "touch-button--dodge", held =>
+            {
+                if (held)
+                {
+                    _touch.DodgeRequested = true;
+                }
+            });
         }
 
         /// <summary>

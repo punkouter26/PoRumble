@@ -32,8 +32,8 @@ namespace PoRumble.Models
 
         /// <summary>
         /// Resolves one glove against one target.
-        /// A hit requires: a different boxer, a living target, the glove touching the head,
-        /// and the contact falling inside the target's forward face arc.
+        /// A hit requires: a different boxer, a living target that is not mid-slip, the glove
+        /// touching the head, and the contact falling inside the target's forward face arc.
         /// </summary>
         public static HitResult ResolveHit(
             int attackerId,
@@ -45,6 +45,36 @@ namespace PoRumble.Models
             Vector2 glovePosition,
             in CombatSettings settings)
         {
+            return ResolveHit(
+                attackerId,
+                attackerPosition,
+                targetId,
+                targetPosition,
+                targetFacing,
+                targetIsAlive,
+                false,
+                glovePosition,
+                settings);
+        }
+
+        /// <summary>
+        /// Resolves one glove against one target that may be slipping the punch.
+        ///
+        /// The slip is checked here rather than in the caller so that a dodged punch falls
+        /// through the same path as any other miss - which is what makes it report as an
+        /// evade, and so pay the defender the evade reward it has always paid.
+        /// </summary>
+        public static HitResult ResolveHit(
+            int attackerId,
+            Vector2 attackerPosition,
+            int targetId,
+            Vector2 targetPosition,
+            Vector2 targetFacing,
+            bool targetIsAlive,
+            bool targetIsDodging,
+            Vector2 glovePosition,
+            in CombatSettings settings)
+        {
             // A boxer can never punch itself.
             if (attackerId == targetId)
             {
@@ -53,6 +83,14 @@ namespace PoRumble.Models
 
             // Already-eliminated boxers absorb nothing.
             if (!targetIsAlive)
+            {
+                return HitResult.Miss;
+            }
+
+            // Mid-slip: the head is not where it looks. Deliberately unconditional rather
+            // than directional - a slip beats a punch from any angle, which is what pays for
+            // its stamina and its cooldown.
+            if (targetIsDodging)
             {
                 return HitResult.Miss;
             }

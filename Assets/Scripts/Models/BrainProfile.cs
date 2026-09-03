@@ -64,6 +64,11 @@ namespace PoRumble.Models
         [Range(0f, 1f)]
         [SerializeField] private float _counterDiscipline = 0.5f;
 
+        [Tooltip("Chance of slipping a punch this tier can see coming. Zero never dodges at " +
+                 "all, which is what keeps the lowest tier readable to a new player.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _dodgeDiscipline;
+
         public string DisplayName => _displayName;
         public float Aggression => _aggression;
         public float EngageRangeScale => _engageRangeScale;
@@ -74,6 +79,7 @@ namespace PoRumble.Models
         public float ResumeStamina => _resumeStamina;
         public float ChargeChance => _chargeChance;
         public float CounterDiscipline => _counterDiscipline;
+        public float DodgeDiscipline => _dodgeDiscipline;
 
         /// <summary>
         /// How aligned to the target the bot must be before it throws. Falls out of accuracy
@@ -97,7 +103,8 @@ namespace PoRumble.Models
                 _recoverStamina,
                 _resumeStamina,
                 _chargeChance,
-                _counterDiscipline);
+                _counterDiscipline,
+                _dodgeDiscipline);
         }
     }
 
@@ -118,6 +125,7 @@ namespace PoRumble.Models
         public readonly float ResumeStamina;
         public readonly float ChargeChance;
         public readonly float CounterDiscipline;
+        public readonly float DodgeDiscipline;
 
         public BrainSettings(
             float aggression,
@@ -129,7 +137,8 @@ namespace PoRumble.Models
             float recoverStamina,
             float resumeStamina,
             float chargeChance,
-            float counterDiscipline)
+            float counterDiscipline,
+            float dodgeDiscipline = 0f)
         {
             Aggression = aggression;
             EngageRangeScale = engageRangeScale;
@@ -141,6 +150,7 @@ namespace PoRumble.Models
             ResumeStamina = resumeStamina;
             ChargeChance = chargeChance;
             CounterDiscipline = counterDiscipline;
+            DodgeDiscipline = dodgeDiscipline;
         }
 
         /// <summary>The tuning the brain used before profiles existed, kept as the fallback.</summary>

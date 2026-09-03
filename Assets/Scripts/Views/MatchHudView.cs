@@ -29,8 +29,15 @@ namespace PoRumble.Views
         private readonly StringBuilder _builder = new(64);
         private readonly List<VisualElement> _healthFills = new();
 
+        /// <summary>
+        /// The name beside each health bar, kept so a re-dealt card can rewrite them. Boxer
+        /// slots are permanent; who is sitting in one is not.
+        /// </summary>
+        private readonly List<Label> _nameLabels = new();
+
         private MatchModel _match;
         private MatchFlowModel _flow;
+        private RosterModel _roster;
         private BoxerConfig _config;
         private Label _survivorsLabel;
         private Label _resultLabel;
@@ -41,11 +48,13 @@ namespace PoRumble.Views
         public void Construct(
             MatchModel match,
             MatchFlowModel flow,
+            RosterModel roster,
             BoxerConfig config,
             ISubscriber<MatchEndedMessage> endedSubscriber)
         {
             _match = match;
             _flow = flow;
+            _roster = roster;
             _config = config;
             endedSubscriber.Subscribe(OnMatchEnded).AddTo(_disposables);
         }
@@ -77,6 +86,7 @@ namespace PoRumble.Views
             panel.Add(roster);
 
             BuildHealthBars(roster);
+            RefreshNames();
 
             _resultLabel = MakeLabel("text", "text--xl", "text--bold", "result-banner");
             panel.Add(_resultLabel);
@@ -89,6 +99,9 @@ namespace PoRumble.Views
                 _flow.Phase.Subscribe(OnFlowPhaseChanged).AddTo(_disposables);
                 _flow.CountdownSeconds.Subscribe(OnCountdownChanged).AddTo(_disposables);
             }
+
+            // Names follow the card, so re-dealing the roster rewrites the whole column.
+            _roster.Revision.Subscribe(_ => RefreshNames()).AddTo(_disposables);
         }
 
         /// <summary>
@@ -135,8 +148,8 @@ namespace PoRumble.Views
                 row.AddToClassList("match-hud__row");
 
                 Label name = MakeLabel("match-hud__name");
-                name.text = $"#{boxer.Id:00}";
                 row.Add(name);
+                _nameLabels.Add(name);
 
                 VisualElement track = new();
                 track.AddToClassList("bar");
@@ -155,6 +168,31 @@ namespace PoRumble.Views
                 boxer.Health.Subscribe(hp => OnHealthChanged(index, hp)).AddTo(_disposables);
                 boxer.IsAlive.Subscribe(_ => RefreshSurvivors()).AddTo(_disposables);
             }
+        }
+
+        /// <summary>
+        /// Writes whoever is currently seated beside each bar, falling back to the slot number
+        /// when no card is in play - which is what the training scenes and any scene without
+        /// fighter profiles get.
+        /// </summary>
+        private void RefreshNames()
+        {
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+
+            for (int index = 0; index < _nameLabels.Count && index < boxers.Count; index++)
+            {
+                FighterProfile profile = _roster.SeatOf(boxers[index].Id);
+                _nameLabels[index].text = profile != null
+                    ? profile.DisplayName
+                    : $"#{boxers[index].Id:00}";
+            }
+        }
+
+        /// <summary>The seated contestant's name, or the slot number when there is no card.</summary>
+        private string NameOf(int boxerId)
+        {
+            FighterProfile profile = _roster.SeatOf(boxerId);
+            return profile != null ? profile.DisplayName : $"BOXER #{boxerId:00}";
         }
 
         private void OnHealthChanged(int index, int health)
@@ -281,7 +319,7 @@ namespace PoRumble.Views
 
             _resultLabel.text = message.WinnerId == MatchModel.NO_WINNER
                 ? "DRAW"
-                : $"BOXER #{message.WinnerId:00} WINS";
+                : $"{NameOf(message.WinnerId)} WINS";
         }
 
         private void OnDestroy() => _disposables.Dispose();

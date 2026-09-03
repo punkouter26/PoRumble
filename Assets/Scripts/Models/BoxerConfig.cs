@@ -112,6 +112,26 @@ namespace PoRumble.Models
         [Range(0.1f, 1f)]
         [SerializeField] private float _chargeMoveScale = 0.45f;
 
+        [Header("Slip")]
+        [Tooltip("Seconds of invulnerability a slip buys. Must stay comfortably above " +
+                 "Arm Extend Duration: a fighter slips on seeing the arm start to travel, so " +
+                 "a window shorter than the punch's flight time closes before the punch " +
+                 "arrives and the slip does nothing at all. DodgeTests pins this.")]
+        [SerializeField] private float _dodgeDuration = 0.3f;
+        [Tooltip("Seconds before another slip is allowed, measured from the end of the last " +
+                 "one. This is the whole cost of the mechanic being readable: a fighter that " +
+                 "could slip on demand would never need to block.")]
+        [SerializeField] private float _dodgeCooldown = 0.85f;
+        [Tooltip("Stamina spent on a slip. Comfortably more than a punch — evasion should be " +
+                 "the expensive option, or nobody would ever trade.")]
+        [SerializeField] private float _dodgeStaminaCost = 0.16f;
+        [Tooltip("Sideways speed the slip carries, as a multiple of the walking speed. This " +
+                 "is what moves the head off the line and makes the dodge visible.")]
+        [SerializeField] private float _dodgeSpeedScale = 2.4f;
+        [Tooltip("How far out an incoming punch is worth slipping, as a multiple of the reach " +
+                 "at which one can actually land.")]
+        [SerializeField] private float _dodgeThreatRangeScale = 1.35f;
+
         [Header("Counter")]
         [Tooltip("Seconds after blocking a punch during which your next landed punch counts " +
                  "as a counter. Rewards reading the opponent rather than mashing.")]
@@ -150,6 +170,11 @@ namespace PoRumble.Models
         public float ChargeKnockbackMultiplier => _chargeKnockbackMultiplier;
         public float ChargeStaminaCost => _chargeStaminaCost;
         public float ChargeMoveScale => _chargeMoveScale;
+        public float DodgeDuration => _dodgeDuration;
+        public float DodgeCooldown => _dodgeCooldown;
+        public float DodgeStaminaCost => _dodgeStaminaCost;
+        public float DodgeSpeedScale => _dodgeSpeedScale;
+        public float DodgeThreatRangeScale => _dodgeThreatRangeScale;
         public float CounterWindowDuration => _counterWindowDuration;
         public int CounterDamageBonus => _counterDamageBonus;
 

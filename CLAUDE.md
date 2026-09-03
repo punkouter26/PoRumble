@@ -25,10 +25,15 @@ Renderer, so 3D lit materials will not light correctly.
 | Task | How |
 |---|---|
 | Play | Open `Assets/Scenes/SampleScene.unity` → Play. 10 boxers, HUD, boxer #0 on keyboard |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **R** restart at the results screen · **F3** diagnostics overlay |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 93 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 131 EditMode tests |
+
+**Art is in Git LFS.** A fresh clone that has not run `git lfs pull` leaves every `.png` as a
+129-byte pointer file, and Unity imports those as nothing at all: the sprites silently resolve
+to null, the fighters render as invisible transforms and the prefab looks broken rather than
+unfetched. `ls -la Assets/Art/Sprites` tells you immediately - a real sprite is kilobytes.
 
 **Two configs on purpose**, though they now carry the same numbers. `BoxerConfig.asset` is
 the game; `BoxerConfig_Training.asset` is what the training scenes load, so the curriculum
@@ -313,6 +318,16 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
   light's shadows dropped SetPass calls from 69 to 37. Only the key light casts (the renderer
   budgets a single shadow render texture) and only the fighters have `ShadowCaster2D` — the
   corner posts had theirs removed because static scenery at the ring edge did not earn it.
+- **The faces are circular-cropped at import, not masked at runtime.** The six source
+  photographs at the project root are centre-cropped square, resized to 256 and given a radial
+  alpha with a soft edge, then written to `Assets/Art/Sprites/Faces/` at PPU 256 so one sprite
+  is one world unit like every other part. A SpriteMask or a stencil shader would have cost a
+  draw call per head for a result that never changes. They are packed into `BoxerAtlas`, so a
+  head still batches with the body it sits on.
+- **A face is tinted white while its owner is standing.** `BoxerView` takes the head colour
+  separately from the body: a photograph carries its own colour and multiplying it by the
+  fighter's trunk colour only makes it muddy. It still darkens on elimination, which reads
+  correctly.
 - **Sprite pixels-per-unit equals the sprite's pixel width,** so one sprite is one world unit
   at scale 1. The hit maths is tuned against those dimensions; changing a PPU silently moves
   the drawn fists away from the hitboxes.
@@ -349,7 +364,9 @@ every one of them.
 | `PlayerStatusHud` | `PlayerStatusHudView` | Player health, breath, haymaker meter, hit vignette, behind-you warning |
 | `DiagnosticsHud` | `DiagnosticsHudView` | **F3** telemetry overlay |
 | `MatchInput` | `MatchInputView` | The restart key |
-| `MatchHud` | `MatchHudView` | Survivors, per-boxer health, countdown, result banner |
+| `MatchHud` | `MatchHudView` | Survivors, per-fighter health, countdown, result banner |
+| `RosterCard` | `RosterSelectionView` | The fight card — pick who is in the ring (**Tab**) |
+| `Standings` | `StandingsHudView` | Top three of the Elo table |
 
 ## Audio
 
@@ -389,6 +406,80 @@ adapter total — both were tried and dropped as confidently-wrong numbers.
   next landed punch takes `CounterDamageBonus`. Consumed by the punch that uses it, so one
   block buys exactly one counter. This applies to every fighter, the trained policy included —
   it needs no new action.
+- **Slip.** A short burst sideways during which the face cannot be hit at all, bought with
+  stamina and a cooldown. Rides `BoxerSystem.Dodge`, a side channel like `SetCharge` and for
+  the same reason. Cannot be started out of a punch already thrown and cannot be punched out
+  of, so it is a real trade rather than a free option.
+  **`DodgeDuration` must stay above `ArmExtendDuration`.** A fighter cannot slip earlier than
+  the moment it sees an arm start to travel, so a window shorter than the punch's flight time
+  closes before the punch arrives and the mechanic does nothing whatsoever. It was 0.2 against
+  a 0.22 flight and every reactive slip was hit; `DodgeTests.TheWindowOutlastsAPunchInFlight`
+  pins it now.
+  A slipped punch falls through the ordinary miss path, so it reports as an **evade** and pays
+  the evader the evade reward it has always paid — the trained policy needed no retraining to
+  benefit from being slipped past.
+
+## The Fight Card
+
+Eight selectable contestants live in `Assets/Config/Fighters/` as `FighterProfile` assets:
+`HEURISTIC` (the scripted sparring brain), `STANDARD RL` (`PoRumbleBoxer.onnx` driven straight
+through) and six named fighters wearing the photographs in `Assets/Art/Sprites/Faces/`.
+**Tab** between matches opens the card; clicking a tile adds or drops that fighter.
+
+- **The ring always seats ten and the card is usually shorter, so entrants are dealt round the
+  corners cyclically.** With all eight selected the first two fight twice. Changing the card
+  therefore never destroys or respawns an agent — `BoxerSpawnPoints.SeatRoster` reconfigures
+  the ten boxers that already exist, swapping face, colour, controller, style and attributes.
+  A variable ring size would mean rebuilding `MatchModel`'s roster, every agent's ML-Agents
+  lifecycle and the HUD's health bars; the cyclic deal buys the same freedom for none of that.
+- **Assigning any `_fighterProfiles` replaces the `_rosterTiers` path outright.** The training
+  scenes deliberately assign none, which is what keeps a run learning against the unmodified
+  policy and the checkpoints comparable across the curriculum.
+- **Six fighters, one network.** `PoRumbleBoxer.onnx` is a single set of weights, so left alone
+  ten policy boxers fight identically. `StyleModulator` bends the actions the shared network
+  produced on the way to the boxer — forward pressure, circling, a gate on punch volume,
+  opportunist extra punches — and reaches the two mechanics that were never ML actions
+  (`SetCharge`, `Dodge`). Training six separate policies is the honest answer and an enormous
+  one; growing the action vector so a style could be an *input* stops the compiled model
+  loading at all.
+- **The aim is never bent.** Pointing at an opponent is the one thing the network is genuinely
+  good at, and rotating its output produces a worse fighter rather than a different one.
+  Everything a style changes is a decision *about* an aim the policy already found.
+- **The modulator re-rolls only on decision steps.** `OnActionReceived` fires every physics
+  tick — the `DecisionRequester` repeats the last decision in between — so rolling there would
+  run every probability in a `FighterStyle` five times per decision and make each one mean five
+  times what it says.
+- **`FighterAttributes` are what make the difference measurable**, not just behavioural: power,
+  chin, speed and stamina recovery. Power and chin are folded in at `BoxerSystem.ResolvePunch`
+  rather than when the health comes off, so the number in `PunchLandedMessage` is the number
+  actually taken — the reward shaping reads that message, and a policy paid for damage it did
+  not do would learn the wrong lesson.
+- **A seat switching from scripted to policy has to get its policy back.** `BoxerAgentView`
+  captures the prefab's authored `BehaviorType` on first use, because forcing `HeuristicOnly`
+  for a scripted contestant is otherwise a one-way door and the chair stands there doing
+  nothing for the rest of the session.
+
+## Elo
+
+`RatingSystem` rates the *contestants*, not the boxer slots, and carries the table between
+sessions through `FileRatingStore` (`porumble_ratings.json` under `persistentDataPath`).
+
+- **A free-for-all is scored as every pairwise result its finishing order implies, divided by
+  the opponent count.** Without that division a fighter in a ten-way would swing nine times as
+  far as one in a 1v1 and the table would describe how crowded the ring was rather than who is
+  any good. `RatingSystemTests.RingSizeDoesNotChangeHowFarAWinnerMoves` pins it.
+- **The finishing order is survivors by health, then the fallen in reverse elimination order.**
+  A ten-way normally resolves on the bell with several still standing, so ordering survivors on
+  health is what stops a timeout rating everyone who lasted as equal.
+- **Same-contestant pairs are skipped.** The cyclic deal seats a fighter twice; beating yourself
+  proves nothing. Both chairs' results still accumulate onto the one record, so a
+  double-seated fighter's `Matches` legitimately counts two.
+- **`RatingSystem` is resolved eagerly in `GameLifetimeScope`**, for the same reason
+  `CombatSystem` and `MatchSystem` are: it only subscribes to messages, so nothing injects it
+  and VContainer would never construct it — every match would resolve with the standings
+  silently untouched.
+- **A scene with no card rates nothing.** `RosterModel.SeatOf(0)` returning null is the test,
+  which is what stops a training run writing a league table nobody asked for.
 
 ## Difficulty Tiers
 

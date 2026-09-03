@@ -117,7 +117,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 0.2, y: 0.2}
+  m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -847,7 +847,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 0.2, y: 0.2}
+  m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
@@ -1178,6 +1178,8 @@ MonoBehaviour:
   _windupPullback: 0.55
   _gloveTrail: {fileID: 2368863442619053649}
   _trailThreshold: 0.35
+  _cockDepth: 0.35
+  _cockFraction: 0.22
   _servoGain: 60
   _maxMotorTorque: 1100
   _elbowTorqueScale: 0.55
@@ -1423,6 +1425,8 @@ MonoBehaviour:
   _windupPullback: 0.55
   _gloveTrail: {fileID: 1963183620672253251}
   _trailThreshold: 0.35
+  _cockDepth: 0.35
+  _cockFraction: 0.22
   _servoGain: 60
   _maxMotorTorque: 1100
   _elbowTorqueScale: 0.55
@@ -1957,6 +1961,7 @@ MonoBehaviour:
   - {fileID: 2026393100188876539}
   - {fileID: 2203661038752964108}
   - {fileID: 6146270173359183025}
+  _headRenderer: {fileID: 3961262663895343544}
   _leftArmView: {fileID: 2749685362711538530}
   _rightArmView: {fileID: 7672527761864111436}
   _eliminatedColor: {r: 0.22, g: 0.24, b: 0.22, a: 1}

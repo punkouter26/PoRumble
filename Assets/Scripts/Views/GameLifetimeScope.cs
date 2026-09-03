@@ -19,6 +19,7 @@ namespace PoRumble.Views
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
+            builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
@@ -27,12 +28,20 @@ namespace PoRumble.Views
             builder.Register<MatchModel>(Lifetime.Singleton);
             builder.Register<TouchInputModel>(Lifetime.Singleton);
             builder.Register<MatchFlowModel>(Lifetime.Singleton);
+            builder.Register<RosterModel>(Lifetime.Singleton);
+            builder.Register<RatingModel>(Lifetime.Singleton);
 
             builder.Register<BoxerSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<CombatSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<MatchSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<MatchFlowSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<SpawnSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<RosterSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<RatingSystem>(Lifetime.Singleton).AsSelf();
+
+            // The league table on disk. A plain C# class rather than a component, so it is
+            // registered as an instance; RatingSystem only ever sees the interface.
+            builder.Register<IRatingStore>(_ => new FileRatingStore(), Lifetime.Singleton);
 
             // Scene components the systems depend on.
             builder.RegisterComponentInHierarchy<BoxerSpawnPoints>();
@@ -47,6 +56,11 @@ namespace PoRumble.Views
                 container.Resolve<CombatSystem>();
                 container.Resolve<MatchSystem>();
 
+                // Same reason as the two above: RatingSystem only subscribes to messages, so
+                // nothing injects it and VContainer would never construct it - every match
+                // would resolve with the standings silently untouched.
+                container.Resolve<RatingSystem>();
+
                 // Presentation components are all optional: the training scenes deliberately
                 // have no HUD, no camera rig and no feedback layer, and
                 // RegisterComponentInHierarchy would throw when they are absent.
@@ -58,6 +72,8 @@ namespace PoRumble.Views
                 InjectOptional<RingAtmosphereView>(container);
                 InjectOptional<DiagnosticsHudView>(container);
                 InjectOptional<TouchControlsView>(container);
+                InjectOptional<RosterSelectionView>(container);
+                InjectOptional<StandingsHudView>(container);
             });
         }
 

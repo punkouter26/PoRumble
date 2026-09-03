@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b39ad4c65cc3d574dae43db4952ce0ce, type: 3}
+  m_Name: Fighter_STANDARDRL
+  m_EditorClassIdentifier: PoRumble.Models::PoRumble.Models.FighterProfile
+  _id: standard_rl
+  _displayName: STANDARD RL
+  _tagline: PoRumbleBoxer.onnx driven straight through, unbent.
+  _face: {fileID: 0}
+  _tint: {r: 0.13, g: 0.13, b: 0.15, a: 1}
+  _control: 1
+  _brainProfile: {fileID: 0}
+  _pressure: 0
+  _circling: 0
+  _punchGate: 1
+  _opportunism: 0
+  _chargeChance: 0
+  _dodgeChance: 0
+  _power: 1
+  _chin: 1
+  _speed: 1
+  _recovery: 1

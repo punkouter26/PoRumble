@@ -31,6 +31,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
+            builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
@@ -129,6 +130,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
+            builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
@@ -166,7 +168,8 @@ namespace PoRumble.Tests
                 container.Resolve<IPublisher<PunchLandedMessage>>(),
                 container.Resolve<IPublisher<PunchEvadedMessage>>(),
                 container.Resolve<IPublisher<PunchBlockedMessage>>(),
-                container.Resolve<IPublisher<HaymakerThrownMessage>>());
+                container.Resolve<IPublisher<HaymakerThrownMessage>>(),
+                container.Resolve<IPublisher<BoxerDodgedMessage>>());
 
             // Placed so each glove lands on the other's head centre at full reach.
             boxerSystem.Punch(0, ArmSide.Left);

@@ -71,6 +71,33 @@ namespace PoRumble.Views
         private ScriptedBoxerBrain _brain;
         private BrainProfile _profile;
 
+        /// <summary>
+        /// Bends this fighter's share of the shared policy into a style of its own. Null for
+        /// a scripted bot, for the human, and throughout training - a run must learn against
+        /// the unmodified network.
+        /// </summary>
+        private StyleModulator _modulator;
+
+        /// <summary>
+        /// The modulator's last answer, held between decisions.
+        ///
+        /// OnActionReceived fires on every physics step, not only on decision steps, so
+        /// re-rolling the stochastic parts here would run them five times per decision and
+        /// make every probability in a FighterStyle mean five times what it says.
+        /// </summary>
+        private BoxerIntent _modulatedIntent;
+
+        /// <summary>Physics steps since binding, used to find the decision boundary.</summary>
+        private int _actionStep;
+
+        /// <summary>
+        /// The behaviour type the prefab authored, so forcing heuristic control can be undone.
+        /// A seat that held a scripted bot and now holds a policy fighter has to get its
+        /// policy back; without this it would stay on HeuristicOnly and stand there.
+        /// </summary>
+        private BehaviorType _authoredBehaviorType = BehaviorType.Default;
+        private bool _behaviorTypeCaptured;
+
         /// <summary>Physics ticks between decisions, read off the DecisionRequester.</summary>
         private int _decisionPeriod = 1;
 
@@ -197,6 +224,66 @@ namespace PoRumble.Views
             }
 
             _boxerSystem.SetCharge(_boxerId, live && charging);
+
+            // The slip is polled here for the same reason the haymaker is: Heuristic runs
+            // once every DecisionPeriod physics ticks, and a defensive input that coarse
+            // arrives after the punch it was meant to avoid.
+            bool slip = _touch != null && _touch.IsActive && _touch.DodgeRequested;
+
+            // Consumed on read. The touch view raises the flag on press and never lowers it,
+            // so leaving it set would slip again on every frame the thumb stayed down.
+            if (_touch != null)
+            {
+                _touch.DodgeRequested = false;
+            }
+
+            if (keyboard != null)
+            {
+                slip |= keyboard.lKey.wasPressedThisFrame;
+            }
+
+            if (live && slip)
+            {
+                _boxerSystem.Dodge(_boxerId, Vector2.zero);
+            }
+        }
+
+        /// <summary>
+        /// Seats a contestant in this boxer: who drives it, how it fights and what it is
+        /// physically made of.
+        ///
+        /// Idempotent and reversible, because the roster can be re-dealt between matches and
+        /// the same chair may go from a scripted bot to a policy fighter and back.
+        /// </summary>
+        public void ApplyFighter(FighterProfile profile)
+        {
+            _modulator = null;
+
+            if (profile == null)
+            {
+                return;
+            }
+
+            // A human seat keeps the keyboard whatever the profile says it is driven by.
+            // The contestant still supplies the face, the colour and the attributes, so
+            // "play as Biggie" gets Biggie's chin and Biggie's power.
+            bool scripted = profile.Control == FighterControl.Scripted && !_humanControlled;
+
+            _scriptedBot = scripted;
+            SetBrainProfile(scripted ? profile.Brain : null);
+            ApplyBehaviorType(scripted || _humanControlled);
+
+            // Only a policy fighter needs a modulator. A scripted one already has a whole
+            // brain of its own, tuned by its BrainProfile tier.
+            if (!scripted && _config != null)
+            {
+                _modulator = new StyleModulator(_config, profile.ToStyle(), _boxerId + 1);
+            }
+
+            if (_model != null)
+            {
+                _model.Attributes = profile.ToAttributes();
+            }
         }
 
         /// <summary>
@@ -212,10 +299,29 @@ namespace PoRumble.Views
                 return;
             }
 
-            if (TryGetComponent(out BehaviorParameters parameters))
+            ApplyBehaviorType(true);
+        }
+
+        /// <summary>
+        /// Forces heuristic control, or puts back whatever the prefab authored.
+        ///
+        /// The authored value is captured on first use rather than in Awake, because an agent
+        /// can be configured before it has ever been enabled.
+        /// </summary>
+        private void ApplyBehaviorType(bool heuristic)
+        {
+            if (!TryGetComponent(out BehaviorParameters parameters))
             {
-                parameters.BehaviorType = BehaviorType.HeuristicOnly;
+                return;
             }
+
+            if (!_behaviorTypeCaptured)
+            {
+                _authoredBehaviorType = parameters.BehaviorType;
+                _behaviorTypeCaptured = true;
+            }
+
+            parameters.BehaviorType = heuristic ? BehaviorType.HeuristicOnly : _authoredBehaviorType;
         }
 
         /// <summary>Hands this boxer to the keyboard. Inference only, never during training.</summary>
@@ -230,10 +336,7 @@ namespace PoRumble.Views
 
             // Force heuristic, otherwise the trained policy would drive the boxer the player
             // is supposed to be controlling.
-            if (TryGetComponent(out BehaviorParameters parameters))
-            {
-                parameters.BehaviorType = BehaviorType.HeuristicOnly;
-            }
+            ApplyBehaviorType(true);
         }
 
         /// <summary>Called by the spawner once this agent's model exists.</summary>
@@ -241,6 +344,8 @@ namespace PoRumble.Views
         {
             _model = model;
             _boxerId = model.Id;
+            _actionStep = 0;
+            _modulatedIntent = BoxerIntent.Idle;
 
             // Heuristic runs once per decision period, not once per physics tick, so the
             // brain needs to know the interval it is really deciding over.
@@ -320,27 +425,51 @@ namespace PoRumble.Views
             }
 
             var continuous = actions.ContinuousActions;
-            Vector2 move = new(Mathf.Clamp(continuous[0], -1f, 1f), Mathf.Clamp(continuous[1], -1f, 1f));
-            Vector2 aim = new(Mathf.Clamp(continuous[2], -1f, 1f), Mathf.Clamp(continuous[3], -1f, 1f));
+            var discrete = actions.DiscreteActions;
 
-            _boxerSystem.SetMoveInput(_boxerId, move);
+            BoxerIntent intent = new(
+                new Vector2(Mathf.Clamp(continuous[0], -1f, 1f), Mathf.Clamp(continuous[1], -1f, 1f)),
+                new Vector2(Mathf.Clamp(continuous[2], -1f, 1f), Mathf.Clamp(continuous[3], -1f, 1f)),
+                discrete[0] == 1,
+                discrete[1] == 1);
 
-            if (aim.sqrMagnitude > 0.01f)
+            if (_modulator != null)
             {
-                _boxerSystem.SetAim(_boxerId, aim);
+                // Re-rolled only on decision steps. OnActionReceived fires every physics tick
+                // - the DecisionRequester repeats the last decision in between - so rolling
+                // here would run every probability in a FighterStyle five times per decision.
+                if (_actionStep % _decisionPeriod == 0)
+                {
+                    _modulatedIntent = _modulator.Modulate(
+                        intent, _match, _boxerId, Time.fixedDeltaTime * _decisionPeriod);
+                }
+
+                intent = _modulatedIntent;
+                _boxerSystem.SetCharge(_boxerId, intent.Charge);
+
+                if (intent.Dodge)
+                {
+                    _boxerSystem.Dodge(_boxerId, Vector2.zero);
+                }
             }
 
-            var discrete = actions.DiscreteActions;
+            _actionStep++;
+            _boxerSystem.SetMoveInput(_boxerId, intent.Move);
+
+            if (intent.Aim.sqrMagnitude > 0.01f)
+            {
+                _boxerSystem.SetAim(_boxerId, intent.Aim);
+            }
 
             // Charged only when a punch actually starts. OnActionReceived runs every step, so
             // billing the intent would cost several points per episode just for holding the
             // button down while the arms were on cooldown.
-            if (discrete[0] == 1 && _boxerSystem.Punch(_boxerId, ArmSide.Left))
+            if (intent.PunchLeft && _boxerSystem.Punch(_boxerId, ArmSide.Left))
             {
                 AddReward(-_punchCost);
             }
 
-            if (discrete[1] == 1 && _boxerSystem.Punch(_boxerId, ArmSide.Right))
+            if (intent.PunchRight && _boxerSystem.Punch(_boxerId, ArmSide.Right))
             {
                 AddReward(-_punchCost);
             }
@@ -380,9 +509,15 @@ namespace PoRumble.Views
                 discrete[0] = intent.PunchLeft ? 1 : 0;
                 discrete[1] = intent.PunchRight ? 1 : 0;
 
-                // Charging rides its own channel rather than a third action branch, so the
-                // trained policy's action vector is left untouched.
+                // Charging and slipping ride their own channels rather than extra action
+                // branches, so the trained policy's action vector is left untouched.
                 _boxerSystem.SetCharge(_boxerId, intent.Charge);
+
+                if (intent.Dodge)
+                {
+                    _boxerSystem.Dodge(_boxerId, Vector2.zero);
+                }
+
                 return;
             }
 

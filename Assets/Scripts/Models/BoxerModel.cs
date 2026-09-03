@@ -39,6 +39,37 @@ namespace PoRumble.Models
 
         public bool HasCounterWindow => CounterWindow > 0f;
 
+        /// <summary>
+        /// Seconds left on the slip. While this is running the boxer's face cannot be hit at
+        /// all, which is what makes a dodge worth its stamina.
+        ///
+        /// Plain floats rather than ReactiveProperties for the same reason CounterWindow is:
+        /// they change every tick, and waking a subscriber sixty times a second to redraw
+        /// nothing is pure waste.
+        /// </summary>
+        public float DodgeWindow { get; set; }
+
+        /// <summary>Seconds until another slip is allowed. Stops dodging being a permanent state.</summary>
+        public float DodgeCooldown { get; set; }
+
+        /// <summary>Direction of the current slip, used for the sideways burst it carries.</summary>
+        public Vector2 DodgeDirection { get; set; }
+
+        /// <summary>True while the face is untouchable.</summary>
+        public bool IsDodging => DodgeWindow > 0f;
+
+        /// <summary>True when a slip could be started right now.</summary>
+        public bool CanDodge => DodgeWindow <= 0f && DodgeCooldown <= 0f;
+
+        /// <summary>
+        /// Physical differences from the shipped tuning — power, chin, speed, breath.
+        ///
+        /// Set once when a contestant takes this seat and read by the systems every tick. It
+        /// is the only reason two boxers running the identical policy network fight
+        /// differently at all.
+        /// </summary>
+        public FighterAttributes Attributes { get; set; } = FighterAttributes.Neutral;
+
         /// <summary>Current velocity, carried between ticks so movement has weight.</summary>
         public Vector2 Velocity { get; set; }
 
@@ -105,6 +136,9 @@ namespace PoRumble.Models
             Charge.Value = 0f;
             ChargeInput = false;
             CounterWindow = 0f;
+            DodgeWindow = 0f;
+            DodgeCooldown = 0f;
+            DodgeDirection = Vector2.zero;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
             Health.Value = maxHealth;
@@ -123,6 +157,8 @@ namespace PoRumble.Models
             Charge.Value = 0f;
             ChargeInput = false;
             CounterWindow = 0f;
+            DodgeWindow = 0f;
+            DodgeCooldown = 0f;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
             return true;

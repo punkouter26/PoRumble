@@ -20,6 +20,7 @@ namespace PoRumble.Systems
         private readonly IPublisher<PunchEvadedMessage> _evadedPublisher;
         private readonly IPublisher<PunchBlockedMessage> _blockedPublisher;
         private readonly IPublisher<HaymakerThrownMessage> _haymakerPublisher;
+        private readonly IPublisher<BoxerDodgedMessage> _dodgedPublisher;
 
         // Hits are buffered for the whole tick so that punches thrown on the same tick all
         // resolve against the state at the start of that tick. Without this, whichever boxer
@@ -34,7 +35,8 @@ namespace PoRumble.Systems
             IPublisher<PunchLandedMessage> punchPublisher,
             IPublisher<PunchEvadedMessage> evadedPublisher,
             IPublisher<PunchBlockedMessage> blockedPublisher,
-            IPublisher<HaymakerThrownMessage> haymakerPublisher)
+            IPublisher<HaymakerThrownMessage> haymakerPublisher,
+            IPublisher<BoxerDodgedMessage> dodgedPublisher)
         {
             _match = match;
             _config = config;
@@ -42,6 +44,7 @@ namespace PoRumble.Systems
             _evadedPublisher = evadedPublisher;
             _blockedPublisher = blockedPublisher;
             _haymakerPublisher = haymakerPublisher;
+            _dodgedPublisher = dodgedPublisher;
         }
 
         public void SetMoveInput(int boxerId, Vector2 moveInput)
@@ -91,6 +94,72 @@ namespace PoRumble.Systems
 
             boxer.ChargeInput = held;
         }
+
+        /// <summary>
+        /// Slips a punch: a short burst sideways during which the face cannot be hit.
+        ///
+        /// A side channel, exactly like <see cref="SetCharge"/> and for exactly the same
+        /// reason - the compiled policy's action vector is four continuous and two discrete,
+        /// and a third discrete branch would stop PoRumbleBoxer.onnx loading. The keyboard,
+        /// the scripted brains and the per-fighter style modulator all reach the mechanic
+        /// through here, so the rule that governs it lives in one place.
+        ///
+        /// Returns false when the slip was refused, so a caller can tell a real dodge from a
+        /// wasted input: on cooldown, already slipping, out of breath, or committed to a
+        /// punch that is already on its way out.
+        /// </summary>
+        public bool Dodge(int boxerId, Vector2 direction)
+        {
+            BoxerModel boxer = FindBoxer(boxerId);
+
+            if (boxer == null || !boxer.IsAlive.Value || !boxer.CanDodge)
+            {
+                return false;
+            }
+
+            // Cannot slip out of a punch already thrown. Committing the shoulders is what a
+            // punch costs, and letting a fighter cancel that commitment would make throwing
+            // strictly free.
+            if (IsAnyArmOut(boxer))
+            {
+                return false;
+            }
+
+            if (boxer.Stamina.Value < _config.DodgeStaminaCost)
+            {
+                return false;
+            }
+
+            Vector2 facing = boxer.Facing.normalized;
+            Vector2 lateral = new(-facing.y, facing.x);
+
+            // Default to whichever way the boxer is already leaning; a caller that has no
+            // preference still gets a real sidestep rather than a stationary flicker.
+            if (direction.sqrMagnitude <= Mathf.Epsilon)
+            {
+                float lean = Vector2.Dot(boxer.Velocity, lateral);
+                direction = lean >= 0f ? lateral : -lateral;
+            }
+
+            boxer.DodgeDirection = direction.normalized;
+            boxer.DodgeWindow = _config.DodgeDuration;
+            boxer.DodgeCooldown = _config.DodgeDuration + _config.DodgeCooldown;
+            boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value - _config.DodgeStaminaCost);
+
+            // A slip abandons any wind-up. Slipping out of a cocked haymaker and keeping the
+            // charge would make the wind-up's mobility cost meaningless.
+            boxer.ChargeInput = false;
+            boxer.Charge.Value = 0f;
+            boxer.LeftArm.SetWindup(0f);
+            boxer.RightArm.SetWindup(0f);
+
+            _dodgedPublisher.Publish(new BoxerDodgedMessage(boxer.Id, boxer.Position, boxer.DodgeDirection));
+            return true;
+        }
+
+        /// <summary>How far out a punch is worth slipping. Read by the controllers, not here.</summary>
+        public float DodgeThreatRange =>
+            (_config.ArmReach + _config.HeadOffset + _config.BodyRadius) * _config.DodgeThreatRangeScale;
 
         /// <summary>
         /// Throws a punch. Uses the requested arm when it is ready; if that arm is still
@@ -147,6 +216,13 @@ namespace PoRumble.Systems
                 return false;
             }
 
+            // A slip is a commitment too. Punching out of one would make the invulnerability
+            // window a free offensive option rather than a defensive trade.
+            if (boxer.IsDodging)
+            {
+                return false;
+            }
+
             ArmModel requested = side == ArmSide.Left ? boxer.LeftArm : boxer.RightArm;
 
             if (requested.CanPunch)
@@ -190,6 +266,7 @@ namespace PoRumble.Systems
                     continue;
                 }
 
+                TickDodge(boxer, deltaTime);
                 TickMovement(boxer, deltaTime);
                 TickStamina(boxer, deltaTime);
                 TickCounterWindow(boxer, deltaTime);
@@ -215,7 +292,17 @@ namespace PoRumble.Systems
         /// </summary>
         private void TickMovement(BoxerModel boxer, float deltaTime)
         {
-            float effort = StaminaScale(boxer);
+            // The slip drives the body itself. Steering out of it would let a fighter buy
+            // invulnerability and keep walking the opponent down, which is not a dodge.
+            if (boxer.IsDodging)
+            {
+                boxer.Velocity = boxer.DodgeDirection
+                                 * (_config.MoveSpeed * _config.DodgeSpeedScale * boxer.Attributes.Speed);
+                boxer.Position = ClampToArena(boxer.Position + boxer.Velocity * deltaTime);
+                return;
+            }
+
+            float effort = StaminaScale(boxer) * boxer.Attributes.Speed;
 
             // A cocked haymaker plants the feet. Without this cost, charging would be free
             // and there would be no reason ever to throw an ordinary punch.
@@ -291,7 +378,9 @@ namespace PoRumble.Systems
             float moveDrain = boxer.Velocity.magnitude / Mathf.Max(0.01f, _config.MoveSpeed) * _config.MoveStaminaCost;
 
             // Breath comes back even mid-exchange, just far slower than when standing off.
-            float recovery = _config.StaminaRecovery * (working ? WORKING_RECOVERY_SCALE : 1f);
+            float recovery = _config.StaminaRecovery
+                             * boxer.Attributes.Recovery
+                             * (working ? WORKING_RECOVERY_SCALE : 1f);
             float delta = recovery - moveDrain;
 
             boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value + delta * deltaTime);
@@ -363,6 +452,26 @@ namespace PoRumble.Systems
 
             boxer.Stamina.Value = Mathf.Clamp01(boxer.Stamina.Value - _config.ChargeStaminaCost * level);
             _haymakerPublisher.Publish(new HaymakerThrownMessage(boxer.Id, boxer.Position, level));
+        }
+
+        /// <summary>
+        /// Runs down the slip and the wait before the next one.
+        ///
+        /// The cooldown is a single clock that starts at the slip rather than at its end, so
+        /// a fighter cannot chain slips by timing the release: DodgeCooldown is seeded with
+        /// the window plus the wait when the slip begins.
+        /// </summary>
+        private static void TickDodge(BoxerModel boxer, float deltaTime)
+        {
+            if (boxer.DodgeWindow > 0f)
+            {
+                boxer.DodgeWindow = Mathf.Max(0f, boxer.DodgeWindow - deltaTime);
+            }
+
+            if (boxer.DodgeCooldown > 0f)
+            {
+                boxer.DodgeCooldown = Mathf.Max(0f, boxer.DodgeCooldown - deltaTime);
+            }
         }
 
         /// <summary>Runs down the window opened by a block.</summary>
@@ -482,6 +591,7 @@ namespace PoRumble.Systems
                     target.Position,
                     target.Facing,
                     target.IsAlive.Value,
+                    target.IsDodging,
                     glovePosition,
                     settings);
 
@@ -491,10 +601,20 @@ namespace PoRumble.Systems
                 }
 
                 // A spent boxer lands softer punches, but never for zero.
+                //
+                // The attacker's power and the target's chin are both folded in here rather
+                // than when the health comes off, so the number in PunchLandedMessage is the
+                // number that is actually taken. The reward shaping reads that message, and a
+                // policy paid for damage it did not do would learn the wrong lesson.
                 float chargeScale = 1f + arm.ChargeLevel * (_config.ChargeDamageMultiplier - 1f);
                 int damage = Mathf.Max(
                     1,
-                    Mathf.RoundToInt(result.Damage * StaminaScale(attacker) * chargeScale));
+                    Mathf.RoundToInt(
+                        result.Damage
+                        * StaminaScale(attacker)
+                        * chargeScale
+                        * attacker.Attributes.Power
+                        * target.Attributes.Chin));
 
                 // Cashing in a block. Consumed on the way out so one block buys exactly one
                 // counter, not a free damage bonus for the rest of the window.
@@ -550,8 +670,12 @@ namespace PoRumble.Systems
                 Vector2 leftGlove = GetGlovePosition(target, target.LeftArm);
                 Vector2 rightGlove = GetGlovePosition(target, target.RightArm);
 
-                if ((glovePosition - leftGlove).sqrMagnitude <= blockRangeSqr ||
-                    (glovePosition - rightGlove).sqrMagnitude <= blockRangeSqr)
+                // A fighter mid-slip is not holding a guard up; the punch went past, it was
+                // not stopped. Falling through here is what makes a dodged punch report as an
+                // evade rather than handing the slipper a counter window it did not earn.
+                if (!target.IsDodging &&
+                    ((glovePosition - leftGlove).sqrMagnitude <= blockRangeSqr ||
+                     (glovePosition - rightGlove).sqrMagnitude <= blockRangeSqr))
                 {
                     // Stopping a punch buys a moment in which your own counts for more. This
                     // is what turns holding a guard up from a way to lose slowly into a way

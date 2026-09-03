@@ -23,6 +23,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
+            builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);

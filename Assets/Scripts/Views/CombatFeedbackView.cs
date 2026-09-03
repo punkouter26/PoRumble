@@ -107,6 +107,7 @@ namespace PoRumble.Views
             ISubscriber<PunchBlockedMessage> blockedSubscriber,
             ISubscriber<PunchEvadedMessage> evadedSubscriber,
             ISubscriber<HaymakerThrownMessage> haymakerSubscriber,
+            ISubscriber<BoxerDodgedMessage> dodgedSubscriber,
             ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber)
         {
             _flow = flow;
@@ -117,6 +118,7 @@ namespace PoRumble.Views
             blockedSubscriber.Subscribe(OnPunchBlocked).AddTo(_disposables);
             evadedSubscriber.Subscribe(OnPunchEvaded).AddTo(_disposables);
             haymakerSubscriber.Subscribe(OnHaymakerThrown).AddTo(_disposables);
+            dodgedSubscriber.Subscribe(OnBoxerDodged).AddTo(_disposables);
             eliminatedSubscriber.Subscribe(OnBoxerEliminated).AddTo(_disposables);
         }
 
@@ -252,6 +254,16 @@ namespace PoRumble.Views
         private void OnPunchEvaded(PunchEvadedMessage message)
         {
             PlayAt(_evadeClip, message.Position, 1f);
+        }
+
+        /// <summary>
+        /// The slip. Heard at the moment it starts rather than when something misses, so the
+        /// duck reads as a decision the fighter made - a slip that only made a sound when it
+        /// happened to work would be invisible most of the time it was used.
+        /// </summary>
+        private void OnBoxerDodged(BoxerDodgedMessage message)
+        {
+            PlayAt(_whooshClip, message.Position, 1.5f);
         }
 
         private void OnHaymakerThrown(HaymakerThrownMessage message)
