@@ -6315,14 +6315,16 @@ MonoBehaviour:
   _defaultProfile: {fileID: 11400000, guid: d743c894203a7754b8b551a2bd1ea180, type: 2}
   _useRoleColors: 0
   _fighterProfiles:
-  - {fileID: 11400000, guid: 514702493a3a2e641a91ecb2948352d6, type: 2}
-  - {fileID: 11400000, guid: 71eff5c833097df4785f0c4c97a869bb, type: 2}
   - {fileID: 11400000, guid: 8118f086142c06c4695603df1aec576f, type: 2}
   - {fileID: 11400000, guid: 289b6c1746d3cdf41b04ab9e7b4c3253, type: 2}
   - {fileID: 11400000, guid: 3fa819959b6eae74e810a1928cd03c6c, type: 2}
   - {fileID: 11400000, guid: e1fe4ef5d26f7c34d80c5f1470d90995, type: 2}
   - {fileID: 11400000, guid: e88c63f0e295d5a48a3a7f59c3bd6003, type: 2}
   - {fileID: 11400000, guid: 70ffddcee07057842af363ef2d549a9f, type: 2}
+  - {fileID: 11400000, guid: 71eff5c833097df4785f0c4c97a869bb, type: 2}
+  - {fileID: 11400000, guid: 16d41fae9e00b186af3ed444b6280150, type: 2}
+  - {fileID: 11400000, guid: 6590167bb10125d28fe8da73c348a0eb, type: 2}
+  - {fileID: 11400000, guid: acfa83636848701667e860027e52c65f, type: 2}
 --- !u!1 &559980537
 GameObject:
   m_ObjectHideFlags: 0

@@ -24,8 +24,8 @@ MonoBehaviour:
   _punchGate: 0.6
   _opportunism: 0.05
   _chargeChance: 0
-  _dodgeChance: 0.9
-  _power: 0.7
+  _dodgeChance: 0.95
+  _power: 0.65
   _chin: 0.85
   _speed: 1.25
   _recovery: 1.15

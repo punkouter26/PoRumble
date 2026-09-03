@@ -19,13 +19,13 @@ MonoBehaviour:
   _tint: {r: 0.4, g: 0.73, b: 0.36, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
-  _pressure: 0.3
-  _circling: 0.2
+  _pressure: 0.35
+  _circling: 0.1
   _punchGate: 1
-  _opportunism: 0.4
+  _opportunism: 0.45
   _chargeChance: 0.1
   _dodgeChance: 0.15
   _power: 0.9
   _chin: 1
-  _speed: 1.05
-  _recovery: 1.5
+  _speed: 1
+  _recovery: 1.6
