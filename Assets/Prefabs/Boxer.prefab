@@ -943,6 +943,7 @@ MonoBehaviour:
   _upperArmLength: 0.73
   _forearmLength: 0.78
   _guardElbowFlare: 0.35
+  _blockRecoil: 0.35
   _servoGain: 60
   _maxMotorSpeed: 1800
   _maxMotorTorque: 260
@@ -1200,6 +1201,7 @@ MonoBehaviour:
   _upperArmLength: 0.73
   _forearmLength: 0.78
   _guardElbowFlare: 0.35
+  _blockRecoil: 0.35
   _servoGain: 60
   _maxMotorSpeed: 1800
   _maxMotorTorque: 260
@@ -1333,7 +1335,7 @@ MonoBehaviour:
     VectorActionDescriptions: []
     VectorActionSpaceType: 0
     hasUpgradedBrainParametersWithActionSpec: 1
-  m_Model: {fileID: 5022602860645237092, guid: f78dd3b1e152f0349ad0cb634657b8b1, type: 3}
+  m_Model: {fileID: 5022602860645237092, guid: d563ddc0b8e5b9d4a8292ba3336354bc, type: 3}
   m_InferenceDevice: 0
   m_BehaviorType: 0
   m_BehaviorName: PoRumbleBoxer
