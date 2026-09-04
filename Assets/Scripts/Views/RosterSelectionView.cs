@@ -46,26 +46,29 @@ namespace PoRumble.Views
         private RosterModel _roster;
         private RatingModel _ratings;
         private RosterSystem _rosterSystem;
+        private MatchFlowSystem _flowSystem;
+        private HudPointerModel _pointer;
         private BoxerSpawnPoints _spawnPoints;
-        private MatchFlowModel _flow;
 
         private VisualElement _panel;
         private Label _footerLabel;
-        private Button _openButton;
+        private Button _fightButton;
 
         [Inject]
         public void Construct(
             RosterModel roster,
             RatingModel ratings,
             RosterSystem rosterSystem,
-            BoxerSpawnPoints spawnPoints,
-            MatchFlowModel flow)
+            MatchFlowSystem flowSystem,
+            HudPointerModel pointer,
+            BoxerSpawnPoints spawnPoints)
         {
             _roster = roster;
             _ratings = ratings;
             _rosterSystem = rosterSystem;
+            _flowSystem = flowSystem;
+            _pointer = pointer;
             _spawnPoints = spawnPoints;
-            _flow = flow;
         }
 
         private void Start()
@@ -99,7 +102,12 @@ namespace PoRumble.Views
 
             _panel = root.Q<VisualElement>("panel");
             _footerLabel = root.Q<Label>("footer");
-            _openButton = root.Q<Button>("open-card");
+            _fightButton = root.Q<Button>("fight");
+
+            if (_fightButton != null)
+            {
+                _fightButton.clicked += OnFightClicked;
+            }
 
             if (_panel == null)
             {
@@ -112,30 +120,9 @@ namespace PoRumble.Views
 
             BuildTiles(root.Q<VisualElement>("grid"));
 
-            if (_openButton != null)
-            {
-                _openButton.clicked += () => _rosterSystem.Toggle();
-            }
-
             _roster.IsOpen.Subscribe(OnOpenChanged).AddTo(_disposables);
             _roster.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
             _ratings.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
-            _flow.Phase.Subscribe(_ => RefreshOpenButton()).AddTo(_disposables);
-        }
-
-        /// <summary>
-        /// Shows the way into the card only when the card can actually be used: between
-        /// matches, and never while it is already open on top of the button.
-        /// </summary>
-        private void RefreshOpenButton()
-        {
-            if (_openButton == null)
-            {
-                return;
-            }
-
-            bool available = _flow.CanOpenCard && !_roster.IsOpen.Value;
-            _openButton.style.display = available ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>
@@ -205,6 +192,36 @@ namespace PoRumble.Views
             }
         }
 
+        /// <summary>
+        /// Commits the card and starts the match.
+        ///
+        /// The card is the only screen a phone can reach before a fight, and until this button
+        /// existed there was nothing on it that started one - the confirm gesture is a tap
+        /// anywhere, which MatchInputView deliberately ignores while the card is open, and the
+        /// keyboard's Enter does not exist on a handset.
+        ///
+        /// Closing is what commits the roster (see OnOpenChanged), so it has to happen first.
+        /// Then the same two-step MatchInputView uses, in the same order: a restart is only
+        /// legal at the results screen and starting is only legal at the title, so each call
+        /// is refused outside its own phase and one press can never do both.
+        /// </summary>
+        private void OnFightClicked()
+        {
+            if (_pointer != null)
+            {
+                _pointer.Claim(Time.frameCount);
+            }
+
+            _rosterSystem.Close();
+
+            if (_flowSystem.TryRestart())
+            {
+                return;
+            }
+
+            _flowSystem.TryStartFight();
+        }
+
         private void OnTileClicked(FighterProfile profile)
         {
             if (!_rosterSystem.ToggleEntrant(profile))
@@ -219,8 +236,6 @@ namespace PoRumble.Views
 
         private void OnOpenChanged(bool isOpen)
         {
-            RefreshOpenButton();
-
             if (_panel == null)
             {
                 return;
@@ -282,11 +297,19 @@ namespace PoRumble.Views
             _builder.Append(_roster.Entrants.Count)
                     .Append(" SELECTED — DEALT ROUND ")
                     .Append(_spawnPoints.BoxerCount)
-                    .Append(" CORNERS.   TAB TO CLOSE");
+                    .Append(" CORNERS");
 
             _footerLabel.text = _builder.ToString();
         }
 
-        private void OnDestroy() => _disposables.Dispose();
+        private void OnDestroy()
+        {
+            if (_fightButton != null)
+            {
+                _fightButton.clicked -= OnFightClicked;
+            }
+
+            _disposables.Dispose();
+        }
     }
 }

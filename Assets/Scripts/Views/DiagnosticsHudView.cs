@@ -1,5 +1,9 @@
 using System.Text;
 using PoRumble.Models;
+using Unity.InferenceEngine;
+using Unity.MLAgents;
+using Unity.MLAgents.Policies;
+using Unity.MLAgents.Sensors;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Profiling;
@@ -77,6 +81,20 @@ namespace PoRumble.Views
         // which was read back from ProfilerRecorderHandle.GetAvailable rather than assumed.
         private AudioSource[] _audioSources;
 
+        // Every agent in the scene, and the fixed half of what its policy is. Cached because
+        // the roster re-seats agents rather than destroying them - the set never changes
+        // during a session - and because the observation and action shapes are compiled into
+        // the model and cannot change at all.
+        private BehaviorParameters[] _agentPolicies;
+        private string _policyShape;
+
+        // The compiled model, and its name held against it. ModelAsset.name allocates a string
+        // on every read, and this readout refreshes four times a second; the reference is
+        // compared instead and the name rebuilt only when the asset actually changes, which in
+        // the game is never and in the checkpoint evaluator is once per run.
+        private ModelAsset _lastModel;
+        private string _modelName = "none";
+
         private int _historyHead;
         private float _refreshTimer;
         private float _accumulatedMs;
@@ -130,6 +148,10 @@ namespace PoRumble.Views
             // The combat voice pool builds its sources in Awake, so by Start they all exist.
             _audioSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
 
+            _agentPolicies = FindObjectsByType<BehaviorParameters>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            _policyShape = DescribePolicyShape();
+
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
 
             if (root == null)
@@ -167,13 +189,30 @@ namespace PoRumble.Views
             _panel.style.display = _visibleOnStart ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        /// <summary>
+        /// Shows or hides the overlay.
+        ///
+        /// Public because the chrome carries a bottom-left button for it. F3 and the
+        /// three-finger tap are developer gestures that nobody discovers; the button is how
+        /// the overlay is actually reachable on a phone.
+        /// </summary>
+        public void Toggle()
+        {
+            if (_panel == null)
+            {
+                return;
+            }
+
+            _panel.style.display = _panel.style.display == DisplayStyle.None
+                ? DisplayStyle.Flex
+                : DisplayStyle.None;
+        }
+
         private void Update()
         {
-            if (_panel != null && TogglePressed())
+            if (TogglePressed())
             {
-                _panel.style.display = _panel.style.display == DisplayStyle.None
-                    ? DisplayStyle.Flex
-                    : DisplayStyle.None;
+                Toggle();
             }
 
             // Unscaled: hitstop and the knockout hold both change timeScale, and a frame-time
@@ -266,6 +305,8 @@ namespace PoRumble.Views
                         .Append("   #").Append(_flow.MatchNumber.Value);
             }
 
+            AppendPolicyStats();
+
             _readout.text = _builder.ToString();
             _readout.EnableInClassList("diag__readout--over", averageMs > _frameBudgetMs);
 
@@ -343,6 +384,126 @@ namespace PoRumble.Views
                 Mathf.RoundToInt(fraction * (HISTORY - 1)), 0, HISTORY - 1);
 
             return _sortedFrames[index];
+        }
+
+        /// <summary>
+        /// The half of the policy description that is compiled into the model and cannot move
+        /// at runtime: observation and action shapes, and how often a decision is asked for.
+        ///
+        /// Worth showing because the action vector being frozen is the single constraint that
+        /// most often bites here - CLAUDE.md records that growing it stops the model loading
+        /// altogether, and until now nothing in a build reported what shape was actually
+        /// bound. A model whose observation size disagrees with what CollectObservations
+        /// writes does not fail loudly; it just refuses to load, and this is where that shows.
+        /// </summary>
+        private string DescribePolicyShape()
+        {
+            if (_agentPolicies == null || _agentPolicies.Length == 0)
+            {
+                return "no agents";
+            }
+
+            BehaviorParameters parameters = _agentPolicies[0];
+
+            if (parameters == null)
+            {
+                return "no agents";
+            }
+
+            BrainParameters brain = parameters.BrainParameters;
+
+            var shape = new StringBuilder(96);
+
+            shape.Append("obs ").Append(brain.VectorObservationSize)
+                 .Append('x').Append(brain.NumStackedVectorObservations);
+
+            // The ray fan is a separate sensor component and carries most of the observation
+            // budget, so a vector size alone would understate what the network is fed.
+            if (parameters.TryGetComponent(out RayPerceptionSensorComponent2D rays))
+            {
+                shape.Append(" + ").Append(rays.RaysPerDirection * 2 + 1)
+                     .Append(" rays x").Append(rays.ObservationStacks);
+            }
+
+            shape.Append("   act ").Append(brain.ActionSpec.NumContinuousActions)
+                 .Append("c/").Append(brain.ActionSpec.NumDiscreteActions).Append('d');
+
+            if (parameters.TryGetComponent(out DecisionRequester requester))
+            {
+                shape.Append("   period ").Append(requester.DecisionPeriod);
+            }
+
+            return shape.ToString();
+        }
+
+        /// <summary>
+        /// What the agents are actually running: the behaviour name the trainer must match,
+        /// the compiled model bound to them, where inference executes, and how the ring is
+        /// split between the policy and the scripted brains.
+        ///
+        /// The split is counted every refresh rather than cached, because re-dealing the fight
+        /// card swaps controllers on boxers that already exist - the agents are never
+        /// destroyed, so a count taken at Start would go quietly stale the first time the card
+        /// is changed.
+        /// </summary>
+        private void AppendPolicyStats()
+        {
+            if (_agentPolicies == null || _agentPolicies.Length == 0)
+            {
+                return;
+            }
+
+            BehaviorParameters first = null;
+            int policyDriven = 0;
+            int scripted = 0;
+
+            for (int index = 0; index < _agentPolicies.Length; index++)
+            {
+                BehaviorParameters parameters = _agentPolicies[index];
+
+                if (parameters == null)
+                {
+                    continue;
+                }
+
+                // Explicit rather than ??=, which is C# null coalescing and would not see a
+                // destroyed object as null the way Unity's own == does.
+                if (first == null)
+                {
+                    first = parameters;
+                }
+
+                if (parameters.BehaviorType == BehaviorType.HeuristicOnly)
+                {
+                    scripted++;
+                }
+                else
+                {
+                    policyDriven++;
+                }
+            }
+
+            if (first == null)
+            {
+                return;
+            }
+
+            ModelAsset model = first.Model;
+
+            if (model != _lastModel)
+            {
+                _lastModel = model;
+                _modelName = model == null ? "none" : model.name;
+            }
+
+            _builder.Append("\npolicy   ").Append(first.BehaviorName)
+                    .Append("   ").Append(_modelName)
+                    .Append("   ").Append(first.InferenceDevice).Append('\n');
+
+            _builder.Append("shape    ").Append(_policyShape).Append('\n');
+
+            _builder.Append("brains   ").Append(policyDriven).Append(" policy / ")
+                    .Append(scripted).Append(" scripted");
         }
 
         /// <summary>

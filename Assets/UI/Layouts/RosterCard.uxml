@@ -2,9 +2,16 @@
 <!--
   The fight card shell. Tiles are cloned into #grid from Templates/RosterTile.uxml.
 
-  #open-card is a sibling of the panel rather than a child, so it survives the panel being
-  hidden. It is the only way into the card on a phone, where there is no Tab key; the view
-  shows it between matches and hides it during a fight.
+  There is no open button here any more. The way into the card is the MENU button in the
+  application chrome (AppChrome.uxml), which is always present, is pinned top-right by the
+  chrome contract, and sorts above this panel - so the same control both opens the card and
+  closes it.
+
+  Three parts, and the split is what makes the screen usable on a phone. The title is fixed at
+  the top, #fight is fixed at the bottom where a thumb reaches, and the tiles scroll between
+  them. Eight tiles at two per row is roughly 2000px of content against a 1920px screen, so
+  laid out as a plain wrapping column the last row was simply cut off the bottom with no way
+  to reach it - and, before #fight existed, no visible way to start a match either.
 
   Note the absence of picking-mode="Ignore" on the panel: this is the one screen in the game
   that is actually clicked, and the tiles inside it have to hit-test. The document root is set
@@ -12,11 +19,16 @@
   while it is closed.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <ui:Button name="open-card" text="FIGHT CARD" class="text text--md text--bold card-button" />
-
     <ui:VisualElement name="panel" class="roster">
         <ui:Label name="title" text="SELECT THE CARD" class="text text--lg text--bold roster__title" picking-mode="Ignore" />
-        <ui:VisualElement name="grid" class="roster__grid" />
-        <ui:Label name="footer" class="text text--sm roster__footer" picking-mode="Ignore" />
+
+        <ui:ScrollView name="scroll" class="roster__scroll">
+            <ui:VisualElement name="grid" class="roster__grid" />
+        </ui:ScrollView>
+
+        <ui:VisualElement name="actions" class="roster__actions">
+            <ui:Label name="footer" class="text text--sm roster__footer" picking-mode="Ignore" />
+            <ui:Button name="fight" text="FIGHT" class="text text--md text--bold roster__fight" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

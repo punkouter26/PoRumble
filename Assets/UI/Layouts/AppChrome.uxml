@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The application chrome: the five things that are always on screen and belong to the app
+  rather than to the fight.
+
+  One document owns all five because the contract is positional - title top-left, frame rate
+  top-centre, menu top-right, telemetry bottom-left, version bottom-right - and a contract
+  spread across the match HUD, the diagnostics overlay and the fight card is one that nothing
+  can enforce. Every other panel in the game reflows around these; see the chrome offsets in
+  porumble.uss.
+
+  Each element is absolutely positioned rather than laid out in a bar, so the chrome reserves
+  no space and the ring underneath is never letterboxed by it.
+
+  The two buttons are the only pickable things here. Everything else carries
+  picking-mode="Ignore" so the chrome cannot swallow a tap meant for the fight card beneath
+  it, and the document root is set to Ignore from C# for the same reason.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Label name="title" text="PO RUMBLE" class="text text--bold chrome__title" picking-mode="Ignore" />
+
+    <ui:Label name="fps" text="--- FPS" class="text chrome__fps" picking-mode="Ignore" />
+
+    <ui:Button name="menu" text="MENU" class="text text--bold chrome__button chrome__menu" />
+
+    <ui:Button name="telemetry" text="STATS" class="text text--bold chrome__button chrome__telemetry" />
+
+    <ui:Label name="version" text="v0.0.0" class="text chrome__version" picking-mode="Ignore" />
+</ui:UXML>

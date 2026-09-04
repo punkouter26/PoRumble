@@ -25,18 +25,21 @@ namespace PoRumble.Views
         private RosterSystem _rosterSystem;
         private RosterModel _roster;
         private MatchFlowModel _flow;
+        private HudPointerModel _pointer;
 
         [Inject]
         public void Construct(
             MatchFlowSystem flowSystem,
             RosterSystem rosterSystem,
             RosterModel roster,
-            MatchFlowModel flow)
+            MatchFlowModel flow,
+            HudPointerModel pointer)
         {
             _flowSystem = flowSystem;
             _rosterSystem = rosterSystem;
             _roster = roster;
             _flow = flow;
+            _pointer = pointer;
         }
 
         private void Update()
@@ -114,9 +117,22 @@ namespace PoRumble.Views
             // the fight.
             Touchscreen touchscreen = Touchscreen.current;
 
-            return touchscreen != null
-                   && !_roster.IsOpen.Value
-                   && touchscreen.primaryTouch.press.wasPressedThisFrame;
+            if (touchscreen == null || _roster.IsOpen.Value)
+            {
+                return false;
+            }
+
+            // A tap anywhere is deliberately accepted rather than hit-tested, which is what
+            // lets the results screen work with no button on it. That stopped being free once
+            // the chrome grew buttons of its own: at the results screen a press on MENU would
+            // otherwise open the card and start the next match on the same frame. The chrome
+            // says so by claiming the frame, and this yields to it.
+            if (_pointer != null && _pointer.IsClaimed(Time.frameCount))
+            {
+                return false;
+            }
+
+            return touchscreen.primaryTouch.press.wasPressedThisFrame;
         }
     }
 }

@@ -3,4 +3,5 @@
   <Project Path="PoRumble.Tests.csproj" />
   <Project Path="PoRumble.Views.csproj" />
   <Project Path="PoRumble.Systems.csproj" />
+  <Project Path="PoRumble.Editor.csproj" />
 </Solution>

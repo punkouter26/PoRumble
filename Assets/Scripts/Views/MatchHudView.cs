@@ -279,19 +279,32 @@ namespace PoRumble.Views
         private static string StartPrompt()
         {
             return IsTouchOnly()
-                ? "TAP TO FIGHT      FIGHT CARD BELOW"
-                : "PRESS  ENTER  TO FIGHT      TAB  FOR THE CARD";
+                ? "TAP TO FIGHT      MENU FOR THE CARD"
+                : "PRESS  ENTER  TO FIGHT      MENU  OR  TAB  FOR THE CARD";
         }
 
         /// <summary>
         /// Chosen from the devices actually present rather than from a platform define, so the
         /// Editor still reads "PRESS" while a phone reads "TAP" - and so a desktop with a
         /// touchscreen does not get told to tap when it has a keyboard sitting right there.
+        ///
+        /// The keyboard test alone was not enough, and on the one platform that ships it was
+        /// exactly wrong: Android reports a Keyboard device whether or not any physical
+        /// keyboard exists, so `Keyboard.current == null` is never true on a handset and the
+        /// phone build told the player to press Enter. The device *class* is what separates
+        /// the two cases - a handheld with a touchscreen is a phone, a desktop with one is
+        /// still a desktop - and it is a runtime query rather than a compile-time define, so
+        /// the distinction the comment above promises is kept.
         /// </summary>
         private static bool IsTouchOnly()
         {
-            return UnityEngine.InputSystem.Touchscreen.current != null
-                && UnityEngine.InputSystem.Keyboard.current == null;
+            if (UnityEngine.InputSystem.Touchscreen.current == null)
+            {
+                return false;
+            }
+
+            return SystemInfo.deviceType == DeviceType.Handheld
+                || UnityEngine.InputSystem.Keyboard.current == null;
         }
 
         /// <summary>

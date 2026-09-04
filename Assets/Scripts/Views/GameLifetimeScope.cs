@@ -34,6 +34,11 @@ namespace PoRumble.Views
 
             builder.RegisterInstance(_boxerConfig);
             builder.Register<TouchInputModel>(Lifetime.Singleton);
+
+            // Shared by exactly two views: the chrome claims a frame when one of its buttons
+            // is pressed, and MatchInputView yields that frame rather than also reading the
+            // press as a confirmation.
+            builder.Register<HudPointerModel>(Lifetime.Singleton);
             builder.Register<RosterModel>(Lifetime.Singleton);
             builder.Register<RatingModel>(Lifetime.Singleton);
 
@@ -73,6 +78,7 @@ namespace PoRumble.Views
                 // Presentation components are all optional: the training scenes deliberately
                 // have no HUD, no camera rig and no feedback layer, and
                 // RegisterComponentInHierarchy would throw when they are absent.
+                InjectOptional<AppChromeView>(container);
                 InjectOptional<MatchHudView>(container);
                 InjectOptional<PlayerStatusHudView>(container);
                 InjectOptional<CombatFeedbackView>(container);

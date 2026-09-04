@@ -25,12 +25,13 @@ Renderer, so 3D lit materials will not light correctly.
 | Task | How |
 |---|---|
 | Play | Open `Assets/Scenes/SampleScene.unity` → Play. 10 boxers, HUD, boxer #0 on keyboard |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** or the **MENU** button the fight card (between matches) · **R** restart at the results screen · **F3** or the **STATS** button the diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
 | Tests | `unity command run_tests --mode EditMode` — 163 EditMode tests |
 | Evaluate | **PoRumble ▸ Evaluate Checkpoints…** plays each `.onnx` in a folder through the ten-way and writes `results/evaluation/*.json`. Select on `knockoutRate`, never on reward |
 | Parallel training | **PoRumble ▸ Build 8-Arena Training Scene** generates `Training10x8.unity` — eight rings, eight times the experience per step |
+| Android APK | **PoRumble ▸ Build Android APK** switches target, applies signing and writes `Build/Android/PoRumble-<version>-<code>.apk` |
 
 **Art is in Git LFS.** A fresh clone that has not run `git lfs pull` leaves every `.png` as a
 129-byte pointer file, and Unity imports those as nothing at all: the sprites silently resolve
@@ -527,12 +528,54 @@ every one of them.
 | `RingLighting` | `RingAtmosphereView` | House lights down and key light in as the field thins |
 | `CameraRig` | `SpectatorCameraView` | Frames the living fighters; tightens as the field thins |
 | `PlayerStatusHud` | `PlayerStatusHudView` | Player health, breath, haymaker meter, hit vignette, behind-you warning |
-| `DiagnosticsHud` | `DiagnosticsHudView` | **F3** telemetry overlay |
+| `AppChrome` | `AppChromeView` | Title, frame rate, MENU, STATS and the version — the five corner elements |
+| `DiagnosticsHud` | `DiagnosticsHudView` | **F3** or the STATS button; telemetry including the bound policy |
 | `MatchInput` | `MatchInputView` | The restart key |
 | `MatchHud` | `MatchHudView` | Survivors, per-fighter health, countdown, result banner |
-| `RosterCard` | `RosterSelectionView` | The fight card — pick who is in the ring (**Tab**) |
+| `RosterCard` | `RosterSelectionView` | The fight card — pick who is in the ring (**Tab** or MENU) |
 | `KnockoutMood` | `KnockoutMoodView` | Blends a desaturated, vignetted grade **and** the mixer's `Knockout` snapshot for the knockout hold |
 | `Standings` | `StandingsHudView` | Top three of the Elo table |
+
+## Application Chrome
+
+Five elements are pinned to fixed positions and belong to the app rather than to the fight:
+the **title** top-left, the **frame rate** top-centre, **MENU** top-right, the **STATS**
+telemetry toggle bottom-left and the **version** bottom-right. All five live in
+`Assets/UI/Layouts/AppChrome.uxml` and are driven by `AppChromeView`.
+
+- **One document owns the whole contract, and that is the point.** Every one of those five
+  positions was already occupied - `.match-hud` held top-left, `.diag` top-right, `.player-hud`
+  bottom-left and `.standings` bottom-right - so the alternative was scattering the five across
+  three UXML files and three views, where nothing could check that the corners stayed where they
+  were promised. The panels now reflow around the chrome through `--chrome-top` and
+  `--chrome-bottom` in `porumble.uss`, so moving the chrome moves the HUD with it rather than
+  requiring four rules to be edited in step.
+- **The chrome sorts at 10, above every other HUD document** (the highest was 5). Forced rather
+  than chosen: `.roster` is a full-screen scrim at 88% opacity, so a MENU button sorted beneath
+  it would be both invisible and unclickable exactly when it is needed to close the card. Sorting
+  above is what lets one button open *and* close it, which is why `#open-card` could be deleted.
+- **A chrome button has to claim its own tap, or it fires twice.** `MatchInputView` deliberately
+  does not hit-test - a tap anywhere is a confirmation, which is what lets the results screen work
+  with no button on it - so a press on MENU at the results screen would open the card *and* start
+  the next match on the same frame. `HudPointerModel` is how the chrome says the frame is spoken
+  for. It stores a frame number rather than a flag, so the claim expires by itself and a consumer
+  that never runs cannot leave input dead. The pre-existing `#open-card` had this bug.
+- **The frame-rate label is stretched across the screen and centre-aligned, not translated.** Its
+  string changes width whenever the number does, and a translated element would visibly shift
+  left and right as it counted.
+- **The counter only writes when the integer changes.** `Label.text` builds a string, and this is
+  a HUD element that exists partly to report allocation rate.
+- **The telemetry overlay reports the bound policy now**, which nothing in a build ever did:
+  behaviour name, the `.onnx` actually loaded, the inference device, the observation and action
+  shapes and the decision period, plus how the ring splits between the policy and the scripted
+  brains. The action vector being frozen is the constraint that most often bites here, and a
+  model whose observation size disagrees with `CollectObservations` does not fail loudly - it
+  simply refuses to load. `ModelAsset.name` allocates on every read, so the reference is compared
+  and the name rebuilt only when the asset changes. The split is recounted every refresh because
+  re-dealing the card swaps controllers on agents that already exist.
+- **`--text-xs` and `--text-sm` went 24/28 to 28/32.** At the 1080-wide portrait reference a USS
+  pixel is a device pixel, so 24px was about 2.2% of the screen width - the health-row names and
+  the whole diagnostics readout were at that size.
 
 ## Audio
 
@@ -873,12 +916,29 @@ training arenas are editor-side tools.
 | Orientation | Portrait, autorotate off | |
 | Graphics | Vulkan, then GLES3 | The 2D renderer does a lot of render-texture work for the lights; GLES3 is the slower path |
 | Package | `com.punkouter.porumble` | |
-| Min SDK | 24 | |
+| Min SDK | 26 | |
+| Target SDK | 35 | Pinned. It was 0 — "highest installed" — so two machines built different APKs from the same commit |
+| Frame rate | 60, set in code | Android caps a player at **30** unless `Application.targetFrameRate` says otherwise, and nothing set it. See `PlatformBootstrap` |
+| Signing | `Build/keystore/porumble-dev.keystore` | A dev key, gitignored with the APKs. Swap for a real one before any store build |
 | Panel reference | 1080x1920, match width | The HUD was authored against a landscape canvas; in portrait the reference has to be portrait too |
 
 `adb` ships with the Editor rather than on PATH, under
-`Editor/Data/PlaybackEngines/AndroidPlayer/SDK/platform-tools/`. `Temp/deploy_android.sh`
-installs, launches and dumps the Unity log in one step.
+`Editor/Data/PlaybackEngines/AndroidPlayer/SDK/platform-tools/`. So does `keytool`, under
+`AndroidPlayer/OpenJDK/bin/` — which is what generated the dev keystore, since there is no
+system JDK here.
+
+**Never edit `ProjectSettings.asset` on disk while the Editor is open.** It holds those values
+in memory and re-serialises the file over any external change, with no warning and no conflict.
+A version bump written straight to the YAML was silently reverted and the build came out
+labelled with the old version - which is precisely the failure the version label exists to
+catch. Set them through `PlayerSettings` (the API), as `AndroidBuilder` and the `set_version`
+eval do. The settings that *did* survive earlier in this project survived by luck of timing,
+not because the file is a supported way in.
+
+**The signing passwords cannot live in `ProjectSettings.asset`.** Unity keeps them in
+per-machine EditorPrefs, so a build made without setting them writes an unsigned APK and only
+says so at the very end. `AndroidBuilder` sets them on every run for that reason; the
+keystore path and alias *are* serialized, and they are the half that is safe to commit.
 
 ### Things that are easy to get wrong
 
@@ -935,11 +995,11 @@ installs, launches and dumps the Unity log in one step.
 - **The fight card needs a button, because `Tab` does not exist on a phone.** For a long time
   `RosterToggleRequested` read the Tab key and nothing else, which meant the entire
   contestant-selection screen could not be opened in the shipping build - and could not have been
-  closed if it had been. The `#open-card` button in `RosterCard.uxml` is a sibling of the panel
-  so it survives the panel being hidden, and `RosterSelectionView` shows it only while
-  `MatchFlowModel.CanOpenCard` is true. A two-finger tap is the shortcut for anyone who finds it.
-  Both are gated between matches: re-seating the roster mid-fight would swap contestants into
-  chairs that are currently mid-punch.
+  closed if it had been. That button is now `#menu` in the application chrome rather than the
+  bottom-centre `#open-card` it used to be; the chrome sorts above the card's full-screen scrim,
+  so the same control both opens and closes it. A two-finger tap is the shortcut for anyone who
+  finds it. Both are gated between matches: re-seating the roster mid-fight would swap
+  contestants into chairs that are currently mid-punch.
 - **Two startup log lines are expected and harmless.** `ClassNotFoundException:
   AssetPackManager` is Unity looking for Play Asset Delivery, which a sideloaded APK does not
   use. A burst of `NullReferenceException` in `TensorProxy.Finalize` fires once as the first
