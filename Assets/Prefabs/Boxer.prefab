@@ -936,14 +936,14 @@ MonoBehaviour:
   _strikeBias: 1.35
   _cockDepth: 0.2
   _cockFraction: 0.22
-  _headOffset: 0.36
-  _guardHandForward: 0.38
-  _guardHandLateral: 0.5
-  _headKeepOut: 0.46
-  _upperArmLength: 0.73
-  _forearmLength: 0.78
+  _headOffset: 0.09
+  _guardHandForward: 0.097
+  _guardHandLateral: 0.128
+  _headKeepOut: 0.117
+  _upperArmLength: 0.31
+  _forearmLength: 0.332
   _guardElbowFlare: 0.35
-  _blockRecoil: 0.35
+  _blockRecoil: 0.149
   _servoGain: 60
   _maxMotorSpeed: 1800
   _maxMotorTorque: 260
@@ -975,8 +975,8 @@ Transform:
   m_GameObject: {fileID: 4558874778711609569}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.72, z: 0}
-  m_LocalScale: {x: 0.2, y: 0.26, z: 1}
+  m_LocalPosition: {x: 0, y: 0.33882356, z: 0}
+  m_LocalScale: {x: 0.09411765, y: 0.122352935, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 6988016516539289778}
@@ -1194,14 +1194,14 @@ MonoBehaviour:
   _strikeBias: 1.35
   _cockDepth: 0.2
   _cockFraction: 0.22
-  _headOffset: 0.36
-  _guardHandForward: 0.38
-  _guardHandLateral: 0.5
-  _headKeepOut: 0.46
-  _upperArmLength: 0.73
-  _forearmLength: 0.78
+  _headOffset: 0.09
+  _guardHandForward: 0.097
+  _guardHandLateral: 0.128
+  _headKeepOut: 0.117
+  _upperArmLength: 0.31
+  _forearmLength: 0.332
   _guardElbowFlare: 0.35
-  _blockRecoil: 0.35
+  _blockRecoil: 0.149
   _servoGain: 60
   _maxMotorSpeed: 1800
   _maxMotorTorque: 260
@@ -1410,7 +1410,7 @@ MonoBehaviour:
   m_RaysPerDirection: 8
   m_MaxRayDegrees: 180
   m_SphereCastRadius: 0.1
-  m_RayLength: 24
+  m_RayLength: 7
   m_RayLayerMask:
     serializedVersion: 2
     m_Bits: 4294967291
@@ -1612,7 +1612,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.36, z: 0}
-  m_LocalScale: {x: 0.6, y: 0.6, z: 1}
+  m_LocalScale: {x: 0.28235295, y: 0.28235295, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 6988016516539289778}
@@ -1704,7 +1704,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.633, y: 0.633, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6988016516539289778}
@@ -2008,7 +2008,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.46321523, y: 0.46321523, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 6669769907422380312}
@@ -2288,7 +2288,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.46321523, y: 0.46321523, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 4280136776746444783}

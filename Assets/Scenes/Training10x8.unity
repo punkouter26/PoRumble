@@ -1466,8 +1466,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 1136662311}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -2123,8 +2123,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 1079182112}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -3042,8 +3042,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 1318617098}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -5142,8 +5142,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 829420910}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -6627,8 +6627,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 946919837}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -7866,8 +7866,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 35165412}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -8429,8 +8429,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 1706215569}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -8801,8 +8801,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 1933929438}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 1
   _kinematicArms: 1
   _humanBoxerId: -1

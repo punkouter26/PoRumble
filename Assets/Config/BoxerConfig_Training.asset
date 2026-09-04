@@ -15,30 +15,30 @@ MonoBehaviour:
   _maxHealth: 30
   _longPunchDamage: 1
   _closePunchDamage: 2
-  _closeRangeThreshold: 2.5
-  _headOffset: 0.36
-  _headRadius: 0.8
+  _closeRangeThreshold: 0.64
+  _headOffset: 0.09
+  _headRadius: 0.3
   _faceArcHalfAngleDegrees: 60
-  _gloveRadius: 0.3
+  _gloveRadius: 0.07
   _armExtendDuration: 0.22
   _armRetractDuration: 0.2
   _armCooldownDuration: 0.12
-  _armReach: 1.6
-  _armLateralOffset: 0.53
-  _moveSpeed: 5
-  _acceleration: 18
-  _deceleration: 12
+  _armReach: 0.68
+  _armLateralOffset: 0.22
+  _moveSpeed: 1.5
+  _acceleration: 5.4
+  _deceleration: 3.6
   _turnSpeedDegrees: 360
   _lateralSpeedScale: 0.75
   _retreatSpeedScale: 0.6
   _committedTurnScale: 0.4
   _punchStaminaCost: 0.07
   _moveStaminaCost: 0.05
-  _knockbackPerDamage: 1.6
+  _knockbackPerDamage: 0.41
   _blockStaminaCost: 0.012
   _staminaRecovery: 0.18
   _exhaustedPenalty: 0.45
-  _bodyRadius: 0.98
+  _bodyRadius: 0.3
   _chargeDuration: 0.75
   _minChargeToRelease: 0.25
   _chargeDamageMultiplier: 3
@@ -52,8 +52,8 @@ MonoBehaviour:
   _dodgeSpeedScale: 2.4
   _dodgeThreatRangeScale: 1.35
   _punchConvergence: 0.85
-  _guardLateralOffset: 0.18
-  _punchLungeSpeed: 1.2
+  _guardLateralOffset: 0.075
+  _punchLungeSpeed: 0.36
   _stunPerDamage: 0.16
   _stunDecayPerSecond: 0.5
   _stunThreshold: 0.6

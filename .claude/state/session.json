@@ -14,14 +14,14 @@
     "c:\\Users\\punko\\Downloads\\PoRumble\\CLAUDE.md"
   ],
   "recent_commits": [
+    "dd0129f Bind the first policy trained under the new combat rules",
     "ba06b23 Sweep up the tooling churn, and bake the glyph the UI was rasterising at runtime",
-    "5720664 Make the back of the head hittable, and stop the ropes eating half a separation",
-    "bfcd5f6 Draw the fighters as Activision silhouettes, and mark the bots on the card"
+    "5720664 Make the back of the head hittable, and stop the ropes eating half a separation"
   ],
-  "session_duration": "381m 41s",
+  "session_duration": "453m 42s",
   "tool_calls": 0,
   "warnings_count": 6,
-  "saved_at": "2026-09-04T19:29:03Z",
+  "saved_at": "2026-09-04T20:41:04Z",
   "plan": {},
   "verification": {},
   "agent_context": {}

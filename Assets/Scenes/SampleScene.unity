@@ -702,7 +702,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.1525, y: 0.1525, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 456618461}
@@ -5956,7 +5956,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.1525, y: 0.1525, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 326155769}
@@ -6298,8 +6298,8 @@ MonoBehaviour:
   _boxerPrefab: {fileID: 320477217041943752, guid: a18a391ca7fc71940a891fe25fb129cc, type: 3}
   _boxerParent: {fileID: 1318617098}
   _boxerCount: 10
-  _spawnRadius: 15
-  _arenaHalfExtent: {x: 20, y: 20}
+  _spawnRadius: 2.2
+  _arenaHalfExtent: {x: 3.05, y: 3.05}
   _autoRestart: 0
   _kinematicArms: 1
   _humanBoxerId: -1
@@ -7126,7 +7126,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.1525, y: 0.1525, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1488269173}
@@ -17352,6 +17352,8 @@ MonoBehaviour:
   _layout: {fileID: 9197481963319205126, guid: 3646bab08733f7d4fbc7602202cd6145, type: 3}
   _tileTemplate: {fileID: 9197481963319205126, guid: ae52cd80e3451dd4e8f519dd7f4e61c0, type: 3}
   _styleSheet: {fileID: 7433441132597879392, guid: 0c2fc0d606bf1874993baa49ab2b4588, type: 3}
+  _scriptedPortraitColor: {r: 0.85, g: 0.18, b: 0.16, a: 1}
+  _policyPortraitColor: {r: 0.22, g: 0.72, b: 0.35, a: 1}
 --- !u!114 &1219598343
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17421,16 +17423,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.SpectatorCameraView
   _camera: {fileID: 603022678}
   _followTarget: {fileID: 603022676}
-  _minOrthographicSize: 9
-  _portraitMinOrthographicSize: 6
-  _maxOrthographicSize: 45
+  _minOrthographicSize: 1.5
+  _portraitMinOrthographicSize: 1.2
+  _maxOrthographicSize: 8
   _framingPadding: 5
-  _outsideRingMargin: 4
+  _outsideRingMargin: 0.6
   _positionDamping: 2.5
   _zoomDamping: 1.8
   _playerBias: 0.35
   _focusOnFight: 1
-  _focusRadius: 7
+  _focusRadius: 1.2
   _focusSwitchMargin: 3
 --- !u!4 &1225692679
 Transform:
@@ -27663,7 +27665,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 1}
-  m_LocalScale: {x: 40, y: 40, z: 1}
+  m_LocalScale: {x: 6.1000004, y: 6.1000004, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 247070512}
