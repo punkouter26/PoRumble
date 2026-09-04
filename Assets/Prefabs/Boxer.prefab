@@ -48,7 +48,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.012
+  m_Mass: 0.07
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -443,7 +443,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.03
+  m_Mass: 0.16
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -483,7 +483,7 @@ HingeJoint2D:
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: -45
-    m_UpperAngle: 80
+    m_UpperAngle: 4
 --- !u!70 &6612815292483256734
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -636,7 +636,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.03
+  m_Mass: 0.16
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -675,7 +675,7 @@ HingeJoint2D:
     m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -80
+    m_LowerAngle: -4
     m_UpperAngle: 45
 --- !u!70 &8232076468260211055
 CapsuleCollider2D:
@@ -854,7 +854,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.012
+  m_Mass: 0.07
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -1157,7 +1157,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.018
+  m_Mass: 0.09
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -1197,7 +1197,7 @@ HingeJoint2D:
   m_UseLimits: 1
   m_AngleLimits:
     m_LowerAngle: 0
-    m_UpperAngle: 145
+    m_UpperAngle: 92
 --- !u!70 &4315965248816917188
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -1282,22 +1282,22 @@ MonoBehaviour:
   _shoulderJoint: {fileID: 4629081725792536831}
   _elbowJoint: {fileID: 3811948717388974597}
   _wristJoint: {fileID: 3946021308050021772}
-  _shoulderGuardAngle: -15
+  _shoulderGuardAngle: -38
   _shoulderPunchAngle: 0
-  _elbowGuardAngle: 125
+  _elbowGuardAngle: 88
   _elbowPunchAngle: 8
-  _shoulderDriveAngle: 34
+  _shoulderDriveAngle: 12
   _wristGuardAngle: 25
   _wristPunchAngle: 0
   _mirror: 0
   _windupPullback: 0.55
   _gloveTrail: {fileID: 2368863442619053649}
   _trailThreshold: 0.35
-  _cockDepth: 0.35
+  _cockDepth: 0.2
   _cockFraction: 0.22
   _servoGain: 60
   _maxMotorSpeed: 1800
-  _maxMotorTorque: 260
+  _maxMotorTorque: 1100
   _elbowTorqueScale: 0.55
   _wristTorqueScale: 0.2
 --- !u!1 &4558874778711609569
@@ -1531,22 +1531,22 @@ MonoBehaviour:
   _shoulderJoint: {fileID: 9047673578425693031}
   _elbowJoint: {fileID: 4022942578818272044}
   _wristJoint: {fileID: 9110682960530660605}
-  _shoulderGuardAngle: -15
+  _shoulderGuardAngle: -38
   _shoulderPunchAngle: 0
-  _elbowGuardAngle: 103
+  _elbowGuardAngle: 72
   _elbowPunchAngle: 8
-  _shoulderDriveAngle: 16
+  _shoulderDriveAngle: 12
   _wristGuardAngle: 25
   _wristPunchAngle: 0
   _mirror: 1
   _windupPullback: 0.55
   _gloveTrail: {fileID: 1963183620672253251}
   _trailThreshold: 0.35
-  _cockDepth: 0.35
+  _cockDepth: 0.2
   _cockFraction: 0.22
   _servoGain: 60
   _maxMotorSpeed: 1800
-  _maxMotorTorque: 260
+  _maxMotorTorque: 1100
   _elbowTorqueScale: 0.55
   _wristTorqueScale: 0.2
 --- !u!1 &6652157053363623272
@@ -1589,6 +1589,7 @@ Transform:
   - {fileID: 7464816412138281102}
   - {fileID: 2793352706488162022}
   - {fileID: 1363164088082413150}
+  - {fileID: 5121300267237640255}
   m_Father: {fileID: 2861719318095235038}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!50 &4416647789490615639
@@ -2233,7 +2234,7 @@ Rigidbody2D:
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
-  m_Mass: 0.018
+  m_Mass: 0.09
   m_LinearDamping: 3
   m_AngularDamping: 3
   m_GravityScale: 0
@@ -2272,7 +2273,7 @@ HingeJoint2D:
     m_MaximumMotorForce: 4000
   m_UseLimits: 1
   m_AngleLimits:
-    m_LowerAngle: -145
+    m_LowerAngle: -92
     m_UpperAngle: 0
 --- !u!70 &967126149347393481
 CapsuleCollider2D:
@@ -2311,3 +2312,71 @@ CapsuleCollider2D:
   m_Offset: {x: 0, y: 0.39}
   m_Size: {x: 0.28, y: 0.78}
   m_Direction: 0
+--- !u!1 &8809007875959198598
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5121300267237640255}
+  - component: {fileID: 1541677832146596952}
+  m_Layer: 0
+  m_Name: HeadCollider
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5121300267237640255
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8809007875959198598}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.36, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6988016516539289778}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!58 &1541677832146596952
+CircleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8809007875959198598}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0}
+  m_Radius: 0.3

@@ -88,6 +88,39 @@ namespace PoRumble.Views
         [Range(0.05f, 0.6f)]
         [SerializeField] private float _cockFraction = 0.22f;
 
+        [Tooltip("Distance from the body centre to the DRAWN head, along the facing - the Head " +
+                 "sprite sits at local y 0.36 on the torso. Deliberately not " +
+                 "BoxerConfig.HeadOffset, which is 0.89: that is where the hit maths puts the " +
+                 "head, and this is where the picture puts it. The elbow is bent away from " +
+                 "whichever side this lands on, so it is the drawn head that has to be used " +
+                 "or the arm is routed around empty canvas half a unit past the face.")]
+        [SerializeField] private float _headOffset = 0.36f;
+
+        [Tooltip("How far forward the drawn hand is carried at rest, from the body centre. " +
+                 "A guard is held up at the chin, in front of the face - not down at the ribs.")]
+        [SerializeField] private float _guardHandForward = 0.62f;
+
+        [Tooltip("How far to the side the drawn hand is carried at rest. Has to keep the hand " +
+                 "and the forearm behind it clear of the head circle: at 0.42 against a head " +
+                 "of radius 0.30 sitting 0.36 forward, the hand clears it by 0.05 and the " +
+                 "elbow is pushed further out still. Bring it in much below 0.40 and the " +
+                 "forearm starts crossing the face again.")]
+        [SerializeField] private float _guardHandLateral = 0.42f;
+
+        [Tooltip("How close the drawn hand may come to the head centre. The head sprite is " +
+                 "0.30 across the radius and an arm capsule is 0.14 across the half-width, so " +
+                 "0.46 keeps the bone clear of the face with a little to spare. Raising it " +
+                 "holds the guard wider; lowering it below 0.44 lets the forearm clip the head.")]
+        [SerializeField] private float _headKeepOut = 0.46f;
+
+        [Header("Segment lengths - must match the prefab or the drawn arm misses the hitbox")]
+        [Tooltip("Shoulder to elbow. Read off the prefab: UpperArm sits at y 0.09 and Forearm " +
+                 "at y 0.82 on the boxer root, so the bone between them is 0.73.")]
+        [SerializeField] private float _upperArmLength = 0.73f;
+
+        [Tooltip("Elbow to glove. Forearm at y 0.82, Glove at y 1.60, so 0.78.")]
+        [SerializeField] private float _forearmLength = 0.78f;
+
         [Header("Servo")]
         [SerializeField] private float _servoGain = 90f;
 
@@ -232,7 +265,7 @@ namespace PoRumble.Views
             // wind-up at the guard angle and the telegraph would be invisible.
             if (_kinematic)
             {
-                PoseGloveFromModel();
+                PoseArmFromModel();
                 return;
             }
 
@@ -268,23 +301,160 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// Puts the glove exactly where the combat maths says it is. Used only while the
-        /// solver is switched off; the upper arm and forearm are left where they were, which
-        /// is why this is for training scenes and not for anything anybody looks at.
+        /// Places the whole arm - upper arm, forearm and glove - on the line the combat maths
+        /// already believes in, by two-link inverse kinematics from the shoulder to the glove.
+        ///
+        /// This replaces the servo rather than assisting it. A HingeJoint2D driven by a
+        /// proportional motor could not be kept inside its own limits here: measured
+        /// mid-fight, shoulders sat at 1731 degrees and elbows at 6479 against limits of 45
+        /// and 92, and no combination of masses, torque, speed clamp or error formulation
+        /// stopped them winding. The arm decides nothing - CombatMath resolves every hit from
+        /// the model's own extension - so simulating it bought nothing and cost a limb that
+        /// span up, swung through the fighter's own head and overlapped its body.
+        ///
+        /// Posed this way the arm is deterministic, it lands exactly where the hit test says
+        /// it does, and the elbow is put on the outward side of the shoulder-to-glove line by
+        /// construction, so it cannot fold across the face.
         /// </summary>
-        private void PoseGloveFromModel()
+        private void PoseArmFromModel()
         {
-            if (_wristJoint == null || _boxer == null || _boxerSystem == null)
+            if (_boxer == null || _boxerSystem == null)
             {
                 return;
             }
 
-            Transform glove = _wristJoint.transform;
-            Vector2 target = _boxerSystem.GetGlovePosition(_boxer, _model);
+            Transform upper = _shoulderJoint != null ? _shoulderJoint.transform : null;
+            Transform fore = _elbowJoint != null ? _elbowJoint.transform : null;
+            Transform glove = _wristJoint != null ? _wristJoint.transform : null;
 
-            // Z is preserved rather than zeroed: sorting order in a 2D scene rides on it.
-            Vector3 position = glove.position;
-            glove.position = new Vector3(target.x, target.y, position.z);
+            if (upper == null || fore == null || glove == null)
+            {
+                return;
+            }
+
+            Vector2 shoulder = _boxerSystem.GetShoulderPosition(_boxer, _model);
+            Vector2 facing = _boxer.Facing.normalized;
+            Vector2 lateral = new(-facing.y, facing.x);
+
+            // Where the hand is drawn at rest.
+            //
+            // Not GetGlovePosition at extension 0, which returns the shoulder: the model
+            // treats a retracted arm as having no reach at all, deliberately, so that a
+            // tucked arm does not guard the whole span it would have had if thrown. That is
+            // the right abstraction for the hit maths and a hopeless one to draw from - an
+            // arm 1.51 long folded into nothing doubles back on itself and sweeps the elbow
+            // and forearm straight across the fighter's own face.
+            //
+            // So the picture gets its own guard, carried at the chin and outside the head,
+            // and blends out to the model's glove as the punch travels. Only the far end has
+            // to agree with the maths, because hits resolve at full extension and nowhere
+            // else.
+            float side = _mirror ? -1f : 1f;
+            Vector2 guardHand = _boxer.Position
+                                + facing * _guardHandForward
+                                + lateral * (side * _guardHandLateral);
+
+            Vector2 thrown = _boxerSystem.GetGlovePosition(_boxer, _model);
+            Vector2 target = Vector2.Lerp(guardHand, thrown, Mathf.Clamp01(_model.Extension));
+
+            // The hand is pushed out of the head before anything is solved.
+            //
+            // Choosing which way the elbow bends keeps the *elbow* off the face, but the
+            // forearm's other end is the hand, and on the way out of a tight guard that is
+            // the point that grazes the head. Displacing the target radially is the only
+            // step that makes the whole segment clear by construction: with both of its
+            // endpoints outside the circle and on the same side of it, the bone between them
+            // cannot cross it.
+            Vector2 head = _boxer.Position + facing * _headOffset;
+            target = PushOutOfHead(target, head);
+
+            Vector2 delta = target - shoulder;
+            float reach = _upperArmLength + _forearmLength;
+
+            // Clamped just inside full reach. At full extension the model's glove sits a
+            // fraction further out than the arm is long - the punch converges toward the
+            // centreline while the shoulder stays wide - and an unclamped solve would take
+            // the square root of a negative number.
+            float distance = Mathf.Min(delta.magnitude, reach * 0.999f);
+
+            if (distance <= 0.0001f)
+            {
+                return;
+            }
+
+            Vector2 direction = delta / delta.magnitude;
+
+            // Standard two-link solve: how far along the line the elbow sits, and how far off.
+            float alongDistance = (distance * distance
+                                   + _upperArmLength * _upperArmLength
+                                   - _forearmLength * _forearmLength) / (2f * distance);
+            float off = Mathf.Sqrt(Mathf.Max(
+                0f, _upperArmLength * _upperArmLength - alongDistance * alongDistance));
+
+            // Whichever of the two solutions puts the elbow further from the head.
+            //
+            // Measured rather than read off the mirror flag: which sign is "out" depends on
+            // the side of the body, the facing and the winding of the perpendicular, and
+            // getting any one of those backwards reintroduces the fault silently.
+            //
+            // Keeping the elbow outboard of the shoulder instead was tried and measured
+            // worse - 19-33 segments touching the head against 13-19 for this. Neither is
+            // clean, and the reason is geometric rather than a choice of rule: see the note
+            // on PoseArmFromModel about an arm too long to fold this tightly.
+            Vector2 perpendicular = new(-direction.y, direction.x);
+            Vector2 along = direction * alongDistance;
+            Vector2 first = shoulder + along + perpendicular * off;
+            Vector2 second = shoulder + along - perpendicular * off;
+            Vector2 elbow = (first - head).sqrMagnitude >= (second - head).sqrMagnitude
+                ? first
+                : second;
+
+            Place(upper, shoulder, elbow);
+            Place(fore, elbow, target);
+            glove.position = new Vector3(target.x, target.y, glove.position.z);
+            glove.rotation = fore.rotation;
+        }
+
+        /// <summary>
+        /// Moves a point radially out of the head's keep-out circle, leaving it alone if it
+        /// was already clear.
+        ///
+        /// A hand exactly on the head centre has no direction to be pushed in, so that one
+        /// degenerate case is sent sideways rather than left where it is.
+        /// </summary>
+        private Vector2 PushOutOfHead(Vector2 point, Vector2 head)
+        {
+            Vector2 offset = point - head;
+            float distance = offset.magnitude;
+
+            if (distance >= _headKeepOut)
+            {
+                return point;
+            }
+
+            if (distance <= Mathf.Epsilon)
+            {
+                return head + new Vector2(_headKeepOut, 0f);
+            }
+
+            return head + offset * (_headKeepOut / distance);
+        }
+
+        /// <summary>
+        /// Puts a segment's origin at <paramref name="from"/> and points its local +Y at
+        /// <paramref name="to"/>. Z is preserved: sorting order in a 2D scene rides on it.
+        /// </summary>
+        private static void Place(Transform segment, Vector2 from, Vector2 to)
+        {
+            segment.position = new Vector3(from.x, from.y, segment.position.z);
+
+            Vector2 axis = to - from;
+
+            if (axis.sqrMagnitude > Mathf.Epsilon)
+            {
+                segment.rotation = Quaternion.Euler(
+                    0f, 0f, Mathf.Atan2(axis.y, axis.x) * Mathf.Rad2Deg - 90f);
+            }
         }
 
         /// <summary>
@@ -327,11 +497,20 @@ namespace PoRumble.Views
                 return;
             }
 
-            // DeltaAngle, not subtraction. jointAngle accumulates without wrapping, so a raw
-            // difference is only correct while the joint has stayed inside one revolution -
-            // and the moment it has not, the error is enormous and the servo drives the arm
-            // further out rather than back.
-            float error = Mathf.DeltaAngle(joint.jointAngle, targetAngle);
+            // Raw difference, deliberately NOT Mathf.DeltaAngle, and the clamp below is what
+            // makes it safe.
+            //
+            // HingeJoint2D.jointAngle accumulates without wrapping. DeltaAngle takes the
+            // shortest way round to a coterminal angle, which sounds like the fix and is a
+            // trap: a joint sitting at 1731 degrees is "already there" as far as the short
+            // path is concerned, so the servo keeps winding it the same direction for ever.
+            // Measured mid-fight at -4255 degrees on an elbow whose limit is 92.
+            //
+            // The raw error is what unwinds it: at 1731 against a target of -38 it reads
+            // -1769 and drives the joint back down through every turn until it arrives. The
+            // original code had exactly this and blew up only because nothing bounded the
+            // speed it asked for - 1769 x gain 60 is 106,000 deg/s.
+            float error = targetAngle - joint.jointAngle;
 
             JointMotor2D motor = joint.motor;
             motor.motorSpeed = Mathf.Clamp(error * _servoGain, -_maxMotorSpeed, _maxMotorSpeed);

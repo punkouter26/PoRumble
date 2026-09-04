@@ -43,10 +43,10 @@ namespace PoRumble.Views
 
         [Tooltip("Pose the arms straight from the model instead of servoing them through the " +
                  "2D solver. Six dynamic bodies and six hinge joints per fighter - sixty of " +
-                 "each in a ten-way - are solved every physics step to draw a limb that " +
-                 "decides nothing: hits resolve in CombatMath and the segments carry no " +
-                 "colliders. Only meaningful alongside Auto Restart, and ignored without it, " +
-                 "because the game is the case where somebody is actually looking at the arm.")]
+                 "each in a ten-way - solved every physics step to draw a limb that decides " +
+                 "nothing, since CombatMath resolves every hit from the model. Turning this " +
+                 "off restores the servo, and with it the joint wind-up that put shoulders at " +
+                 "1731 degrees and swung arms through the fighter's own head.")]
         [SerializeField] private bool _kinematicArms = true;
         [Tooltip("Boxer id handed to the keyboard. -1 leaves every boxer under AI control.")]
         [SerializeField] private int _humanBoxerId = -1;
@@ -92,6 +92,16 @@ namespace PoRumble.Views
         /// them.
         /// </summary>
         private const string ARM_LAYER = "BoxerArm";
+
+        /// <summary>
+        /// Name of the solid collider standing in for the head, a child of the torso.
+        ///
+        /// Separate from the FaceProbe beside it, which is a trigger the ray sensors read and
+        /// which stops nothing. This one exists so an arm cannot be driven through the face:
+        /// the servo pushes, the solver refuses, and the limb stops at the skull instead of
+        /// sweeping across it.
+        /// </summary>
+        private const string HEAD_COLLIDER = "HeadCollider";
 
         private readonly List<BoxerView> _views = new();
         private readonly List<BoxerAgentView> _agents = new();
@@ -206,10 +216,13 @@ namespace PoRumble.Views
                     IsolatePerception(view, agent, boxer.Id);
                     DisableSelfCollision(view);
 
-                    // Gated on AutoRestart rather than standing alone: a training scene is
-                    // precisely the case where nobody is watching the limb, and it is the
-                    // only case where the solver cost is worth trading a drawn arm for.
-                    view.SetKinematicArms(_autoRestart && _kinematicArms);
+                    // Every scene, not only training. These arms used to be servoed by hinge
+                    // motors in the game; measured mid-fight those joints wound to thousands
+                    // of degrees against limits of 45 and 92, and the limbs swung through the
+                    // fighter's own head. They decide nothing - CombatMath resolves every hit
+                    // from the model - so posing them directly is cheaper AND the only way the
+                    // drawn arm is guaranteed to agree with the hit test and stay off the face.
+                    view.SetKinematicArms(_kinematicArms);
                     _agents.Add(agent);
                 }
 
@@ -310,21 +323,26 @@ namespace PoRumble.Views
                 }
             }
 
-            RestoreCrossArmCollision(view);
+            RestoreArmCollisions(view);
         }
 
         /// <summary>
-        /// Puts back the one set of self-collisions a fighter is supposed to have: its left
-        /// arm against its right.
+        /// Puts back the self-collisions a fighter is supposed to have: its two arms against
+        /// each other, and both arms against its own head.
         ///
-        /// Everything else stays off. A folded guard puts the gloves inside the torso's own
-        /// collider, and the servo then spends every frame pushing against a contact it can
-        /// never win - which is what DisableSelfCollision was written for. But the two arms
-        /// running into each other is not a bug to be suppressed, it is the mechanic: the
-        /// gloves converge on the centreline as they extend, so throwing both fists at once
-        /// puts them in the same place, and that has to be something a fighter can feel.
+        /// Everything else stays off, and the exception is specific rather than general. The
+        /// torso keeps ignoring its arms because the shoulder anchor sits 0.538 from the body
+        /// centre, inside a collider of radius 0.64 - the arm is rooted *inside* the torso, so
+        /// enabling that pair is a contact the solver can never resolve and the arm jitters
+        /// for ever. The head is a different case: at 0.30 radius on the centreline it is well
+        /// clear of both shoulders, so an arm only reaches it by swinging across the face,
+        /// which is exactly what must be stopped.
+        ///
+        /// The two arms are a mechanic rather than a bug - the gloves converge on the
+        /// centreline as they extend, so throwing both fists at once puts them in the same
+        /// place and that has to be something a fighter can feel.
         /// </summary>
-        private static void RestoreCrossArmCollision(BoxerView view)
+        private static void RestoreArmCollisions(BoxerView view)
         {
             _leftArmColliders.Clear();
             _rightArmColliders.Clear();
@@ -337,6 +355,39 @@ namespace PoRumble.Views
                     Physics2D.IgnoreCollision(_leftArmColliders[left], _rightArmColliders[right], false);
                 }
             }
+
+            Collider2D head = FindHeadCollider(view);
+
+            if (head == null)
+            {
+                return;
+            }
+
+            for (int index = 0; index < _leftArmColliders.Count; index++)
+            {
+                Physics2D.IgnoreCollision(_leftArmColliders[index], head, false);
+            }
+
+            for (int index = 0; index < _rightArmColliders.Count; index++)
+            {
+                Physics2D.IgnoreCollision(_rightArmColliders[index], head, false);
+            }
+        }
+
+        /// <summary>The torso's solid head collider, or null on a prefab that has none.</summary>
+        private static Collider2D FindHeadCollider(BoxerView view)
+        {
+            Collider2D[] colliders = view.GetComponentsInChildren<Collider2D>(true);
+
+            for (int index = 0; index < colliders.Length; index++)
+            {
+                if (colliders[index].gameObject.name == HEAD_COLLIDER)
+                {
+                    return colliders[index];
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

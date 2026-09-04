@@ -74,6 +74,13 @@ namespace PoRumble.Views
         private readonly CompositeDisposable _disposables = new();
 
         private BoxerModel _model;
+
+        /// <summary>
+        /// True while the arms are posed from the model rather than simulated. It also decides
+        /// how the torso is moved: see FixedUpdate, where physics-driven movement would put a
+        /// tick of lag between the body and the hands placed from the same model.
+        /// </summary>
+        private bool _kinematicArms;
         private MaterialPropertyBlock _propertyBlock;
         private Color _aliveColor = Color.white;
 
@@ -231,6 +238,8 @@ namespace PoRumble.Views
         /// </summary>
         public void SetKinematicArms(bool kinematic)
         {
+            _kinematicArms = kinematic;
+
             if (_leftArmView != null)
             {
                 _leftArmView.SetKinematicDrive(kinematic);
@@ -251,16 +260,31 @@ namespace PoRumble.Views
 
             float facingDegrees = Mathf.Atan2(_model.Facing.y, _model.Facing.x) * Mathf.Rad2Deg - 90f;
 
-            // Moved through physics rather than by assigning a transform, because the fists are
-            // jointed rigid bodies. Teleporting a transform would fight their SliderJoint2D.
-            if (_bodyRigidbody != null)
+            // Assigned, not MovePosition, whenever the arms are posed rather than simulated.
+            //
+            // MovePosition is a request the solver honours on the *next* step, so the torso
+            // lagged the model by one tick while ArmView placed the arms from the model's
+            // current position. At a walking speed of 5 units/s that is 0.1 of drift between
+            // a fighter's head and its own hands every single frame - which is most of the
+            // gap that had the forearm clipping the head.
+            //
+            // The reason it used to go through physics was that the fists were jointed rigid
+            // bodies and teleporting the torso fought their joints. They are not any more.
+            if (_kinematicArms || _bodyRigidbody == null)
             {
-                _bodyRigidbody.MovePosition(_model.Position);
-                _bodyRigidbody.MoveRotation(facingDegrees);
+                transform.SetPositionAndRotation(_model.Position, Quaternion.Euler(0f, 0f, facingDegrees));
+
+                if (_bodyRigidbody != null)
+                {
+                    _bodyRigidbody.transform.SetPositionAndRotation(
+                        _model.Position, Quaternion.Euler(0f, 0f, facingDegrees));
+                }
+
                 return;
             }
 
-            transform.SetPositionAndRotation(_model.Position, Quaternion.Euler(0f, 0f, facingDegrees));
+            _bodyRigidbody.MovePosition(_model.Position);
+            _bodyRigidbody.MoveRotation(facingDegrees);
         }
 
         /// <summary>
