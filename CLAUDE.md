@@ -276,6 +276,7 @@ here rather than left in a directory git never sees.
 
 | model | knockoutRate | meanSurvivors | meanWinnerHealth | draws |
 |---|---|---|---|---|
+| the four scripted `BrainProfile` tiers, ten seats | 0.0% | **10.00** | 0.55 | 11/25 |
 | `PoRumbleBoxer.onnx` (the model that shipped before) | 0.0% | **10.00** | 0.00 | **25/25** |
 | checkpoint 27.5M | 0.0% | 9.08 | 0.58 | 10/25 |
 | **checkpoint 32.5M** | 0.0% | **8.12** | **0.70** | **7/25** |
@@ -295,9 +296,19 @@ here rather than left in a directory git never sees.
   fell to `meanSurvivors`, exactly as that field's own docstring anticipates. Across 100
   evaluated matches and 40M training steps, **not one match has ever ended by knockout** and
   episode length never left the 498-decision cap. Whether that is the policy or the combat
-  model is what the scripted-brain baseline is for: if hand-written fighters cannot finish a
-  ten-way either, the ceiling is damage, stun and health rather than training, and another run
-  is wasted effort.
+  model was settled by running the scripted brains through the same harness: **they eliminate
+  nobody either.** Ten survivors out of ten, no knockouts, across four difficulty tiers of
+  purpose-built fighting logic. The ceiling is therefore the combat model and not the policy -
+  270 health spread over ten fighters in a 40x40 ring cannot be removed inside 2500 steps by
+  anything, trained or hand-written - and a further training run is wasted effort. The levers
+  are `MaxHealth`, punch damage, the stun thresholds, or the step cap.
+  **The trained policy is meanwhile the best fighter measured**: 8.12 survivors against the
+  scripted brains' 10.00. The reinforcement learning genuinely beats the hand-tuned AI; it is
+  just competing inside a model where nobody can win.
+  This also puts a question to the existing note that a ten-way "does not finish inside
+  MaxStep, and that is expected". If the bell really is the intended ending, then zero
+  knockouts is not a fault - but then `knockoutRate` is the wrong selection criterion and
+  `meanSurvivors` should replace it in both the docstring and the harness.
 - **Reward is only comparable inside a curriculum lesson.** `shaping_scale` steps at progress
   0.15 and 0.30, which with `max_steps` 40M lands at 6M and 12M - and the reward function
   changes there. Two apparent regressions in this run were lesson boundaries, not policy
@@ -463,7 +474,31 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
   light's shadows dropped SetPass calls from 69 to 37. Only the key light casts (the renderer
   budgets a single shadow render texture) and only the fighters have `ShadowCaster2D` — the
   corner posts had theirs removed because static scenery at the ring edge did not earn it.
-- **Every sprite carries a normal map, and a Light2D has to be told to read it.** The maps are
+- **The fighters are flat silhouettes, after Activision's Boxing (Atari 2600, 1980).** The five
+  boxer parts are a single unshaded fill with a hard edge - pure white in the PNG, so
+  `BoxerView`'s `_BaseColor` tint lands exactly and the atlas cannot bleed a dark halo. Measured
+  off the original: **glove diameter ≈ head diameter** and **arm thickness ≈ 0.2 × glove**, where
+  this project had 0.70 and 0.59. The shaded, normal-mapped version that preceded it was
+  illegible at the ten-way's zoom - head and torso merged into one dark mass and the arms
+  vanished - which is the practical reason for the change rather than the nostalgic one.
+  Three constraints held the resizing:
+  `GloveL/R` carry the `CircleCollider2D` **on the same GameObject as the SpriteRenderer**, so
+  their transform scale is untouchable - a bigger drawn glove would be a bigger *perceived* and
+  *hit* glove, and the trained policy would be reading a ring it was never trained on. The glove
+  therefore grew inside its own 128px canvas (87.5% → 95%) and stopped there. The head is
+  decoupled - `HeadCollider` is a separate object at radius 0.3 - so it could shrink to close the
+  ratio. And every PPU is unchanged, so the drawn fists still sit where `CombatMath` expects.
+- **A fighter's colour is chosen by value, and may never be green.** Ten silhouettes are told
+  apart by hue but *read* by value, so `BoxerView.BoxerPalette` and every `FighterProfile._tint`
+  are pushed to a hard light or a hard dark, alternating along the array so neighbouring seats
+  contrast. Green is barred outright: the canvas is a mid yellow-green, and a dark green fighter
+  was measured against it and lost - the silhouette edge becomes the only separation and the eye
+  reads it as a shadow on the floor. All four `STANDARD RL` seats shipped at one mid green,
+  which is how four of ten fighters were effectively invisible.
+- **Every sprite carries a normal map, except the five boxer parts, and a Light2D has to be told
+  to read it.** The boxers' `_NormalMap` bindings are deliberately cleared - a normal map is
+  exactly what turns a flat fill back into a lit dome, so it undoes the silhouette. Clear it
+  through `TextureImporter.secondarySpriteTextures`, never by editing the `.meta`. The maps are
   generated by `Temp/evals`-adjacent tooling into `Assets/Art/Sprites/Normals/` and bound through
   each sprite's **secondary texture** slot named `_NormalMap` — not through the material, which
   is why `BoxerSpriteFX` can leave `_NormalMap` empty and still light correctly, and why one
