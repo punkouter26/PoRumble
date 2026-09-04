@@ -11,13 +11,17 @@
   panel alongside the ten health rows, where it drew straight across them - a winner's name is
   the largest text the game ever shows and the panel is the densest thing on screen.
 
+  The ten per-fighter health rows are gone. They filled the top third of a portrait screen,
+  directly over the ring the fighters were moving through, and answered the wrong question -
+  a player wants to know who near them is nearly out, not to read a chart of ten numbers.
+  Health now shows on the fighters themselves, which pulse as they approach a knockout.
+
   Everything here is picking-mode="Ignore". The HUD sits over a live ring and must never eat a
   click meant for the fight card panel sorted beneath it.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="panel" class="match-hud" picking-mode="Ignore">
         <ui:Label name="survivors" class="text text--lg text--bold" picking-mode="Ignore" />
-        <ui:VisualElement name="roster" class="match-hud__roster" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="centre-stage" class="centre-stage" picking-mode="Ignore">

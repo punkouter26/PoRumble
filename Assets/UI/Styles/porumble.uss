@@ -188,8 +188,7 @@
    readable drain. Stamina and the haymaker charge are recomputed every tick, and a
    transition on a value that already changes each frame just renders it permanently
    behind the model it is supposed to be reporting. */
-.player-hud__bar--health > .bar__fill,
-.match-hud__bar > .bar__fill {
+.player-hud__bar--health > .bar__fill {
     transition-property: width, background-color;
     transition-duration: var(--motion-base), var(--motion-slow);
     transition-timing-function: ease-out, linear;
@@ -504,29 +503,6 @@
     /* Below the title, which owns the top-left corner under the chrome contract. */
     top: var(--chrome-top);
     left: var(--space-4);
-}
-
-.match-hud__roster { margin-top: var(--space-2); }
-
-.match-hud__row {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: var(--space-1);
-}
-
-.match-hud__name {
-    /* Wide enough for a contestant's name. It used to hold "#00" and nothing else, and a
-       card of named fighters overflowed it silently. */
-    width: 190px;
-    color: var(--text-secondary);
-    -unity-font-definition: var(--font-body);
-    font-size: var(--text-xs);
-    text-shadow: 1px 1px 2px var(--text-shadow);
-}
-
-.match-hud__bar {
-    width: 300px;
-    height: 20px;
 }
 
 /* The result banner and the countdown live dead centre and must never take a click. */

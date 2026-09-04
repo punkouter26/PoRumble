@@ -37,6 +37,29 @@ namespace PoRumble.Views
         [Tooltip("Seconds a knocked-out boxer takes to burn away.")]
         [SerializeField] private float _dissolveSeconds = 0.9f;
 
+        [Header("Low health")]
+        [Tooltip("Health fraction at or below which the body starts to pulse. This replaced " +
+                 "ten health bars across the top of the screen: a player wants to know who " +
+                 "near them is nearly out, which is a property of the fighter, not a chart.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _lowHealthThreshold = 0.35f;
+
+        [Tooltip("Colour the body pulses toward as it nears a knockout.")]
+        [SerializeField] private Color _lowHealthColor = new(0.92f, 0.15f, 0.12f);
+
+        [Tooltip("Pulse rate at the threshold, in beats per second - a slow throb.")]
+        [SerializeField] private float _lowHealthPulseHzMin = 1.3f;
+
+        [Tooltip("Pulse rate at one hit from out. Urgency has to scale with how close the " +
+                 "fighter is to going down, or the pulse reads as decoration rather than a " +
+                 "warning that something is about to happen.")]
+        [SerializeField] private float _lowHealthPulseHzMax = 4.5f;
+
+        [Tooltip("How far toward the low-health colour the pulse reaches when the fighter has " +
+                 "only just crossed the threshold. It deepens to full as health falls.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _lowHealthMinDepth = 0.45f;
+
         [Header("Outline")]
         [Tooltip("Colour of the outline drawn while this boxer's counter window is open.")]
         [SerializeField] private Color _counterOutlineColor = new(1f, 0.85f, 0.25f);
@@ -93,6 +116,13 @@ namespace PoRumble.Views
 
         /// <summary>The generic head, kept so a re-seated boxer can be given its face back.</summary>
         private Sprite _defaultHeadSprite;
+
+        /// <summary>
+        /// True while the body is being driven by the low-health pulse. Kept so the resting
+        /// colour is written exactly once on the way out, rather than every frame for every
+        /// healthy fighter in the ring.
+        /// </summary>
+        private bool _pulsingLowHealth;
 
         private float _flashRemaining;
         private float _dissolveElapsed;
@@ -295,6 +325,13 @@ namespace PoRumble.Views
         /// </summary>
         private void Update()
         {
+            // Driven before the _effectsActive gate below, and deliberately so. This effect
+            // rides SpriteRenderer.color rather than the MaterialPropertyBlock, so unlike the
+            // flash, dissolve and outline it costs no draw call and cannot be batched out of
+            // existence - and it has to keep animating for a fighter who is quietly low on
+            // health rather than actively being hit, which is exactly the case the gate skips.
+            UpdateLowHealthPulse();
+
             // A counter window is model state rather than an event: nothing publishes a message
             // when one opens, so it has to be sampled here. Latching the flag rather than only
             // reading it is what makes the outline appear at all - the loop below is gated on
@@ -468,6 +505,81 @@ namespace PoRumble.Views
                 if (target != null)
                 {
                     target.SetPropertyBlock(null);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Pulses the body toward the low-health colour as the fighter nears a knockout.
+        ///
+        /// This is what replaced the per-fighter health bars. It reads at a glance in a melee,
+        /// it is attached to the thing it describes rather than to a row in a list, and it
+        /// costs nothing: SpriteRenderer.color is vertex colour, so unlike a property block it
+        /// does not take the renderer out of the shared sprite batch. Ten pulsing fighters are
+        /// the same draw-call count as ten still ones.
+        /// </summary>
+        private void UpdateLowHealthPulse()
+        {
+            if (_model == null || _renderers == null)
+            {
+                return;
+            }
+
+            float fraction = _model.HealthFraction;
+            bool low = _model.IsAlive.Value && fraction <= _lowHealthThreshold;
+
+            if (!low)
+            {
+                // One write on the way out and then nothing. Tint already holds the resting
+                // colour, so repeating it every frame for every healthy fighter would be pure
+                // waste - and it would fight the eliminated tint after a knockout.
+                if (_pulsingLowHealth)
+                {
+                    _pulsingLowHealth = false;
+                    Tint(_model.IsAlive.Value);
+                }
+
+                return;
+            }
+
+            _pulsingLowHealth = true;
+
+            // Severity is 0 at the threshold and 1 at zero health, and drives both the rate
+            // and the depth. A single fixed pulse says only "hurt"; one that tightens as the
+            // bar empties says "this one is about to go", which is the thing worth knowing.
+            float severity = 1f - Mathf.Clamp01(
+                fraction / Mathf.Max(0.0001f, _lowHealthThreshold));
+
+            float hz = Mathf.Lerp(_lowHealthPulseHzMin, _lowHealthPulseHzMax, severity);
+            float depth = Mathf.Lerp(_lowHealthMinDepth, 1f, severity);
+
+            // Unscaled, like every other pulse here: hitstop sets Time.timeScale, and a
+            // warning that stalls during the exact moment somebody is being hit is worse than
+            // no warning at all.
+            float wave = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * hz * 2f * Mathf.PI);
+
+            Color body = Color.Lerp(_aliveColor, _lowHealthColor, wave * depth);
+
+            for (int rendererIndex = 0; rendererIndex < _renderers.Length; rendererIndex++)
+            {
+                Renderer target = _renderers[rendererIndex];
+
+                if (target == null)
+                {
+                    continue;
+                }
+
+                // The head is left out. It carries a contestant's photograph, which is how a
+                // player tells the fighters apart; multiplying a face by a pulsing red is how
+                // it stops being recognisable at the exact moment it matters most.
+                if (_headRenderer != null && target == _headRenderer)
+                {
+                    continue;
+                }
+
+                if (target is SpriteRenderer spriteRenderer)
+                {
+                    spriteRenderer.color = body;
                 }
             }
         }

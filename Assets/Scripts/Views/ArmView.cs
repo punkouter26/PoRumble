@@ -76,6 +76,14 @@ namespace PoRumble.Views
         [SerializeField] private float _trailThreshold = 0.35f;
 
         [Header("Punch shape")]
+        [Tooltip("Where peak speed falls in the strike. 1 is a symmetric accelerate-then-" +
+                 "decelerate; above 1 pushes the peak later, so the fist is still gaining " +
+                 "speed as it arrives and is stopped by the target rather than easing into " +
+                 "it. That is what a straight punch actually does, and it is the difference " +
+                 "between a snap and a reach.")]
+        [Range(0.6f, 2f)]
+        [SerializeField] private float _strikeBias = 1.35f;
+
         [Tooltip("How far the fist draws back before it fires, as a fraction of the " +
                  "guard-to-punch swing. A punch that starts from the guard and only ever " +
                  "travels forward has no coil in it and lands looking like a push.")]
@@ -473,17 +481,46 @@ namespace PoRumble.Views
                 return extension;
             }
 
+            // The draw-back belongs to a punch going out and to nothing else.
+            //
+            // This was a pure function of extension, and extension falls back through the same
+            // range on the way home - so every punch ended by pulling the fist back behind its
+            // own guard and then settling forward into it again. A flinch after every shot,
+            // on every fighter, which is a good part of why the arms read as wrong.
+            bool extending = _model != null && _model.Phase == ArmPhase.Extending;
+
+            if (!extending)
+            {
+                // Coming home. Squared, so the hand leaves the target fast and settles into
+                // the guard, rather than drifting back at the one constant speed it went out
+                // at. Hands return to the chin quicker than they are thrown.
+                return extension * extension;
+            }
+
             if (extension < _cockFraction)
             {
                 // Drawing back. Negative extension extrapolates past the guard pose, which is
-                // what folds the elbow and pulls the shoulder behind the body.
-                return -_cockDepth * (extension / _cockFraction);
+                // what folds the elbow and pulls the shoulder behind the body. Eased so the
+                // coil is quick and then holds, instead of creeping back at a constant rate.
+                float draw = extension / _cockFraction;
+                return -_cockDepth * (1f - (1f - draw) * (1f - draw));
             }
 
-            // The strike: from fully cocked out to full reach, covering more travel in less
-            // time than a plain ramp would.
+            // The strike.
+            //
+            // Linear before, which is the single least realistic thing an arm can do: a punch
+            // that travels at one constant speed from cock to full reach has no snap in it and
+            // lands looking like a push. A real one accelerates out of the coil, peaks late,
+            // and is stopped hard at extension.
+            //
+            // Smoothstep gives the acceleration and the arrival; the bias exponent moves where
+            // the peak speed falls. Both endpoints are fixed points of both curves, so the
+            // guard pose and the fully extended pose are untouched - which they have to be,
+            // because CombatMath resolves the hit at full extension and nowhere else.
             float strike = (extension - _cockFraction) / (1f - _cockFraction);
-            return Mathf.Lerp(-_cockDepth, 1f, strike);
+            float shaped = strike * strike * (3f - 2f * strike);
+
+            return Mathf.Lerp(-_cockDepth, 1f, Mathf.Pow(shaped, _strikeBias));
         }
 
         /// <summary>

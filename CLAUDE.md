@@ -168,9 +168,12 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
   than their own sensors reach open every episode blind, wandering until something enters
   range. Ten-boxer rings are fine at `_spawnRadius: 15`; the 1v1 ring is not, which is why it
   spawns at 4.5.
-- **The guard pose is folded; the punch pose is not negotiable.** At rest the elbows are
-  flexed to ~125 degrees and carried outward, so the gloves sit in front of the face (rear
-  glove 0.17 from the head centre, lead glove 0.46) - that is the blocking stance. A punch
+- **The guard pose is folded; the punch pose is not negotiable.** At rest the hands are
+  carried at the ears: level with the head (`_guardHandForward` 0.38 against a drawn head at
+  0.36) and just outside it (`_guardHandLateral` 0.50 against a head radius of 0.30). They used
+  to sit at forward 0.62, well in front of the face, which read as holding the arms out rather
+  than guarding. The two-link solve folds the elbow to about 150 degrees to reach it, which is
+  what a real tight guard does. A punch
   extends the elbow to 8 degrees and drives the fist out to `ArmReach`. Only the guard half
   is free to restyle: hits resolve at full extension, so the punch angles have to keep
   putting the drawn glove at 1.6 forward.
@@ -745,9 +748,16 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   the servo would spend every frame pushing against a contact it cannot win - and
   `RestoreCrossArmCollision` then puts back exactly one set: left arm against right. That pair
   is the mechanic, not a bug to suppress.
-- **Training scenes pose the arms without the solver.** `BoxerSpawnPoints._kinematicArms`
-  (gated on `AutoRestart`) makes `ArmView.SetKinematicDrive` stop the six bodies and six joints
-  per fighter - sixty of each in a ten-way, solved fifty times a second to draw a limb that
+- **Every scene poses the arms without the solver, the game included.**
+  `BoxerSpawnPoints._kinematicArms` is a plain serialized flag and it is **true in
+  `SampleScene`**, whose `AutoRestart` is false - so the "gated on AutoRestart" this note used
+  to claim is wrong, and the consequence is not small: the servo path in `ArmView.FixedUpdate`
+  runs nowhere. **Every joint angle, joint limit, segment mass and motor torque on the prefab
+  is inert.** The drawn arm is `PoseArmFromModel` and nothing else, so the guard pose is
+  `_guardHandForward` / `_guardHandLateral` and the punch is the model's extension through
+  `ShapeStrike`. Measure the gloves in play before believing any of those fields did anything;
+  a whole pass of "fixing" the elbow limit, the masses and the shoulder range changed the
+  picture not at all. `SetKinematicDrive` stops the six bodies and six joints per fighter - sixty of each in a ten-way, solved fifty times a second to draw a limb that
   decides nothing - and drive the glove transform straight to the position `CombatMath` already
   believes it occupies. Perception is then not merely close to the game's but identical to it,
   so the speed costs no sim-to-real gap. It does mean the *physical* arm collision only exists

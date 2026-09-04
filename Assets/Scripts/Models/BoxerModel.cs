@@ -118,9 +118,45 @@ namespace PoRumble.Models
         public ArmModel LeftArm { get; } = new(ArmSide.Left);
         public ArmModel RightArm { get; } = new(ArmSide.Right);
 
+        /// <summary>
+        /// What a full health bar is worth for this boxer.
+        ///
+        /// Held here rather than read from the config at the point of use, because the thing
+        /// that wants it is a *fraction* - how close this fighter is to going down - and a
+        /// consumer that divides by the first health value it happened to observe rebases
+        /// itself the moment the boxer takes a hit. Re-set by ResetTo, so a curriculum that
+        /// changes the health between episodes stays honest.
+        /// </summary>
+        public int MaxHealth { get; private set; }
+
+        /// <summary>
+        /// Health as 0..1. Clamped by hand rather than with Mathf so this model keeps its
+        /// promise of depending on nothing.
+        /// </summary>
+        public float HealthFraction
+        {
+            get
+            {
+                if (MaxHealth <= 0)
+                {
+                    return 0f;
+                }
+
+                float fraction = Health.Value / (float)MaxHealth;
+
+                if (fraction < 0f)
+                {
+                    return 0f;
+                }
+
+                return fraction > 1f ? 1f : fraction;
+            }
+        }
+
         public BoxerModel(int id, int maxHealth)
         {
             Id = id;
+            MaxHealth = maxHealth;
             Health = new ReactiveProperty<int>(maxHealth);
         }
 
@@ -153,6 +189,7 @@ namespace PoRumble.Models
             DodgeDirection = Vector2.zero;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
+            MaxHealth = maxHealth;
             Health.Value = maxHealth;
             IsAlive.Value = true;
         }

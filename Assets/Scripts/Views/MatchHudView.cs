@@ -9,8 +9,13 @@ using VContainer;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// Match HUD: survivor count, per-boxer health bars, the countdown to the bell and the
-    /// result banner.
+    /// Match HUD: survivor count, the countdown to the bell and the result banner.
+    ///
+    /// It no longer draws a health bar per fighter. Ten named rows occupied the top third of a
+    /// portrait screen and sat directly over the ring the fighters were moving through; health
+    /// is now read off the fighters themselves, which pulse as they approach a knockout - see
+    /// BoxerView. A bar chart of ten numbers is also the wrong instrument for the question a
+    /// player actually asks, which is "who near me is nearly out".
     ///
     /// Structure comes from UXML and styling from the shared stylesheet. This class owns
     /// neither: it looks elements up by name and writes only what is genuinely dynamic - a
@@ -25,26 +30,15 @@ namespace PoRumble.Views
         [Tooltip("The panel's structure. Without it the HUD renders nothing at all.")]
         [SerializeField] private VisualTreeAsset _layout;
 
-        [Tooltip("One fighter's health row, cloned once per boxer slot.")]
-        [SerializeField] private VisualTreeAsset _healthRowTemplate;
-
         [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
         private readonly CompositeDisposable _disposables = new();
         private readonly StringBuilder _builder = new(64);
-        private readonly List<VisualElement> _healthFills = new();
-
-        /// <summary>
-        /// The name beside each health bar, kept so a re-dealt card can rewrite them. Boxer
-        /// slots are permanent; who is sitting in one is not.
-        /// </summary>
-        private readonly List<Label> _nameLabels = new();
 
         private MatchModel _match;
         private MatchFlowModel _flow;
         private RosterModel _roster;
-        private BoxerConfig _config;
         private Label _survivorsLabel;
         private Label _resultLabel;
         private Label _captionLabel;
@@ -55,13 +49,11 @@ namespace PoRumble.Views
             MatchModel match,
             MatchFlowModel flow,
             RosterModel roster,
-            BoxerConfig config,
             ISubscriber<MatchEndedMessage> endedSubscriber)
         {
             _match = match;
             _flow = flow;
             _roster = roster;
-            _config = config;
             endedSubscriber.Subscribe(OnMatchEnded).AddTo(_disposables);
         }
 
@@ -94,8 +86,7 @@ namespace PoRumble.Views
             _captionLabel = root.Q<Label>("caption");
             _promptLabel = root.Q<Label>("prompt");
 
-            BuildHealthBars(root.Q<VisualElement>("roster"));
-            RefreshNames();
+            WatchSurvivors();
             RefreshSurvivors();
 
             if (_flow != null)
@@ -103,62 +94,24 @@ namespace PoRumble.Views
                 _flow.Phase.Subscribe(OnFlowPhaseChanged).AddTo(_disposables);
                 _flow.CountdownSeconds.Subscribe(OnCountdownChanged).AddTo(_disposables);
             }
-
-            // Names follow the card, so re-dealing the roster rewrites the whole column.
-            _roster.Revision.Subscribe(_ => RefreshNames()).AddTo(_disposables);
         }
 
         /// <summary>
-        /// Clones one row per boxer slot and keeps the two elements that get written later.
+        /// Subscribes to every boxer's alive flag so the survivor count stays current.
         ///
-        /// CloneTree(target) adds the template's own children straight into the target, with no
-        /// TemplateContainer in between. That matters here: an extra wrapper element would sit
-        /// in the middle of the column's flex layout and give every row a second box to
-        /// inherit sizing from.
+        /// This is all that is left of what used to build ten health rows. The count is the
+        /// one number worth spending screen space on: how many are still standing is match
+        /// state, whereas an individual fighter's health belongs on that fighter.
         /// </summary>
-        private void BuildHealthBars(VisualElement roster)
+        private void WatchSurvivors()
         {
-            if (roster == null || _healthRowTemplate == null)
-            {
-                Debug.LogError(
-                    $"{nameof(MatchHudView)} is missing the health-row template or its " +
-                    "container; per-fighter health will not be shown.", this);
-                return;
-            }
-
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {
-                BoxerModel boxer = boxers[boxerIndex];
-
-                _healthRowTemplate.CloneTree(roster);
-                VisualElement row = roster[roster.childCount - 1];
-
-                _nameLabels.Add(row.Q<Label>("name"));
-                _healthFills.Add(row.Q<VisualElement>("fill"));
-
-                int index = boxerIndex;
-                boxer.Health.Subscribe(hp => OnHealthChanged(index, hp)).AddTo(_disposables);
-                boxer.IsAlive.Subscribe(_ => RefreshSurvivors()).AddTo(_disposables);
-            }
-        }
-
-        /// <summary>
-        /// Writes whoever is currently seated beside each bar, falling back to the slot number
-        /// when no card is in play - which is what the training scenes and any scene without
-        /// fighter profiles get.
-        /// </summary>
-        private void RefreshNames()
-        {
-            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
-
-            for (int index = 0; index < _nameLabels.Count && index < boxers.Count; index++)
-            {
-                FighterProfile profile = _roster.SeatOf(boxers[index].Id);
-                _nameLabels[index].text = profile != null
-                    ? profile.DisplayName
-                    : $"#{boxers[index].Id:00}";
+                boxers[boxerIndex].IsAlive
+                    .Subscribe(_ => RefreshSurvivors())
+                    .AddTo(_disposables);
             }
         }
 
@@ -167,24 +120,6 @@ namespace PoRumble.Views
         {
             FighterProfile profile = _roster.SeatOf(boxerId);
             return profile != null ? profile.DisplayName : $"BOXER #{boxerId:00}";
-        }
-
-        private void OnHealthChanged(int index, int health)
-        {
-            if (index >= _healthFills.Count)
-            {
-                return;
-            }
-
-            // Max health comes from the config, not from the first observed value, which would
-            // rebase the bar after the boxer had already taken damage.
-            float ratio = Mathf.Clamp01(health / (float)Mathf.Max(1, _config.MaxHealth));
-            VisualElement fill = _healthFills[index];
-
-            fill.style.width = Length.Percent(ratio * 100f);
-            fill.EnableInClassList("bar__fill--healthy", ratio > 0.5f);
-            fill.EnableInClassList("bar__fill--hurt", ratio <= 0.5f && ratio > 0.2f);
-            fill.EnableInClassList("bar__fill--critical", ratio <= 0.2f);
         }
 
         private void RefreshSurvivors()
