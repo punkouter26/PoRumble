@@ -11,17 +11,18 @@
     "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\AppChromeView.cs",
     "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\DiagnosticsHudView.cs",
     "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\PlatformBootstrap.cs",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\UI\\Layouts\\RosterCard.uxml"
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\UI\\Layouts\\RosterCard.uxml",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Temp\\evals\\refresh.cs"
   ],
   "recent_commits": [
-    "eb3b707 Add the v6 sparring checkpoint and the Android shader-stripping list",
-    "1dbdd85 Give the app its own chrome, and make the phone build reach it",
-    "098699f Stop simulating the arms; pose them from the model instead"
+    "f81d870 Put the hands at the ears, and make a punch accelerate",
+    "ce722f4 Stop every build from throwing away the baked font atlases",
+    "eb3b707 Add the v6 sparring checkpoint and the Android shader-stripping list"
   ],
-  "session_duration": "86m 24s",
+  "session_duration": "756m 31s",
   "tool_calls": 0,
   "warnings_count": 6,
-  "saved_at": "2026-09-04T01:56:12Z",
+  "saved_at": "2026-09-04T13:06:19Z",
   "plan": {},
   "verification": {},
   "agent_context": {}

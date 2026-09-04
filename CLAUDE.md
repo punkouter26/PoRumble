@@ -266,6 +266,43 @@ ten-way and writes `results/evaluation/<name>.json`. Select on `knockoutRate`.
 - The evaluator **leaves the last checkpoint measured on the Boxer prefab.** Reassign the
   shipping model before playing the game scene.
 
+## The 9-hour free-for-all run (pr_ffa_9h_01)
+
+40M steps in 8h37m on `Training10x8` (8 arenas, 80 agents, ~1,300 steps/sec), fresh rather
+than `--initialize-from`. `results/` is gitignored, so the numbers that matter are recorded
+here rather than left in a directory git never sees.
+
+**Measured over 25 matches each in `Training10`, via PoRumble ▸ Evaluate Checkpoints:**
+
+| model | knockoutRate | meanSurvivors | meanWinnerHealth | draws |
+|---|---|---|---|---|
+| `PoRumbleBoxer.onnx` (the model that shipped before) | 0.0% | **10.00** | 0.00 | **25/25** |
+| checkpoint 27.5M | 0.0% | 9.08 | 0.58 | 10/25 |
+| **checkpoint 32.5M** | 0.0% | **8.12** | **0.70** | **7/25** |
+| checkpoint 40.0M (the trainer's final export) | 0.0% | 9.08 | 0.31 | 17/25 |
+
+- **The model that was shipping does nothing at all.** Ten survivors, no winner, twenty-five
+  draws out of twenty-five. It was compiled against the old 15-wide vector and two ray stacks,
+  so this is the observation-space mismatch the note above predicts, measured rather than
+  inferred. It sets the floor at zero, which means "training improved things" is true but is a
+  much weaker claim than the numbers first suggest.
+- **The trainer's final export is the worst of the three checkpoints.** 17 draws against 7 at
+  32.5M, and winners finishing on 31% health against 70%. Shipping `PoRumbleBoxer.onnx` as
+  ML-Agents writes it - the obvious default - takes the weakest policy of the run. This is what
+  `keep_checkpoints` and the evaluator are for, and the reward curve gave no hint: summaries at
+  38-40M read +0.090, -0.000, +0.060, entirely healthy.
+- **`knockoutRate` could not discriminate.** It is 0.0% for every model measured, so selection
+  fell to `meanSurvivors`, exactly as that field's own docstring anticipates. Across 100
+  evaluated matches and 40M training steps, **not one match has ever ended by knockout** and
+  episode length never left the 498-decision cap. Whether that is the policy or the combat
+  model is what the scripted-brain baseline is for: if hand-written fighters cannot finish a
+  ten-way either, the ceiling is damage, stun and health rather than training, and another run
+  is wasted effort.
+- **Reward is only comparable inside a curriculum lesson.** `shaping_scale` steps at progress
+  0.15 and 0.30, which with `max_steps` 40M lands at 6M and 12M - and the reward function
+  changes there. Two apparent regressions in this run were lesson boundaries, not policy
+  collapse. Compare 12M+ against 12M+ and nothing else.
+
 ## ML-Agents
 
 - Behaviour name is **`PoRumbleBoxer`** and must match `BehaviorParameters` exactly.

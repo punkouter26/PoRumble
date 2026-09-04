@@ -146,3 +146,8 @@ Packages/manifest.json.bak
 # folder is included in the player, so test bookkeeping would ship inside the APK.
 /Assets/Resources/PerformanceTestRun*.json
 /Assets/Resources/PerformanceTestRun*.json.meta
+
+# Scratch copies of checkpoints staged for PoRumble > Evaluate Checkpoints. They are
+# duplicates of results/, which is already ignored, and are re-copied per evaluation.
+/Assets/ML-Agents/Models/eval_*/
+/Assets/ML-Agents/Models/eval_*.meta

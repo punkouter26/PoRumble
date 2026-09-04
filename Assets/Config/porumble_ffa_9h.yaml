@@ -1,0 +1,108 @@
+# porumble_ffa_9h.yaml - the free-for-all, provisioned for a run bounded by the clock.
+#
+# Identical to porumble_ffa.yaml except for two numbers. max_steps is raised well past what
+# nine hours can reach so the run is stopped by the clock rather than by finishing early and
+# leaving the machine idle; keep_checkpoints is raised to match, because the rule that it must
+# cover the whole run is exactly the rule that made the peak recoverable last time. At a
+# checkpoint every 100k steps, 40M needs 400.
+#
+# Raising max_steps IS a curriculum change, which this comment used to deny. The shaping
+# lessons' completion_criteria are measured on `progress`, which is step / max_steps, so the
+# thresholds of 0.15 and 0.30 move with it: at 8M they fall at 1.2M and 2.4M steps, and at 40M
+# they fall at 6M and 12M. This run therefore spends five times as long on full dense shaping
+# as porumble_ffa.yaml would. That is defensible - the scaffolding is proportional to the run
+# either way - but it is not nothing, and reward cannot be compared across a lesson boundary
+# because the reward function itself changes there. A drop at exactly 6M in this run was read
+# as a policy regression before anyone checked which lesson was active.
+#
+# If this file and porumble_ffa.yaml disagree about anything other than these two numbers,
+# porumble_ffa.yaml is the one that is right.
+# ML-Agents trainer configuration - PoRumble stage 3 (10-boxer free-for-all)
+#
+#   mlagents-learn Assets/Config/porumble_ffa.yaml --run-id=pr_10way --initialize-from=pr_1v1
+#   ...then open Assets/Scenes/Training10.unity and press Play.
+#
+# Deliberately has no self_play block. Self-play models two-team symmetric games via team_id;
+# a free-for-all is not that. Here ten boxers simply share one behaviour and train against
+# copies of themselves under plain PPO.
+
+behaviors:
+  PoRumbleBoxer:
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 2048
+      buffer_size: 20480
+      learning_rate: 3.0e-4
+      # Between the spar config's 1.0e-3 and the old 5.0e-3, and deliberately so. This stage
+      # is initialized from the 1v1 policy, whose entropy has already been driven down to
+      # ~2.5; an entropy bonus five times larger would push it straight back up and wash out
+      # the transfer. But a ten-way free-for-all genuinely is a new task - more opponents,
+      # shrinking field, no fixed sparring partner - so it earns more exploration than the
+      # 1v1 stage, not the same.
+      beta: 2.0e-3
+      epsilon: 0.2
+      lambd: 0.95
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: false
+      hidden_units: 256
+      num_layers: 2
+      vis_encode_type: simple
+    reward_signals:
+      extrinsic:
+        # An episode is MaxStep 2500 physics steps at DecisionPeriod 5, so 500 decisions.
+        # Read that off the Boxer prefab, never off this comment: it claimed 1500 for the
+        # whole curriculum while the prefab said 2500, which made the real discount horizon
+        # 2.7x shorter than the tuning here asserted.
+        #
+        # The win bonus has to still be worth something at the opening bell. At 0.995 it is
+        # 0.995^500 = 0.08 - too faint to shape the early game, and the reason the policy
+        # optimised the dense terms instead. 0.997 is a ~333-decision horizon and leaves the
+        # +6 win worth 1.3 from the first step.
+        gamma: 0.997
+        strength: 1.0
+    # Keeps the whole run, not a trailing window. Reward alone is a poor guide to the best
+    # model here - it stayed flat at ~6.05 across 3M steps while the rate at which matches
+    # actually finished peaked near 1M and then slid from 50% back to 34%. At five, the peak
+    # checkpoint had already been rotated away by the time that was visible.
+    keep_checkpoints: 400
+    checkpoint_interval: 100000
+    max_steps: 40000000
+    # 256, not 128. Gamma 0.997 is a ~333-decision horizon, and a time_horizon far under
+    # that bootstraps the value estimate before the terminal win reward can propagate into
+    # it - which is most of why the win signal never showed up in the returns. Costs buffer
+    # memory, not compute.
+    time_horizon: 256
+    summary_freq: 10000
+
+# Fades the dense shaping out as the run goes on. The three shaping terms in BoxerAgentView
+# were scaffolding for a policy whose ray sensor reported nothing but its own torso: they pay
+# per step for facing an opponent and for *standing* at punching range, which is exactly the
+# behaviour to reward when a fighter cannot find anybody, and exactly the wrong one once it
+# can - hovering at reach without throwing scores nearly as well as fighting.
+#
+# Measured on progress rather than reward, deliberately. A reward threshold would have to be
+# guessed against a reward function that these lessons themselves rescale, and guessing it
+# low pins the run in lesson one for ever.
+environment_parameters:
+  shaping_scale:
+    curriculum:
+      - name: Scaffolded
+        completion_criteria:
+          measure: progress
+          behavior: PoRumbleBoxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.15
+        value: 1.0
+      - name: Fading
+        completion_criteria:
+          measure: progress
+          behavior: PoRumbleBoxer
+          signal_smoothing: true
+          min_lesson_length: 100
+          threshold: 0.3
+        value: 0.5
+      - name: Bare
+        value: 0.0
