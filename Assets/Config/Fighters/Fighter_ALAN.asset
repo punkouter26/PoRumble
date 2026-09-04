@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: ALAN
   _tagline: Technician. Waits for the mistake, then takes the head off.
   _face: {fileID: 21300000, guid: efd8f617660dea24cb51aebffe36f00b, type: 3}
-  _tint: {r: 0.29, g: 0.51, b: 0.84, a: 1}
+  _tint: {r: 0.07, g: 0.13, b: 0.36, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: -0.05

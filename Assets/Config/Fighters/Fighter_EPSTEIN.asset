@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: EPSTEIN
   _tagline: Slips everything. Wins on the cards more than on the canvas.
   _face: {fileID: 21300000, guid: cff2857e261b7434ab9bee4d403abaed, type: 3}
-  _tint: {r: 0.35, g: 0.76, b: 0.76, a: 1}
+  _tint: {r: 0.8, g: 0.96, b: 0.96, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: -0.2

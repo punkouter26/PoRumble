@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: DUPEE
   _tagline: Fights off the back foot and makes you pay for arriving.
   _face: {fileID: 21300000, guid: 3bdc76195970e74439db1808e9c30489, type: 3}
-  _tint: {r: 0.72, g: 0.4, b: 0.78, a: 1}
+  _tint: {r: 0.9, g: 0.82, b: 0.98, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: -0.65

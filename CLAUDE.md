@@ -488,6 +488,39 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
   therefore grew inside its own 128px canvas (87.5% → 95%) and stopped there. The head is
   decoupled - `HeadCollider` is a separate object at radius 0.3 - so it could shrink to close the
   ratio. And every PPU is unchanged, so the drawn fists still sit where `CombatMath` expects.
+- **A landed punch smashes the head, which is the original's own hit feedback.** Activision's
+  Boxing answers a hit by deforming the struck boxer's head - the "smashed nose" - and PoRumble
+  had only a white flash, which says *that* something happened and not *what*. `BoxerView`
+  squashes the head along local Y and bulges it along local X, scaled by damage, decaying as
+  `t²` so it is deepest on the frame of impact. Three things make it safe and exact:
+  **local +Y is forward** on this prefab (the gloves sit at y 1.6), and `CombatMath` only lets a
+  punch land inside the face arc, so a landed punch came from roughly in front and needs no
+  rotation - which also matters because rotating would spin the contestant's photograph and read
+  as the head turning rather than being hit. **`Head` carries a SpriteRenderer and nothing else**;
+  the hit radius is on `HeadCollider`, a sibling, so this changes what is drawn and not what can
+  be hit or what another fighter's ray sensor sees. That is the whole reason the deform lives on
+  the head: on a glove it could not, because `GloveL/R` carry their `CircleCollider2D` on the
+  *same* GameObject as the renderer, so a glove cannot be scaled or nudged for effect without
+  changing the ring the trained policy perceives. The blocking hand therefore gets a flash rather
+  than a recoil, picked as whichever glove is nearer the impact, since `PunchBlockedMessage` says
+  a block happened but not which arm made it.
+- **A blocked punch recoils, and it recoils rather than stopping short for a reason.**
+  `CombatMath` resolves a punch at the *peak* of its extension, so by the time
+  `PunchBlockedMessage` is published the fist is already out at full reach and the message's
+  `Position` is where it already is - clamping to that would draw nothing at all. `ArmView`
+  therefore knocks the drawn fist `_blockRecoil` (0.35) back off its own reach and holds it
+  there until the model's retraction catches up, which is what a punch running into a forearm
+  looks like. Measured: collider unmoved, drawn fist 0.32 away from it.
+  **`GloveL/R` had to be restructured for this.** The `SpriteRenderer` and `TrailRenderer` now
+  live on a `Vis` child while the `Rigidbody2D`, `CircleCollider2D` and `HingeJoint2D` stay on
+  the joint - the same split the arm segments always had, and the reason they could be
+  foreshortened safely. The joint is driven to the model's fist and the child to the drawn one,
+  so a block is purely visual: **nothing another fighter's ray sensor returns changes**, and the
+  trained policy still sees the ring it was trained on. Anything that puts a renderer back on
+  the glove GameObject silently re-couples the two.
+  The message carries `AttackerArm` because nothing else identifies which fist was stopped - an
+  attacker may have both travelling, and `ArmBlocks` reports only that a block happened. It has
+  no default on purpose; a wrong guess stops the wrong hand.
 - **A fighter's colour is chosen by value, and may never be green.** Ten silhouettes are told
   apart by hue but *read* by value, so `BoxerView.BoxerPalette` and every `FighterProfile._tint`
   are pushed to a hard light or a hard dark, alternating along the array so neighbouring seats

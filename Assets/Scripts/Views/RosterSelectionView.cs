@@ -31,6 +31,13 @@ namespace PoRumble.Views
         [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
+        [Header("Generic portraits")]
+        [Tooltip("The disc shown for a faceless contestant driven by the hand-written brain.")]
+        [SerializeField] private Color _scriptedPortraitColor = new(0.85f, 0.18f, 0.16f);
+
+        [Tooltip("The disc shown for a faceless contestant driven by the trained policy.")]
+        [SerializeField] private Color _policyPortraitColor = new(0.22f, 0.72f, 0.35f);
+
         private readonly CompositeDisposable _disposables = new();
         private readonly StringBuilder _builder = new(64);
         private readonly List<VisualElement> _tiles = new();
@@ -153,8 +160,19 @@ namespace PoRumble.Views
 
                 VisualElement portrait = tile.Q<VisualElement>("portrait");
 
-                // A fighter with no face keeps the tile's plain plate rather than an empty
-                // hole, so the two generic entries still read as contestants.
+                // A faceless contestant gets a disc coloured by what drives it - red for the
+                // hand-written brain, green for the trained policy - rather than its trunk
+                // colour.
+                //
+                // The trunk colour said nothing useful here: it is picked for telling ten
+                // silhouettes apart on the canvas, so the generic entries were four plates in
+                // four unrelated colours and the card gave no clue which of them was a bot and
+                // which was the network. Keyed off Control rather than off the name, so a
+                // scripted fighter added later is marked without anyone remembering to.
+                //
+                // The portrait is already round - .roster-tile__portrait carries a 50% radius
+                // for the photographs - so a flat colour lands as a circle with no extra
+                // markup.
                 if (portrait != null)
                 {
                     if (profile.Face != null)
@@ -163,7 +181,10 @@ namespace PoRumble.Views
                     }
                     else
                     {
-                        portrait.style.backgroundColor = profile.Tint;
+                        portrait.style.backgroundColor =
+                            profile.Control == FighterControl.Scripted
+                                ? _scriptedPortraitColor
+                                : _policyPortraitColor;
                     }
                 }
 

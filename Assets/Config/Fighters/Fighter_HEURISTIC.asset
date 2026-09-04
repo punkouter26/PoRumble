@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: HEURISTIC
   _tagline: Hand-written sparring brain. Reads the range, never surprises you.
   _face: {fileID: 0}
-  _tint: {r: 0.93, g: 0.93, b: 0.9, a: 1}
+  _tint: {r: 0.95, g: 0.95, b: 0.92, a: 1}
   _control: 0
   _brainProfile: {fileID: 11400000, guid: d743c894203a7754b8b551a2bd1ea180, type: 2}
   _pressure: 0

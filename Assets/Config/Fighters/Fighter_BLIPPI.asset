@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: BLIPPI
   _tagline: Everywhere at once. Throws everything, cannot take one back.
   _face: {fileID: 21300000, guid: f06e6f2680e614d4596c6e34b0de0d6e, type: 3}
-  _tint: {r: 0.95, g: 0.78, b: 0.25, a: 1}
+  _tint: {r: 0.98, g: 0.9, b: 0.6, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: 0.15

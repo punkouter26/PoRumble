@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: BIGGIE
   _tagline: Walks you down. Granite chin, concrete hands, no hurry at all.
   _face: {fileID: 21300000, guid: 8a711b42ded2c62409cf0258d75f2123, type: 3}
-  _tint: {r: 0.85, g: 0.29, b: 0.24, a: 1}
+  _tint: {r: 0.34, g: 0.07, b: 0.08, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: 0.55

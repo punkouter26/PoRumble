@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: STANDARD RL II
   _tagline: PoRumbleBoxer.onnx driven straight through, unbent.
   _face: {fileID: 0}
-  _tint: {r: 0.1, g: 0.62, b: 0.24, a: 1}
+  _tint: {r: 0.98, g: 0.82, b: 0.84, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: 0

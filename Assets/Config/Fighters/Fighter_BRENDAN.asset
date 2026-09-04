@@ -16,7 +16,7 @@ MonoBehaviour:
   _displayName: BRENDAN
   _tagline: The engine. Never stops punching and never runs out of breath.
   _face: {fileID: 21300000, guid: 25646a3c49ed493429f7b6c647311848, type: 3}
-  _tint: {r: 0.4, g: 0.73, b: 0.36, a: 1}
+  _tint: {r: 0.36, g: 0.16, b: 0.03, a: 1}
   _control: 1
   _brainProfile: {fileID: 0}
   _pressure: 0.35

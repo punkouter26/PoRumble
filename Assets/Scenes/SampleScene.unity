@@ -6316,6 +6316,7 @@ MonoBehaviour:
   _defaultProfile: {fileID: 11400000, guid: d743c894203a7754b8b551a2bd1ea180, type: 2}
   _useRoleColors: 0
   _fighterProfiles:
+  - {fileID: 11400000, guid: 514702493a3a2e641a91ecb2948352d6, type: 2}
   - {fileID: 11400000, guid: 8118f086142c06c4695603df1aec576f, type: 2}
   - {fileID: 11400000, guid: 289b6c1746d3cdf41b04ab9e7b4c3253, type: 2}
   - {fileID: 11400000, guid: 3fa819959b6eae74e810a1928cd03c6c, type: 2}
@@ -33462,7 +33463,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.MatchHudView
   _layout: {fileID: 9197481963319205126, guid: fa2e535237ec32a489075140e19f215b, type: 3}
-  _healthRowTemplate: {fileID: 9197481963319205126, guid: 73b14a1f6889e8a48845c0f41a1e097c, type: 3}
   _styleSheet: {fileID: 7433441132597879392, guid: 0c2fc0d606bf1874993baa49ab2b4588, type: 3}
 --- !u!114 &1735919207
 MonoBehaviour:
