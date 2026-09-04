@@ -1,2 +1,15 @@
-C:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\SafeAreaView.cs
-C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\8cef211a-3f3e-413d-9dd0-fd73bf590717\scratchpad\patch_claudemd4.py
+C:\Users\punko\AppData\Local\Temp\claude\c--Users-punko-Downloads-PoRumble\ab19dff5-0638-4aa4-bd57-d55b479a8dff\scratchpad\patch_shoulders.py
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\AppChromeView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\PlatformBootstrap.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Editor\AndroidBuilder.cs
+c:\Users\punko\Downloads\PoRumble\Assets\Scripts\Views\DiagnosticsHudView.cs
+C:\Users\punko\.claude\projects\c--Users-punko-Downloads-PoRumble\memory\options-before-implementing.md
+C:\Users\punko\.claude\projects\c--Users-punko-Downloads-PoRumble\memory\MEMORY.md
+C:\Users\punko\.claude\projects\c--Users-punko-Downloads-PoRumble\memory\android-deploy-target.md
+c:\Users\punko\Downloads\PoRumble\Assets\UI\Layouts\RosterCard.uxml

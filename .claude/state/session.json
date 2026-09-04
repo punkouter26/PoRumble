@@ -1,17 +1,27 @@
 {
   "schema_version": 1,
-  "branch": "main",
+  "branch": "feat/rl-audit-and-combat-rework",
   "workflow_phase": "",
-  "modified_files": [],
-  "recent_commits": [
-    "e8a300a Take the arm colliders back out",
-    "13a63ef Arms stop punches, and the camera watches the fight",
-    "4e7065c Session state churn"
+  "modified_files": [
+    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\MEMORY.md",
+    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\android-deploy-target.md",
+    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\options-before-implementing.md",
+    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\ab19dff5-0638-4aa4-bd57-d55b479a8dff\\scratchpad\\patch_shoulders.py",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Editor\\AndroidBuilder.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\AppChromeView.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\DiagnosticsHudView.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\PlatformBootstrap.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\UI\\Layouts\\RosterCard.uxml"
   ],
-  "session_duration": "55m 9s",
+  "recent_commits": [
+    "eb3b707 Add the v6 sparring checkpoint and the Android shader-stripping list",
+    "1dbdd85 Give the app its own chrome, and make the phone build reach it",
+    "098699f Stop simulating the arms; pose them from the model instead"
+  ],
+  "session_duration": "86m 24s",
   "tool_calls": 0,
-  "warnings_count": 0,
-  "saved_at": "2026-09-03T15:39:27Z",
+  "warnings_count": 6,
+  "saved_at": "2026-09-04T01:56:12Z",
   "plan": {},
   "verification": {},
   "agent_context": {}
