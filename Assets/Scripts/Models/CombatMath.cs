@@ -105,22 +105,23 @@ namespace PoRumble.Models
                 return HitResult.Miss;
             }
 
-            // The attacker must be standing inside the target's forward face arc.
+            // A punch that reaches the head lands, from any angle.
             //
-            // This is measured from the attacker's position rather than the glove's offset from
-            // the head centre: a glove that lands dead-centre on the head produces a zero-length
-            // offset vector, which carries no direction at all. Using it would let a punch thrown
-            // from directly behind register as a clean face hit.
-            Vector2 headToAttacker = attackerPosition - headCenter;
-
-            if (headToAttacker.sqrMagnitude <= Mathf.Epsilon)
-            {
-                return HitResult.Miss;
-            }
-
-            float approachAngle = Vector2.Angle(facing, headToAttacker.normalized);
-
-            if (approachAngle > settings.FaceArcHalfAngleDegrees)
+            // The face arc used to reject anything outside the target's forward 120 degrees
+            // outright, which made turning your back a perfect defence - and measured in a
+            // live 1v1 it was exactly that: 1988 steps, both fighters on full health, the
+            // scripted brain aimed dead on and throwing into a back that could not be hurt.
+            // A hundred evaluated matches produced no knockout at all, and this was why.
+            //
+            // The arc did not disappear; it moved to <see cref="IsInFaceArc"/> and now decides
+            // what the *guard* covers rather than what may be hit. Hands are carried in front,
+            // so a punch from behind meets nothing on the way in - which is the whole reason
+            // to keep your opponent in front of you.
+            //
+            // A degenerate attacker standing exactly on the head centre still misses: there is
+            // no approach direction, and letting it through would score a hit for a fighter
+            // that never travelled anywhere.
+            if ((attackerPosition - headCenter).sqrMagnitude <= Mathf.Epsilon)
             {
                 return HitResult.Miss;
             }
@@ -141,6 +142,39 @@ namespace PoRumble.Models
         /// block work, and blocking is combat resolution: it has to be testable without a scene
         /// for the same reason the face arc is.
         /// </summary>
+        /// <summary>
+        /// Whether an attacker is standing in the arc the target's guard covers.
+        ///
+        /// Hands are carried in front of the face, so they can only stop what comes from in
+        /// front. This is what makes the back of the head the weak spot: a punch from behind
+        /// is unblockable, and keeping an opponent inside this arc is the reason to keep
+        /// turning to face them.
+        ///
+        /// Measured from the attacker's position rather than from the glove's offset to the
+        /// head, and that distinction is load-bearing: a glove landing dead-centre on the head
+        /// gives a zero-length offset carrying no direction at all, so judging the arc from it
+        /// would let a punch thrown from directly behind read as a frontal one and be blocked
+        /// by hands that were nowhere near it.
+        /// </summary>
+        public static bool IsInFaceArc(
+            Vector2 attackerPosition,
+            Vector2 targetPosition,
+            Vector2 targetFacing,
+            in CombatSettings settings)
+        {
+            Vector2 facing = targetFacing.normalized;
+            Vector2 headCenter = GetHeadCenter(targetPosition, facing, settings.HeadOffset);
+            Vector2 headToAttacker = attackerPosition - headCenter;
+
+            if (headToAttacker.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return false;
+            }
+
+            return Vector2.Angle(facing, headToAttacker.normalized)
+                   <= settings.FaceArcHalfAngleDegrees;
+        }
+
         public static float DistanceToSegment(Vector2 point, Vector2 a, Vector2 b)
         {
             Vector2 ab = b - a;

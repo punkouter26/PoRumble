@@ -611,8 +611,29 @@ namespace PoRumble.Systems
                     float overlap = minDistance - Mathf.Sqrt(Mathf.Max(distanceSqr, 0f));
                     Vector2 push = direction * (overlap * 0.5f);
 
-                    first.Position = ClampToArena(first.Position - push);
-                    second.Position = ClampToArena(second.Position + push);
+                    // Whatever the ropes refuse to give one fighter is taken from the other.
+                    //
+                    // Splitting the push in half and clamping each result independently loses
+                    // the half that lands in a wall, so a pair with one man on the ropes stays
+                    // overlapped for ever - the correction is reapplied and half-discarded on
+                    // every single tick, and the two settle into an equilibrium where neither
+                    // moves at all. Measured in the 1v1: byte-identical positions for 1400+
+                    // steps at separation 1.92 against a required 1.96, both fighters sitting
+                    // exactly on the clamp boundary.
+                    //
+                    // Transferring the deficit resolves the overlap fully whenever *either*
+                    // fighter has room. With both genuinely wedged in a corner it still cannot,
+                    // and that is honest: there is nowhere left to put them.
+                    Vector2 firstWanted = first.Position - push;
+                    Vector2 secondWanted = second.Position + push;
+                    Vector2 firstClamped = ClampToArena(firstWanted);
+                    Vector2 secondClamped = ClampToArena(secondWanted);
+
+                    Vector2 firstDenied = firstWanted - firstClamped;
+                    Vector2 secondDenied = secondWanted - secondClamped;
+
+                    first.Position = ClampToArena(firstClamped - secondDenied);
+                    second.Position = ClampToArena(secondClamped - firstDenied);
                 }
             }
         }
@@ -771,7 +792,7 @@ namespace PoRumble.Systems
                 return;
             }
 
-            ReportBlockOrNearMiss(attacker, glovePosition);
+            ReportBlockOrNearMiss(attacker, arm, glovePosition);
         }
 
         /// <summary>
@@ -780,9 +801,11 @@ namespace PoRumble.Systems
         /// learning and not just aggression. A block outranks an evade: the glove is in front
         /// of the head, so it is checked first.
         /// </summary>
-        private void ReportBlockOrNearMiss(BoxerModel attacker, Vector2 glovePosition)
+        private void ReportBlockOrNearMiss(
+            BoxerModel attacker, ArmModel arm, Vector2 glovePosition)
         {
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+            CombatSettings settings = _config.ToCombatSettings();
             float blockRange = _config.GloveRadius * 2f;
             float nearMiss = _config.HeadRadius * NEAR_MISS_SCALE;
             float nearMissSqr = nearMiss * nearMiss;
@@ -812,7 +835,16 @@ namespace PoRumble.Systems
                 // A fighter mid-slip is not holding a guard up; the punch went past, it was
                 // not stopped. Falling through here is what makes a dodged punch report as an
                 // evade rather than handing the slipper a counter window it did not earn.
-                if (!target.IsDodging &&
+                //
+                // Nor can a guard stop what it cannot reach. Hands are carried in front of the
+                // face, so only a punch arriving inside the face arc meets them; one thrown at
+                // the back of the head goes through unopposed. That is the trade this arc now
+                // expresses - it used to reject a rear punch outright, which made turning your
+                // back a perfect defence rather than the worst thing a boxer can do.
+                bool guarded = CombatMath.IsInFaceArc(
+                    attacker.Position, target.Position, target.Facing, settings);
+
+                if (!target.IsDodging && guarded &&
                     (CombatMath.ArmBlocks(glovePosition, leftShoulder, leftGlove, blockRange) ||
                      CombatMath.ArmBlocks(glovePosition, rightShoulder, rightGlove, blockRange)))
                 {
@@ -821,7 +853,8 @@ namespace PoRumble.Systems
                     // to win: block, then fire back before the window closes.
                     target.CounterWindow = _config.CounterWindowDuration;
 
-                    _blockedPublisher.Publish(new PunchBlockedMessage(attacker.Id, target.Id, glovePosition));
+                    _blockedPublisher.Publish(
+                        new PunchBlockedMessage(attacker.Id, target.Id, glovePosition, arm.Side));
                     return;
                 }
 

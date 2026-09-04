@@ -37,6 +37,33 @@ namespace PoRumble.Views
         [Tooltip("Seconds a knocked-out boxer takes to burn away.")]
         [SerializeField] private float _dissolveSeconds = 0.9f;
 
+        [Tooltip("Seconds the head takes to spring back from a landed punch. Activision's " +
+                 "Boxing answers a hit by deforming the struck boxer's head - the 'smashed " +
+                 "nose' - and that, rather than any change of colour, is what tells you a " +
+                 "punch got through.")]
+        [SerializeField] private float _headSmashSeconds = 0.16f;
+
+        [Tooltip("How far the head squashes for the lightest punch that lands, as a fraction " +
+                 "of its width.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _headSmashMin = 0.12f;
+
+        [Tooltip("How far it squashes for the hardest, so a jab and a haymaker do not read " +
+                 "identically.")]
+        [Range(0f, 0.8f)]
+        [SerializeField] private float _headSmashMax = 0.38f;
+
+        [Tooltip("The damage that earns the deepest smash, as a fraction of a whole health " +
+                 "bar. Normalising against the whole bar instead collapses the useful range: " +
+                 "a jab is about a tenth of a bar and a haymaker about a third, so every " +
+                 "punch in the game would sit in the bottom fifth of the curve and they " +
+                 "would all look the same.")]
+        [Range(0.05f, 1f)]
+        [SerializeField] private float _headSmashFullDamageShare = 0.3f;
+
+        [Tooltip("Seconds the blocking glove flashes when it stops a punch.")]
+        [SerializeField] private float _blockFlashSeconds = 0.13f;
+
         [Header("Low health")]
         [Tooltip("Health fraction at or below which the body starts to pulse. This replaced " +
                  "ten health bars across the top of the screen: a player wants to know who " +
@@ -73,19 +100,40 @@ namespace PoRumble.Views
                  "running out rather than as a state that is simply on.")]
         [SerializeField] private float _counterPulseHz = 6f;
 
-        /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
+        /// <summary>
+        /// Per-boxer tints so ten fighters stay distinguishable in a melee.
+        ///
+        /// Every entry is pushed to an extreme value - five near-white, five near-black -
+        /// because the parts are now flat silhouettes after Activision's Boxing, and a
+        /// silhouette is read by its value against the canvas and by nothing else. The
+        /// previous palette was ten mid-value hues, which is the right choice for a shaded
+        /// sprite whose form the lights describe and the wrong one here: on a canvas that is
+        /// itself mid-value green, a mid-value fighter has no edge at all and the whole
+        /// figure collapses into the floor at the ten-way's zoom. Hue still carries the
+        /// identity, so each slot keeps the colour it always had; only the value moved.
+        ///
+        /// Light and dark alternate along the array on purpose. Boxers are dealt round the
+        /// ring in id order, so alternating puts a contrasting neighbour either side of every
+        /// fighter rather than clustering all five pale ones in one corner.
+        ///
+        /// No entry is green, and that is a rule rather than an accident of taste. The canvas
+        /// is a mid yellow-green, and a dark green fighter was measured against it and lost:
+        /// value alone is not enough when the hue matches the floor, because the silhouette
+        /// edge is then the only thing separating the two and the eye reads it as a shadow on
+        /// the canvas. Anything added here has to sit off the floor's hue.
+        /// </summary>
         private static readonly Color[] BoxerPalette =
         {
-            new(0.93f, 0.93f, 0.90f), // bone
-            new(0.13f, 0.13f, 0.15f), // near-black
-            new(0.85f, 0.29f, 0.24f), // red
-            new(0.29f, 0.51f, 0.84f), // blue
-            new(0.95f, 0.78f, 0.25f), // gold
-            new(0.40f, 0.73f, 0.36f), // green
-            new(0.72f, 0.40f, 0.78f), // violet
-            new(0.95f, 0.55f, 0.22f), // orange
-            new(0.35f, 0.76f, 0.76f), // teal
-            new(0.85f, 0.55f, 0.65f)  // rose
+            new(0.95f, 0.95f, 0.92f), // bone
+            new(0.09f, 0.09f, 0.11f), // near-black
+            new(0.98f, 0.82f, 0.84f), // pale rose
+            new(0.07f, 0.13f, 0.36f), // navy
+            new(0.98f, 0.90f, 0.60f), // pale gold
+            new(0.24f, 0.05f, 0.30f), // deep plum
+            new(0.80f, 0.96f, 0.96f), // pale ice
+            new(0.36f, 0.16f, 0.03f), // burnt umber
+            new(0.90f, 0.82f, 0.98f), // pale lilac
+            new(0.34f, 0.07f, 0.08f)  // oxblood
         };
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -130,15 +178,38 @@ namespace PoRumble.Views
         private bool _effectsActive;
 
         /// <summary>
+        /// The head's transform and its authored scale, so the smash has something to spring
+        /// back to. Nothing else in the project writes this scale.
+        /// </summary>
+        private Transform _headTransform;
+        private Vector3 _headRestScale = Vector3.one;
+
+        private float _headSmashRemaining;
+        private float _headSmashAmount;
+
+        /// <summary>The glove that stopped the last blocked punch, or null.</summary>
+        private Renderer _blockGloveRenderer;
+        private float _blockFlashRemaining;
+
+        /// <summary>
         /// True on the seat the human is driving. Marked with a standing outline, which is the
         /// one effect here that never switches itself off - see <see cref="Update"/>.
         /// </summary>
         private bool _isPlayer;
 
         [Inject]
-        public void Construct(ISubscriber<BoxerDamagedMessage> damagedSubscriber)
+        public void Construct(
+            ISubscriber<BoxerDamagedMessage> damagedSubscriber,
+            ISubscriber<PunchLandedMessage> landedSubscriber,
+            ISubscriber<PunchBlockedMessage> blockedSubscriber)
         {
             damagedSubscriber.Subscribe(OnBoxerDamaged).AddTo(_disposables);
+
+            // The flash rides BoxerDamagedMessage and the smash rides PunchLandedMessage, and
+            // the two are not interchangeable. Only the punch message says how hard the blow
+            // was and which fist threw it; the damage message only reports the new total.
+            landedSubscriber.Subscribe(OnPunchLanded).AddTo(_disposables);
+            blockedSubscriber.Subscribe(OnPunchBlocked).AddTo(_disposables);
         }
 
         private void Awake()
@@ -150,6 +221,8 @@ namespace PoRumble.Views
             if (_headRenderer != null)
             {
                 _defaultHeadSprite = _headRenderer.sprite;
+                _headTransform = _headRenderer.transform;
+                _headRestScale = _headTransform.localScale;
             }
         }
 
@@ -364,6 +437,23 @@ namespace PoRumble.Views
                 stillActive = true;
             }
 
+            if (_headSmashRemaining > 0f)
+            {
+                _headSmashRemaining = Mathf.Max(0f, _headSmashRemaining - delta);
+                stillActive = true;
+            }
+
+            if (_blockFlashRemaining > 0f)
+            {
+                _blockFlashRemaining = Mathf.Max(0f, _blockFlashRemaining - delta);
+                stillActive = true;
+            }
+
+            // Driven every pass rather than only while smashing, so the frame the window
+            // closes is the frame the head is put back. It is a transform write rather than a
+            // property-block one, so it is not covered by ClearEffectProperties.
+            ApplyHeadSmash();
+
             // Keeps the loop alive for as long as the window is open, so the pulse animates.
             if (_model != null && _model.HasCounterWindow)
             {
@@ -408,8 +498,140 @@ namespace PoRumble.Views
             _effectsActive = true;
         }
 
+        private void OnPunchLanded(PunchLandedMessage message)
+        {
+            if (_model == null || message.TargetId != _model.Id)
+            {
+                return;
+            }
+
+            float fullDamage = _model.MaxHealth * _headSmashFullDamageShare;
+            float share = fullDamage > 0f ? Mathf.Clamp01(message.Damage / fullDamage) : 0f;
+
+            // A counter needs no special case here: the bonus is already in Damage by the
+            // time the message is published, so a countered punch smashes harder on its own.
+            _headSmashAmount = Mathf.Lerp(_headSmashMin, _headSmashMax, share);
+            _headSmashRemaining = _headSmashSeconds;
+            _effectsActive = true;
+        }
+
+        private void OnPunchBlocked(PunchBlockedMessage message)
+        {
+            if (_model == null)
+            {
+                return;
+            }
+
+            // A block is two events on two fighters. This boxer may be either, and in a melee
+            // could in principle be told about both, so neither branch returns early past the
+            // other.
+            if (message.AttackerId == _model.Id)
+            {
+                ArmView thrown = message.AttackerArm == ArmSide.Left
+                    ? _leftArmView
+                    : _rightArmView;
+
+                if (thrown != null)
+                {
+                    thrown.NotifyBlocked(message.Position);
+                }
+            }
+
+            if (message.BlockerId != _model.Id)
+            {
+                return;
+            }
+
+            _blockGloveRenderer = NearestGlove(message.Position);
+
+            if (_blockGloveRenderer == null)
+            {
+                return;
+            }
+
+            _blockFlashRemaining = _blockFlashSeconds;
+            _effectsActive = true;
+        }
+
+        /// <summary>
+        /// Which hand stopped the punch.
+        ///
+        /// PunchBlockedMessage carries where the block happened but not which arm made it -
+        /// CombatMath.ArmBlocks tests both arms and reports only that one of them did - so the
+        /// glove nearer the impact is the answer. The guard carries the two hands on opposite
+        /// sides of the chest, which is far enough apart for that to be unambiguous.
+        /// </summary>
+        private Renderer NearestGlove(Vector2 impact)
+        {
+            SpriteRenderer left = _leftArmView != null ? _leftArmView.GloveRenderer : null;
+            SpriteRenderer right = _rightArmView != null ? _rightArmView.GloveRenderer : null;
+
+            if (left == null)
+            {
+                return right;
+            }
+
+            if (right == null)
+            {
+                return left;
+            }
+
+            float toLeft = ((Vector2)left.transform.position - impact).sqrMagnitude;
+            float toRight = ((Vector2)right.transform.position - impact).sqrMagnitude;
+
+            return toLeft <= toRight ? left : right;
+        }
+
+        /// <summary>
+        /// The "smashed nose": the head flattens for a moment after a punch lands.
+        ///
+        /// Squashed along local Y and bulged along local X with no rotation, and that is exact
+        /// rather than a simplification - CombatMath only lets a punch land inside the face
+        /// arc, so a punch that landed came from roughly in front and local +Y *is* forward
+        /// on this prefab. Rotating the head to meet an arbitrary impact angle would also spin
+        /// the contestant's photograph, which reads as the head turning rather than taking a
+        /// hit.
+        ///
+        /// Safe to drive because Head carries a SpriteRenderer and nothing else: the hit
+        /// radius lives on HeadCollider, a sibling at the same position. This changes what is
+        /// drawn and not what can be hit, nor what another fighter's ray sensor sees - which
+        /// is the whole reason the deform went on the head and not on a glove, where the
+        /// collider shares the renderer's GameObject.
+        /// </summary>
+        private void ApplyHeadSmash()
+        {
+            if (_headTransform == null)
+            {
+                return;
+            }
+
+            if (_headSmashRemaining <= 0f)
+            {
+                _headTransform.localScale = _headRestScale;
+                return;
+            }
+
+            // Squared, so the head is at its deepest on the frame of impact and springs most
+            // of the way back inside the first third of the window. Eased the other way round
+            // it reads as the head swelling rather than as something hitting it.
+            float t = _headSmashSeconds > 0f ? _headSmashRemaining / _headSmashSeconds : 0f;
+            float amount = _headSmashAmount * t * t;
+
+            _headTransform.localScale = new Vector3(
+                _headRestScale.x * (1f + amount),
+                _headRestScale.y * (1f - amount),
+                _headRestScale.z);
+        }
+
         private void OnAliveChanged(bool isAlive)
         {
+            // Cleared on both edges. A head left squashed would carry into the knockout
+            // dissolve, and into the next episode after a training reset.
+            _headSmashRemaining = 0f;
+            _blockFlashRemaining = 0f;
+            _blockGloveRenderer = null;
+            ApplyHeadSmash();
+
             Tint(isAlive);
 
             if (isAlive)
@@ -442,6 +664,9 @@ namespace PoRumble.Views
             }
 
             float flash = _flashSeconds > 0f ? _flashRemaining / _flashSeconds : 0f;
+            float blockFlash = _blockFlashSeconds > 0f
+                ? _blockFlashRemaining / _blockFlashSeconds
+                : 0f;
             float dissolve = _dissolving && _dissolveSeconds > 0f
                 ? Mathf.Clamp01(_dissolveElapsed / _dissolveSeconds)
                 : 0f;
@@ -482,8 +707,15 @@ namespace PoRumble.Views
                     continue;
                 }
 
+                // The hand that made the block flashes on its own. Blocking does no damage, so
+                // the body-wide flash is zero at that moment and this glove is the only thing
+                // on screen saying where the punch was stopped.
+                float rendererFlash = target == _blockGloveRenderer
+                    ? Mathf.Max(flash, blockFlash)
+                    : flash;
+
                 target.GetPropertyBlock(_propertyBlock);
-                _propertyBlock.SetFloat(FlashAmountId, flash);
+                _propertyBlock.SetFloat(FlashAmountId, rendererFlash);
                 _propertyBlock.SetFloat(DissolveAmountId, dissolve);
                 _propertyBlock.SetFloat(OutlineAmountId, outline);
                 _propertyBlock.SetColor(OutlineColorId, outlineColor);

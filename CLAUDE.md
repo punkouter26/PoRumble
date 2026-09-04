@@ -108,9 +108,29 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
 - **Hit detection is pure maths, not physics.** `CombatMath.ResolveHit` is a static function
   over the boxer roster. That keeps combat deterministic (which RL depends on) and testable
   without a scene.
-- **The face arc is judged from the attacker's position**, not the glove's offset from the
-  head. A glove landing dead-centre gives a zero-length vector, which previously let punches
-  from behind score as clean face hits.
+- **The back of the head is the weak spot, and the face arc decides what the *guard* covers -
+  not what may be hit.** A punch that reaches the head lands from any angle;
+  `CombatMath.IsInFaceArc` then decides whether the hands were between it and the face, so a
+  punch from behind is unblockable. That is the reason to keep an opponent in front of you.
+  **This was the cause of the zero-knockout result**, and it is measured rather than
+  reasoned. The arc used to reject anything outside the forward 120 degrees *before* damage,
+  block or evade were considered, so turning your back was a perfect defence - and it defended
+  twice over, because `HeadOffset` puts the head along the facing, so turning away also moved
+  the head further from the attacker. The two reachable bands did not overlap: frontal
+  separation 1.69-3.29 against rear 0-1.51, with fighters sitting at ~1.95. Measured in a live
+  1v1: **1988 steps, both fighters on 30/30, zero damage**, the scripted brain aimed dead on
+  (`dot 1.00`) and throwing into a back whose head sat 1.23 away against a 0.80 requirement.
+  After the change the same scene knocks a fighter down inside ~1200 steps.
+- **`HeadOffset` is 0.36 because that is where the head is drawn.** It was 0.89, while the
+  drawn head and its `HeadCollider` both sit at 0.36 - so the thing you aimed at was never the
+  thing you could hit. An offset that large also made reach depend almost entirely on the
+  defender's facing; at 0.36 the frontal and rear bands are 1.16-2.76 and 0.44-2.04, which
+  overlap. Changing it moves every punch's range, so re-measure before believing any tuning
+  that predates it.
+- **The arc is still judged from the attacker's position**, not the glove's offset from the
+  head. A glove landing dead-centre gives a zero-length vector carrying no direction, and
+  judging from it would read a punch thrown from directly behind as a frontal one. That used
+  to wrongly *score* a hit; it would now wrongly let hands nowhere near the punch block it.
 - **Hits are buffered for a whole tick** and the match resolved once at end of tick, so
   simultaneous knockouts both count.
 - **A boxer throws one punch at a time.** `BoxerSystem.ThrowPunch` refuses while either arm
@@ -129,6 +149,16 @@ PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
   fast as it advances while pivoting mid-swing to track a target that already stepped off.
 - **Boxers are clamped to the ring in `BoxerSystem`.** Positions are model-driven, so the
   wall colliders alone contain nobody.
+- **Overlap separation transfers what the ropes refuse.** `ResolveOverlaps` splits the push
+  between two bodies, and clamping each half independently *loses* the half that lands in a
+  wall - so a pair with one man on the ropes stayed overlapped for ever, the correction
+  reapplied and half-discarded on every tick, until the two settled where neither moved.
+  Measured in the 1v1 as byte-identical positions across 1400+ steps at separation 1.92
+  against a required 1.96, both sitting exactly on the clamp boundary
+  (`ArenaHalfExtent 7 - BodyRadius 0.98 = 6.02` against an observed `y = 6.0`). Each body's
+  denied movement is now handed to the other, which resolves the overlap fully whenever
+  *either* has room; separation measures exactly 1.96 afterwards.
+  `ArenaContainmentTests.TwoBoxersCrushedIntoTheRopesStillSeparate` pins it.
 - **Arm segments are siblings of the torso, never children.** A nested `Rigidbody2D` is moved
   twice — once by physics, once by the hierarchy — which makes jointed limbs drift.
 - **`CombatSystem` and `MatchSystem` are resolved eagerly** in `GameLifetimeScope`. They only
@@ -853,6 +883,32 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   the servo would spend every frame pushing against a contact it cannot win - and
   `RestoreCrossArmCollision` then puts back exactly one set: left arm against right. That pair
   is the mechanic, not a bug to suppress.
+- **`_mirror` is for joint angles only, never for a world offset.** `ArmView` uses it twice and
+  the two conventions are opposite: mirroring a *hinge angle* correctly inverts the sign, while
+  the model puts the **Left** side at *positive* lateral - `GetShoulderPosition` and
+  `GetGlovePosition` both read `arm.Side` and both give Left the plus. `PoseArmFromModel`
+  borrowed the joint-angle sign for the guard hand, which put every hand on the far side of the
+  body from its own shoulder: measured, the left arm ran from a shoulder at lateral +0.53 to a
+  glove at **-0.50** with its elbow at **(fwd -0.31, lat -0.13)**, behind the torso and sitting
+  among the *other* arm's joints. Both arms crossed in an X. The guard hand now takes its side
+  from `_model.Side`, so the two can no longer disagree.
+  **The bug hid a second one**, which is why it lasted: the wrong sign put the hand 1.10 from
+  the shoulder, close to the arm's natural 1.51, so the two-link solve was well-conditioned and
+  the shape looked plausible. Correct geometry asks a 1.51 arm to fold into 0.38.
+- **The drawn arm foreshortens as the guard folds.** A boxer at guard has the elbow pointing at
+  the floor, so from directly overhead the arm genuinely *is* shorter - most of it points at the
+  lens. Two fixed-length segments cannot say that: solved honestly, the elbow had nowhere to go
+  but straight out sideways, flaring to lateral **1.24**, 0.71 past the shoulder. `ArmView`
+  shrinks both links toward the shoulder-to-hand span to hold the elbow at a constant
+  `_guardElbowFlare` (0.35 of the span), which brings the elbow back to **0.65**, and the factor
+  rises to 1 as the punch straightens - measured 0.44 at extension 0.42, 0.78 at 0.71, 1.0 by
+  about 0.85, so the arm is at full length well before the hit resolves.
+  Two things make this safe to do, and both must stay true. **The glove is placed at `target`
+  outright**, not at the end of the links, so the drawn fist stays where `CombatMath` resolves
+  the hit however short the arm is drawn. And **the segments' `CapsuleCollider2D` sit on the
+  joint GameObjects while the sprites sit on their `Vis` children**, so only the child is scaled
+  - no collider moves, and nothing any ray sensor can see changes. A glove could never be
+  treated this way: `GloveL/R` carry their collider on the renderer's own GameObject.
 - **Every scene poses the arms without the solver, the game included.**
   `BoxerSpawnPoints._kinematicArms` is a plain serialized flag and it is **true in
   `SampleScene`**, whose `AutoRestart` is false - so the "gated on AutoRestart" this note used

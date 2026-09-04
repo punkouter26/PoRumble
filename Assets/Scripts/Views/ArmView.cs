@@ -129,6 +129,20 @@ namespace PoRumble.Views
         [Tooltip("Elbow to glove. Forearm at y 0.82, Glove at y 1.60, so 0.78.")]
         [SerializeField] private float _forearmLength = 0.78f;
 
+        [Tooltip("How far the elbow may sit off the line from shoulder to hand, as a fraction " +
+                 "of that distance. The drawn arm foreshortens to hold it: at a tight guard " +
+                 "that gives a small tuck instead of an elbow flared out past the shoulder, " +
+                 "and it fades to nothing as the punch straightens and the arm reaches its " +
+                 "real length. Raise it for a wider, more open guard.")]
+        [Range(0.1f, 1f)]
+        [SerializeField] private float _guardElbowFlare = 0.35f;
+
+        [Tooltip("How far a blocked punch's drawn fist is knocked back off its own reach. " +
+                 "Only the picture moves: the glove's collider carries on to wherever the " +
+                 "model says it is, so nothing another fighter's ray sensor can see changes.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _blockRecoil = 0.35f;
+
         [Header("Servo")]
         [SerializeField] private float _servoGain = 90f;
 
@@ -160,12 +174,97 @@ namespace PoRumble.Views
         private ArmModel _model;
         private BoxerModel _boxer;
         private BoxerSystem _boxerSystem;
+        private SpriteRenderer _gloveRenderer;
+
+        /// <summary>
+        /// The two segment sprites and the local transforms they were authored with, so
+        /// foreshortening has something to scale from and something to return to. Resolved
+        /// once, lazily: the bars are children of the joints rather than the joints
+        /// themselves, which is exactly why scaling them leaves the colliders alone.
+        /// </summary>
+        private Transform _upperVisual;
+        private Vector3 _upperVisualRestPosition;
+        private Vector3 _upperVisualRestScale;
+        private Transform _forearmVisual;
+        private Vector3 _forearmVisualRestPosition;
+        private Vector3 _forearmVisualRestScale;
+        private bool _visualsCached;
+
+        /// <summary>Last factor written, so forty segments are not restated every frame.</summary>
+        private float _appliedForeshortening = -1f;
+
+        /// <summary>
+        /// Set while this arm's punch has been stopped by a guard, with how far from the
+        /// shoulder it got. The drawn fist hangs there until the model's own retraction
+        /// catches up, which is what a punch running into a forearm looks like.
+        /// </summary>
+        private bool _blocked;
+        private float _blockedSpan;
+
+        /// <summary>
+        /// The glove's sprite, which is a child of the glove so it can be held short of the
+        /// collider. Null on a rig that still carries the renderer on the joint itself, in
+        /// which case the block simply does not show and nothing misbehaves.
+        /// </summary>
+        private Transform _gloveVisual;
 
         /// <summary>
         /// True when the limb is posed straight from the model instead of being servoed by
         /// the physics solver. See <see cref="SetKinematicDrive"/>.
         /// </summary>
         private bool _kinematic;
+
+        /// <summary>
+        /// This arm's glove, so <see cref="BoxerView"/> can mark the hand that actually
+        /// stopped a punch rather than the whole fighter.
+        ///
+        /// Resolved off the wrist joint rather than serialized separately. The glove already
+        /// *is* the wrist's GameObject, so a second Inspector slot pointing at the same object
+        /// buys nothing and adds one more reference that can be left unassigned on a prefab.
+        /// </summary>
+        internal SpriteRenderer GloveRenderer
+        {
+            get
+            {
+                if (_gloveRenderer == null && _wristJoint != null)
+                {
+                    // In children, not on the joint: the sprite was moved onto a child so a
+                    // blocked punch can stop the drawn fist while its CircleCollider2D carries
+                    // on to where the model says it is.
+                    _gloveRenderer = _wristJoint.GetComponentInChildren<SpriteRenderer>();
+                }
+
+                return _gloveRenderer;
+            }
+        }
+
+        /// <summary>
+        /// Halts this arm's drawn fist where a guard stopped it.
+        ///
+        /// Pushed in by <see cref="BoxerView"/> rather than subscribed to here: one
+        /// subscription per boxer beats twenty, and BoxerView is already listening for the
+        /// blocking half of the same message.
+        /// </summary>
+        internal void NotifyBlocked(Vector2 contact)
+        {
+            if (_boxer == null || _boxerSystem == null || _model == null)
+            {
+                return;
+            }
+
+            // Pulled back from the contact, not held at it.
+            //
+            // CombatMath resolves a punch at the peak of its extension, so by the time a block
+            // is published the fist is already out at full reach and `contact` is where it
+            // already is - clamping to that would draw nothing at all. What a guard actually
+            // does to a punch is stop it and give it back some ground, so the drawn fist is
+            // knocked _blockRecoil short and waits there until the model's own retraction
+            // catches up with it.
+            float span = (contact - _boxerSystem.GetShoulderPosition(_boxer, _model)).magnitude;
+
+            _blockedSpan = Mathf.Max(0f, span - _blockRecoil);
+            _blocked = true;
+        }
 
         [Inject]
         public void Construct(BoxerSystem boxerSystem)
@@ -177,6 +276,10 @@ namespace PoRumble.Views
         {
             _boxer = boxer;
             _model = model;
+
+            // Cleared on re-seating, or a fist stopped in the last episode stays stopped into
+            // the next one - a training scene re-racks the arena without rebuilding the view.
+            _blocked = false;
         }
 
         /// <summary>
@@ -277,6 +380,11 @@ namespace PoRumble.Views
                 return;
             }
 
+            // The solver drives real fixed-length bones, so the drawn bars have to be back at
+            // their authored length before it does. Foreshortening belongs to the posed path
+            // alone.
+            ApplyForeshortening(1f);
+
             float extension = ShapeStrike(_model.Extension) - _model.Windup * _windupPullback;
             float sign = _mirror ? -1f : 1f;
 
@@ -357,7 +465,18 @@ namespace PoRumble.Views
             // and blends out to the model's glove as the punch travels. Only the far end has
             // to agree with the maths, because hits resolve at full extension and nowhere
             // else.
-            float side = _mirror ? -1f : 1f;
+            // Taken from the model's own side, never from _mirror.
+            //
+            // The two carry opposite conventions and it is not a matter of taste. _mirror
+            // flips *joint angles* for the servo path, where mirroring a hinge does invert
+            // the sign; this is a *world lateral offset*, where the model puts Left at
+            // positive - see BoxerSystem.GetShoulderPosition and GetGlovePosition, which both
+            // read arm.Side and both give Left the plus. Borrowing the joint-angle sign here
+            // put each hand on the far side of the body from its own shoulder: the left arm
+            // was drawn reaching across to lateral -0.50 from a shoulder at +0.53, so the two
+            // arms crossed in an X and each elbow ended up behind the torso among the other
+            // arm's joints. Deriving it from the model is what makes that unrepresentable.
+            float side = _model.Side == ArmSide.Left ? 1f : -1f;
             Vector2 guardHand = _boxer.Position
                                 + facing * _guardHandForward
                                 + lateral * (side * _guardHandLateral);
@@ -376,6 +495,17 @@ namespace PoRumble.Views
             Vector2 head = _boxer.Position + facing * _headOffset;
             target = PushOutOfHead(target, head);
 
+            // Two targets from here on, and the split is the whole point of the change.
+            //
+            // modelTarget is where the model believes the fist is, and the glove's own
+            // transform - which carries its CircleCollider2D - is driven there whatever the
+            // picture does. `target` is where the fist is *drawn*, which a guard is allowed to
+            // cut short. Keeping the collider on the model's path is what makes a blocked
+            // punch a purely visual event: nothing another fighter's ray sensor returns
+            // changes, so the trained policy sees the ring it was trained on.
+            Vector2 modelTarget = target;
+            target = ClampToBlock(target, shoulder);
+
             Vector2 delta = target - shoulder;
             float reach = _upperArmLength + _forearmLength;
 
@@ -392,12 +522,41 @@ namespace PoRumble.Views
 
             Vector2 direction = delta / delta.magnitude;
 
+            // The drawn arm foreshortens as the guard folds, and that is the honest reading of
+            // this camera rather than a cheat.
+            //
+            // A boxer holding a guard has the elbow pointing at the floor, so from directly
+            // above the arm genuinely *is* shorter than its own length - almost all of it is
+            // pointing at the lens. Two fixed-length segments cannot express that: asked to
+            // fold 1.51 of arm into the 0.38 between the shoulder and a hand at the ear, the
+            // solve has nowhere to put the elbow but straight out sideways, 0.71 past the
+            // shoulder. Shrinking both links toward the span keeps the elbow at a constant
+            // flare instead, and the arm returns to full length as the punch straightens,
+            // which is exactly when it stops pointing at the camera.
+            //
+            // Only the picture moves. The glove is placed at `target` outright a few lines
+            // below, never at the end of these links, so the drawn fist stays exactly where
+            // CombatMath resolves the hit however short the arm is drawn. The segments'
+            // CapsuleCollider2D sit on their parents rather than on the scaled visual, so no
+            // collider and nothing any ray sensor can see changes either.
+            float naturalLength = _upperArmLength + _forearmLength;
+            float wanted = 2f * distance
+                           * Mathf.Sqrt(0.25f + _guardElbowFlare * _guardElbowFlare);
+            float foreshortening = naturalLength > 0f
+                ? Mathf.Clamp01(wanted / naturalLength)
+                : 1f;
+
+            float upperLength = _upperArmLength * foreshortening;
+            float forearmLength = _forearmLength * foreshortening;
+
+            ApplyForeshortening(foreshortening);
+
             // Standard two-link solve: how far along the line the elbow sits, and how far off.
             float alongDistance = (distance * distance
-                                   + _upperArmLength * _upperArmLength
-                                   - _forearmLength * _forearmLength) / (2f * distance);
+                                   + upperLength * upperLength
+                                   - forearmLength * forearmLength) / (2f * distance);
             float off = Mathf.Sqrt(Mathf.Max(
-                0f, _upperArmLength * _upperArmLength - alongDistance * alongDistance));
+                0f, upperLength * upperLength - alongDistance * alongDistance));
 
             // Whichever of the two solutions puts the elbow further from the head.
             //
@@ -419,8 +578,46 @@ namespace PoRumble.Views
 
             Place(upper, shoulder, elbow);
             Place(fore, elbow, target);
-            glove.position = new Vector3(target.x, target.y, glove.position.z);
+
+            // The joint - and with it the collider - goes to the model's fist. The sprite
+            // hanging off it goes to the drawn one, which is the same place except during a
+            // blocked punch. The forearm follows the picture rather than the model, which is
+            // safe where the glove is not: its CapsuleCollider2D sits on the BoxerArm layer,
+            // and that layer is subtracted from every ray sensor's mask.
+            glove.position = new Vector3(modelTarget.x, modelTarget.y, glove.position.z);
             glove.rotation = fore.rotation;
+
+            CacheSegmentVisuals();
+
+            if (_gloveVisual != null)
+            {
+                _gloveVisual.position = new Vector3(target.x, target.y, _gloveVisual.position.z);
+            }
+        }
+
+        /// <summary>
+        /// Holds a blocked punch's drawn fist short of its own reach, and lets go once the
+        /// model's retraction has come back past it.
+        /// </summary>
+        private Vector2 ClampToBlock(Vector2 target, Vector2 shoulder)
+        {
+            if (!_blocked)
+            {
+                return target;
+            }
+
+            Vector2 fromShoulder = target - shoulder;
+            float span = fromShoulder.magnitude;
+
+            // The arm has come home past where it was stopped, so there is nothing left to
+            // hold back and the next punch starts clean.
+            if (span <= _blockedSpan || span <= 0.0001f)
+            {
+                _blocked = false;
+                return target;
+            }
+
+            return shoulder + fromShoulder * (_blockedSpan / span);
         }
 
         /// <summary>
@@ -452,6 +649,103 @@ namespace PoRumble.Views
         /// Puts a segment's origin at <paramref name="from"/> and points its local +Y at
         /// <paramref name="to"/>. Z is preserved: sorting order in a 2D scene rides on it.
         /// </summary>
+        /// <summary>
+        /// Scales both segment bars along their own length, leaving their thickness alone -
+        /// an arm pointing at the camera gets shorter, not thinner.
+        ///
+        /// The local position is scaled with the local scale because a bar is centred partway
+        /// along its joint's axis; scaling only the size would leave a shortened segment
+        /// floating away from the joint it hangs off.
+        /// </summary>
+        private void ApplyForeshortening(float factor)
+        {
+            CacheSegmentVisuals();
+
+            if (Mathf.Abs(factor - _appliedForeshortening) < 0.001f)
+            {
+                return;
+            }
+
+            _appliedForeshortening = factor;
+
+            if (_upperVisual != null)
+            {
+                _upperVisual.localPosition = new Vector3(
+                    _upperVisualRestPosition.x,
+                    _upperVisualRestPosition.y * factor,
+                    _upperVisualRestPosition.z);
+                _upperVisual.localScale = new Vector3(
+                    _upperVisualRestScale.x,
+                    _upperVisualRestScale.y * factor,
+                    _upperVisualRestScale.z);
+            }
+
+            if (_forearmVisual != null)
+            {
+                _forearmVisual.localPosition = new Vector3(
+                    _forearmVisualRestPosition.x,
+                    _forearmVisualRestPosition.y * factor,
+                    _forearmVisualRestPosition.z);
+                _forearmVisual.localScale = new Vector3(
+                    _forearmVisualRestScale.x,
+                    _forearmVisualRestScale.y * factor,
+                    _forearmVisualRestScale.z);
+            }
+        }
+
+        private void CacheSegmentVisuals()
+        {
+            if (_visualsCached)
+            {
+                return;
+            }
+
+            _visualsCached = true;
+
+            _upperVisual = FindSegmentVisual(_shoulderJoint);
+
+            if (_upperVisual != null)
+            {
+                _upperVisualRestPosition = _upperVisual.localPosition;
+                _upperVisualRestScale = _upperVisual.localScale;
+            }
+
+            _forearmVisual = FindSegmentVisual(_elbowJoint);
+
+            if (_forearmVisual != null)
+            {
+                _forearmVisualRestPosition = _forearmVisual.localPosition;
+                _forearmVisualRestScale = _forearmVisual.localScale;
+            }
+
+            // Never scaled, only offset - so unlike the two segments, no rest transform is
+            // kept for it.
+            _gloveVisual = FindSegmentVisual(_wristJoint);
+        }
+
+        /// <summary>
+        /// The sprite hanging off a joint, or null when the joint carries it directly. The
+        /// null case matters: the glove's renderer is on the wrist joint itself, and a glove
+        /// must never be scaled - its CircleCollider2D shares that GameObject, and every other
+        /// fighter's ray sensor can see it.
+        /// </summary>
+        private static Transform FindSegmentVisual(HingeJoint2D joint)
+        {
+            if (joint == null)
+            {
+                return null;
+            }
+
+            SpriteRenderer renderer = joint.GetComponentInChildren<SpriteRenderer>();
+
+            if (renderer == null || renderer.transform == joint.transform)
+            {
+                return null;
+            }
+
+            return renderer.transform;
+        }
+
         private static void Place(Transform segment, Vector2 from, Vector2 to)
         {
             segment.position = new Vector3(from.x, from.y, segment.position.z);

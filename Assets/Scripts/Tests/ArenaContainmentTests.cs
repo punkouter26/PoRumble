@@ -76,6 +76,57 @@ namespace PoRumble.Tests
         }
 
         [Test]
+        public void TwoBoxersCrushedIntoTheRopesStillSeparate()
+        {
+            // Regression: the separation used to be split in half, with each half clamped on
+            // its own, so the half that landed inside a wall was silently discarded. A pair
+            // with one man on the ropes therefore stayed overlapped for ever - the correction
+            // was reapplied and half-thrown-away on every tick, and the two settled into an
+            // equilibrium where neither moved at all. Measured in a live 1v1 as byte-identical
+            // positions across 1400+ steps at separation 1.92 against a required 1.96.
+            _match.AddBoxer(new BoxerModel(1, _config.MaxHealth));
+
+            float wall = 8f - _config.BodyRadius;
+
+            // One against the ropes, the other pressed into it and still walking in.
+            _match.Boxers[0].Position = new Vector2(wall, 0f);
+            _match.Boxers[1].Position = new Vector2(wall - 0.05f, 0f);
+
+            _boxerSystem.SetMoveInput(0, Vector2.right);
+            _boxerSystem.SetMoveInput(1, Vector2.right);
+            RunFor(2f);
+
+            float separation =
+                (_match.Boxers[0].Position - _match.Boxers[1].Position).magnitude;
+
+            Assert.That(separation, Is.GreaterThanOrEqualTo(_config.BodyRadius * 2f - 0.001f),
+                "a fighter on the ropes must still be pushed clear of the one leaning on him");
+        }
+
+        [Test]
+        public void ACorneredPairDoesNotFreeze()
+        {
+            // The lock this exposes is not the overlap itself but the stillness: two fighters
+            // holding position to the last decimal for the rest of the round, which makes the
+            // match unwinnable and every measurement taken from it meaningless.
+            _match.AddBoxer(new BoxerModel(1, _config.MaxHealth));
+
+            float wall = 8f - _config.BodyRadius;
+            _match.Boxers[0].Position = new Vector2(wall, wall);
+            _match.Boxers[1].Position = new Vector2(wall - 0.05f, wall - 0.05f);
+
+            _boxerSystem.SetMoveInput(0, new Vector2(1f, 1f));
+            _boxerSystem.SetMoveInput(1, new Vector2(1f, 1f));
+            RunFor(1f);
+
+            float separation =
+                (_match.Boxers[0].Position - _match.Boxers[1].Position).magnitude;
+
+            Assert.That(separation, Is.GreaterThan(0.5f),
+                "two fighters driven into the same corner must not end up stacked");
+        }
+
+        [Test]
         public void BoxerPinnedToTheRopesCanStillMoveAlongThem()
         {
             _boxerSystem.SetMoveInput(0, Vector2.right);

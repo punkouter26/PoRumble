@@ -38,22 +38,28 @@ namespace PoRumble.Tests
         }
 
         [Test]
-        public void GloveBehindHead_DealsNoDamage()
+        public void GloveBehindHead_DealsDamage()
         {
             // Directly behind: 180 degrees from facing.
+            //
+            // The back of the head is the weak spot, not a sanctuary. Rejecting a rear punch
+            // outright made turning your back a perfect defence, and measured in a live 1v1 it
+            // was exactly that - 1988 steps, both fighters on full health, the scripted brain
+            // aimed dead on and throwing into a back that could not be hurt.
             HitResult result = Resolve(new Vector2(0f, -3f), new Vector2(0f, 0.3f));
 
-            Assert.That(result.IsHit, Is.False);
-            Assert.That(result.Damage, Is.Zero);
+            Assert.That(result.IsHit, Is.True);
+            Assert.That(result.Damage, Is.GreaterThan(0));
         }
 
         [Test]
-        public void GloveOnSideOfHead_DealsNoDamage()
+        public void GloveOnSideOfHead_DealsDamage()
         {
-            // 90 degrees off the facing vector — outside the 60 degree half-arc.
+            // 90 degrees off the facing vector, so outside the guard's arc and unblockable -
+            // but a punch that reaches the head still lands, whatever angle it came from.
             HitResult result = Resolve(new Vector2(3f, 0f), new Vector2(0.2f, 0.5f));
 
-            Assert.That(result.IsHit, Is.False);
+            Assert.That(result.IsHit, Is.True);
         }
 
         [Test]
@@ -105,30 +111,47 @@ namespace PoRumble.Tests
         }
 
         [Test]
-        public void ArcBoundary_AttackerJustInsideHits_JustOutsideMisses()
+        public void ArcBoundary_DecidesWhatTheGuardCovers_NotWhatMayBeHit()
         {
             // Sweep the attacker around the target, keeping the glove on the head centre.
+            //
+            // The arc survived the change but changed job: it no longer says whether a punch
+            // may land, it says whether the hands are between it and the face. Both of these
+            // land; only the first one can be blocked.
             Vector2 headCenter = new(0f, HEAD_OFFSET);
 
             Vector2 insideAttacker = headCenter + Rotate(Vector2.up, FACE_ARC_HALF_ANGLE - 2f) * 3f;
             Vector2 outsideAttacker = headCenter + Rotate(Vector2.up, FACE_ARC_HALF_ANGLE + 2f) * 3f;
 
             Assert.That(Resolve(insideAttacker, headCenter).IsHit, Is.True,
-                "an attacker just inside the face arc should land");
-            Assert.That(Resolve(outsideAttacker, headCenter).IsHit, Is.False,
-                "an attacker just outside the face arc should whiff");
+                "a punch from inside the guard's arc still lands");
+            Assert.That(Resolve(outsideAttacker, headCenter).IsHit, Is.True,
+                "and so does one from outside it");
+
+            Assert.That(
+                CombatMath.IsInFaceArc(insideAttacker, Vector2.zero, Vector2.up, Settings),
+                Is.True, "an attacker inside the arc meets the guard");
+            Assert.That(
+                CombatMath.IsInFaceArc(outsideAttacker, Vector2.zero, Vector2.up, Settings),
+                Is.False, "an attacker outside it does not, so the punch is unblockable");
         }
 
         [Test]
-        public void GloveDeadCentreFromBehind_StillMisses()
+        public void GloveDeadCentreFromBehind_IsNotMistakenForAFrontalPunch()
         {
-            // Regression: a glove landing exactly on the head centre yields a zero-length offset
-            // vector. Judging the arc from that vector let punches from behind score as face hits.
+            // Regression: a glove landing exactly on the head centre yields a zero-length
+            // offset vector carrying no direction. Judging the arc from that vector instead of
+            // from the attacker's position would read a punch thrown from directly behind as a
+            // frontal one - which now matters for the opposite reason it used to. It would no
+            // longer wrongly score a hit; it would wrongly let hands nowhere near the punch
+            // block it.
             Vector2 headCenter = new(0f, HEAD_OFFSET);
-            HitResult result = Resolve(new Vector2(0f, -3f), headCenter);
+            Vector2 behind = new(0f, -3f);
 
-            Assert.That(result.IsHit, Is.False);
-            Assert.That(result.Damage, Is.Zero);
+            Assert.That(Resolve(behind, headCenter).IsHit, Is.True, "a rear punch lands");
+            Assert.That(
+                CombatMath.IsInFaceArc(behind, Vector2.zero, Vector2.up, Settings),
+                Is.False, "and cannot be blocked");
         }
 
         [Test]

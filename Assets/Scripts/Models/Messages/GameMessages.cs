@@ -69,11 +69,21 @@ namespace PoRumble.Models
         public readonly int BlockerId;
         public readonly Vector2 Position;
 
-        public PunchBlockedMessage(int attackerId, int blockerId, Vector2 position)
+        /// <summary>
+        /// Which of the attacker's arms was stopped. Carried because the view has to halt the
+        /// drawn glove on that arm and nothing else identifies it: the attacker may have both
+        /// fists travelling, and CombatMath reports only that a block happened. Deliberately
+        /// has no default - a wrong guess here stops the wrong hand.
+        /// </summary>
+        public readonly ArmSide AttackerArm;
+
+        public PunchBlockedMessage(
+            int attackerId, int blockerId, Vector2 position, ArmSide attackerArm)
         {
             AttackerId = attackerId;
             BlockerId = blockerId;
             Position = position;
+            AttackerArm = attackerArm;
         }
     }
 
