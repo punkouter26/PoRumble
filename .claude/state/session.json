@@ -3,26 +3,25 @@
   "branch": "feat/rl-audit-and-combat-rework",
   "workflow_phase": "",
   "modified_files": [
-    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\MEMORY.md",
-    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\android-deploy-target.md",
-    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\options-before-implementing.md",
-    "C:\\Users\\punko\\AppData\\Local\\Temp\\claude\\c--Users-punko-Downloads-PoRumble\\ab19dff5-0638-4aa4-bd57-d55b479a8dff\\scratchpad\\patch_shoulders.py",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Editor\\AndroidBuilder.cs",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\AppChromeView.cs",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\DiagnosticsHudView.cs",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\PlatformBootstrap.cs",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\UI\\Layouts\\RosterCard.uxml",
-    "c:\\Users\\punko\\Downloads\\PoRumble\\Temp\\evals\\refresh.cs"
+    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\unity-mcp-deferred-domain-reload.md",
+    "C:\\Users\\punko\\.claude\\projects\\c--Users-punko-Downloads-PoRumble\\memory\\unity-mcp-long-commands-time-out.md",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Models\\CombatMath.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Models\\Messages\\GameMessages.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Systems\\BoxerSystem.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\ArmView.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\BoxerView.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\Assets\\Scripts\\Views\\RosterSelectionView.cs",
+    "c:\\Users\\punko\\Downloads\\PoRumble\\CLAUDE.md"
   ],
   "recent_commits": [
-    "f81d870 Put the hands at the ears, and make a punch accelerate",
-    "ce722f4 Stop every build from throwing away the baked font atlases",
-    "eb3b707 Add the v6 sparring checkpoint and the Android shader-stripping list"
+    "5720664 Make the back of the head hittable, and stop the ropes eating half a separation",
+    "bfcd5f6 Draw the fighters as Activision silhouettes, and mark the bots on the card",
+    "f50c4b1 Ship the checkpoint the evaluation chose, and record why training is not the lever"
   ],
-  "session_duration": "756m 31s",
+  "session_duration": "347m 33s",
   "tool_calls": 0,
   "warnings_count": 6,
-  "saved_at": "2026-09-04T13:06:19Z",
+  "saved_at": "2026-09-04T18:54:55Z",
   "plan": {},
   "verification": {},
   "agent_context": {}
