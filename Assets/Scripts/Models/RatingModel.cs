@@ -74,6 +74,27 @@ namespace PoRumble.Models
         }
 
         /// <summary>
+        /// A contestant's rating without creating a record for them.
+        ///
+        /// Distinct from <see cref="GetOrCreate"/> on purpose. An unrated fighter scores
+        /// DEFAULT_RATING either way, so the number is the same — but GetOrCreate also adds
+        /// them to the table, and a read has no business putting a row in the standings. The
+        /// commentator asks this question about every fighter in the ring at the end of each
+        /// match purely to decide whether a win was an upset.
+        /// </summary>
+        public float RatingOf(string id)
+        {
+            if (string.IsNullOrEmpty(id))
+            {
+                return DEFAULT_RATING;
+            }
+
+            return _records.TryGetValue(id, out RatingRecord record)
+                ? record.Rating
+                : DEFAULT_RATING;
+        }
+
+        /// <summary>
         /// Fills a caller-owned buffer with the highest-rated fighters, best first.
         ///
         /// A selection sort over the buffer rather than List.Sort or LINQ: the table has

@@ -136,3 +136,8 @@ Packages/manifest.json.bak
 
 # ML-Agents examples kept for reference, outside Assets so Unity does not import them
 /Reference/
+
+# Commentary build tool. Piper plus its voice model is ~85MB of build dependency that is
+# downloaded on demand by Tools/bake_commentary.sh; the baked WAVs are what the game needs
+# and those are committed (in LFS, like the rest of the art).
+Tools/piper/

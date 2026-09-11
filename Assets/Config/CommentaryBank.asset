@@ -1,0 +1,252 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16666436b9e1a9045939d227023f1254, type: 3}
+  m_Name: CommentaryBank
+  m_EditorClassIdentifier: PoRumble.Models::PoRumble.Models.CommentaryBank
+  _entries:
+  - _id: bell_0
+    _event: 0
+    _text: And we are underway!
+    _clip: {fileID: 8300000, guid: 50a502ea2e03f4243967085b4af77a63, type: 3}
+    _usesName: 0
+  - _id: bell_1
+    _event: 0
+    _text: There's the bell, and here we go.
+    _clip: {fileID: 8300000, guid: 07cafb275f91d364a800c3f5e3cb254c, type: 3}
+    _usesName: 0
+  - _id: bell_2
+    _event: 0
+    _text: Ten of them, one winner. Let's have it.
+    _clip: {fileID: 8300000, guid: b42a11f8a0972b9428abec056a39c645, type: 3}
+    _usesName: 0
+  - _id: bell_3
+    _event: 0
+    _text: Right then. Hands up, chins down.
+    _clip: {fileID: 8300000, guid: a8268736b97b14f4388fe52f04c5c038, type: 3}
+    _usesName: 0
+  - _id: counter_0
+    _event: 1
+    _text: saw that coming a mile off!
+    _clip: {fileID: 8300000, guid: e2102d6a32a08d54495073a38cd55e98, type: 3}
+    _usesName: 1
+  - _id: counter_1
+    _event: 1
+    _text: blocks, and makes him pay for it.
+    _clip: {fileID: 8300000, guid: ac82a6a0375932b47bc75e511ba14049, type: 3}
+    _usesName: 1
+  - _id: counter_2
+    _event: 1
+    _text: Straight back over the top! Beautiful counter.
+    _clip: {fileID: 8300000, guid: 62be38338fd10d44e99f311f71331098, type: 3}
+    _usesName: 0
+  - _id: counter_3
+    _event: 1
+    _text: was waiting for exactly that.
+    _clip: {fileID: 8300000, guid: 96ec45c42a842fc42a78c55ec9bbcb8e, type: 3}
+    _usesName: 1
+  - _id: haymaker_0
+    _event: 2
+    _text: Oh, that is a big one!
+    _clip: {fileID: 8300000, guid: 4727ff65211c14348a4b1baf6b74cff8, type: 3}
+    _usesName: 0
+  - _id: haymaker_1
+    _event: 2
+    _text: lands the big right hand!
+    _clip: {fileID: 8300000, guid: 58e109e67f160174794fd86c35ed9633, type: 3}
+    _usesName: 1
+  - _id: haymaker_2
+    _event: 2
+    _text: He winds it up and it lands flush!
+    _clip: {fileID: 8300000, guid: 990f0c9b7f86ebc45970149f6fda3f8d, type: 3}
+    _usesName: 0
+  - _id: haymaker_3
+    _event: 2
+    _text: You could hear that one from the back row.
+    _clip: {fileID: 8300000, guid: 34584eda7869e7a4d945b077c882d393, type: 3}
+    _usesName: 0
+  - _id: flurry_0
+    _event: 3
+    _text: is letting them go now!
+    _clip: {fileID: 8300000, guid: ce586de04d043b3498bb698da5b0f802, type: 3}
+    _usesName: 1
+  - _id: flurry_1
+    _event: 3
+    _text: Three, four, five unanswered!
+    _clip: {fileID: 8300000, guid: ba5f508f592a5714fb701911b2323fca, type: 3}
+    _usesName: 0
+  - _id: flurry_2
+    _event: 3
+    _text: has found his range and he is not stopping.
+    _clip: {fileID: 8300000, guid: ef8041fc15703ed4babfa8e7784002e9, type: 3}
+    _usesName: 1
+  - _id: flurry_3
+    _event: 3
+    _text: It's raining leather in there!
+    _clip: {fileID: 8300000, guid: fe2a8c033c30dda4586a204f99f4634f, type: 3}
+    _usesName: 0
+  - _id: hurt_0
+    _event: 4
+    _text: is in real trouble here.
+    _clip: {fileID: 8300000, guid: 1b9d8d80e80571e41b730a6b59969858, type: 3}
+    _usesName: 1
+  - _id: hurt_1
+    _event: 4
+    _text: is hanging on by his fingernails.
+    _clip: {fileID: 8300000, guid: 1ee00827bf623384a85b58b1f543bf7a, type: 3}
+    _usesName: 1
+  - _id: hurt_2
+    _event: 4
+    _text: He's hurt. He is badly hurt.
+    _clip: {fileID: 8300000, guid: 0bf1eea2455294b4c8acaf4a669f6425, type: 3}
+    _usesName: 0
+  - _id: hurt_3
+    _event: 4
+    _text: needs to hold on and get his head clear.
+    _clip: {fileID: 8300000, guid: 0047db7391f536446b1abfbe2851ff0c, type: 3}
+    _usesName: 1
+  - _id: defence_0
+    _event: 5
+    _text: cannot be hit tonight.
+    _clip: {fileID: 8300000, guid: 4d18bb609a0ecee42a1e2cb0d98237e7, type: 3}
+    _usesName: 1
+  - _id: defence_1
+    _event: 5
+    _text: Nothing getting through that guard.
+    _clip: {fileID: 8300000, guid: 323f67350ac9bec46bed529b6c85d6bd, type: 3}
+    _usesName: 0
+  - _id: defence_2
+    _event: 5
+    _text: is making him miss by inches.
+    _clip: {fileID: 8300000, guid: dcfa6a0e859df194181ae1bd12d16f29, type: 3}
+    _usesName: 1
+  - _id: defence_3
+    _event: 5
+    _text: Slipping everything. Lovely work.
+    _clip: {fileID: 8300000, guid: 640d4edc0b04bbf4f83774f84d66b8e1, type: 3}
+    _usesName: 0
+  - _id: elimination_0
+    _event: 6
+    _text: is finished! He's out of it!
+    _clip: {fileID: 8300000, guid: d5da6dbe9e8a3834599ca3566fb72eb4, type: 3}
+    _usesName: 1
+  - _id: elimination_1
+    _event: 6
+    _text: is down and he is not getting up.
+    _clip: {fileID: 8300000, guid: aa16db8883d78c94f85a280b43376bc7, type: 3}
+    _usesName: 1
+  - _id: elimination_2
+    _event: 6
+    _text: That's it! That is the end of him!
+    _clip: {fileID: 8300000, guid: 2aca1b504bf634948af1d89305b06d22, type: 3}
+    _usesName: 0
+  - _id: elimination_3
+    _event: 6
+    _text: has nothing left. Take him out of there.
+    _clip: {fileID: 8300000, guid: 236514f29def94d429479f9142f31f50, type: 3}
+    _usesName: 1
+  - _id: finaltwo_0
+    _event: 7
+    _text: And then there were two.
+    _clip: {fileID: 8300000, guid: 00e13c5da018c60499b060a798cd0a8f, type: 3}
+    _usesName: 0
+  - _id: finaltwo_1
+    _event: 7
+    _text: Two left standing. One of them goes home a winner.
+    _clip: {fileID: 8300000, guid: 918ced4cbf5eedb45b4d80e596ca0716, type: 3}
+    _usesName: 0
+  - _id: finaltwo_2
+    _event: 7
+    _text: Eight down. This is for everything.
+    _clip: {fileID: 8300000, guid: 00a339d7d62ba7446868b0c361763464, type: 3}
+    _usesName: 0
+  - _id: finaltwo_3
+    _event: 7
+    _text: Here we are then. Last two.
+    _clip: {fileID: 8300000, guid: f896a8c21c169144882d1c54cbfcb389, type: 3}
+    _usesName: 0
+  - _id: winner_0
+    _event: 8
+    _text: takes it! What a performance!
+    _clip: {fileID: 8300000, guid: c5f980b7e99da224ebf74723181ee163, type: 3}
+    _usesName: 1
+  - _id: winner_1
+    _event: 8
+    _text: is your winner, and deservedly so.
+    _clip: {fileID: 8300000, guid: 1770a6f806d972147aacd355c6f6884a, type: 3}
+    _usesName: 1
+  - _id: winner_2
+    _event: 8
+    _text: has done it. Last one standing.
+    _clip: {fileID: 8300000, guid: fe89e6d503b78e3408a850d4daa064ca, type: 3}
+    _usesName: 1
+  - _id: winner_3
+    _event: 8
+    _text: wins it. Hand on heart, he earned that.
+    _clip: {fileID: 8300000, guid: 96fd3a33675d12f4c8b30957eb9112ff, type: 3}
+    _usesName: 1
+  - _id: upset_0
+    _event: 9
+    _text: has turned the whole card upside down!
+    _clip: {fileID: 8300000, guid: bf708e964de4d19439a78e3bd9a46092, type: 3}
+    _usesName: 1
+  - _id: upset_1
+    _event: 9
+    _text: Nobody saw that coming. Nobody!
+    _clip: {fileID: 8300000, guid: dcecee72e660de844955d56331662b3c, type: 3}
+    _usesName: 0
+  - _id: upset_2
+    _event: 9
+    _text: was not supposed to win that, and he has.
+    _clip: {fileID: 8300000, guid: 43468a15a57bce84ba02d7cb317785a2, type: 3}
+    _usesName: 1
+  - _id: upset_3
+    _event: 9
+    _text: Tear up the form book. Tear it up!
+    _clip: {fileID: 8300000, guid: 93b3dcaebf770bb4c86513ec68c2ab50, type: 3}
+    _usesName: 0
+  - _id: draw_0
+    _event: 10
+    _text: Nothing between them. We go to the cards.
+    _clip: {fileID: 8300000, guid: d04b398fe20837247a75ca26d9a5c4db, type: 3}
+    _usesName: 0
+  - _id: draw_1
+    _event: 10
+    _text: A draw. Neither of them deserved to lose that.
+    _clip: {fileID: 8300000, guid: a35a6527cc8eeef4aa43079bd4205c1c, type: 3}
+    _usesName: 0
+  - _id: draw_2
+    _event: 10
+    _text: Dead level at the bell.
+    _clip: {fileID: 8300000, guid: 77f544dfd4dc38e49af4728452dee784, type: 3}
+    _usesName: 0
+  - _id: draw_3
+    _event: 10
+    _text: No separating them tonight.
+    _clip: {fileID: 8300000, guid: 8763ae58eb9f26c41bd031d02a017b83, type: 3}
+    _usesName: 0
+  _names:
+  - _displayName: ALAN
+    _clip: {fileID: 8300000, guid: ed69bdd2d3e5d2441b49557f4af60199, type: 3}
+  - _displayName: BIGGIE
+    _clip: {fileID: 8300000, guid: 6b85975378a839644a99d7cceb96d63d, type: 3}
+  - _displayName: BLIPPI
+    _clip: {fileID: 8300000, guid: 1e485c4483e581d4ca45ca284930d7b5, type: 3}
+  - _displayName: BRENDAN
+    _clip: {fileID: 8300000, guid: 18b168dd7aadd7748bacb128fd700d13, type: 3}
+  - _displayName: DUPEE
+    _clip: {fileID: 8300000, guid: eae80e117b65b4e46958f6fa989680d3, type: 3}
+  - _displayName: EPSTEIN
+    _clip: {fileID: 8300000, guid: 4e3ec8517484c3142b99f93a0a5413c8, type: 3}
+  - _displayName: HEURISTIC
+    _clip: {fileID: 8300000, guid: b6cda8f5bf19e784da945541c77c7b9a, type: 3}
+  - _displayName: STANDARD RL
+    _clip: {fileID: 8300000, guid: 9939310c79298844492c59f35c1ec001, type: 3}

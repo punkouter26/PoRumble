@@ -12,6 +12,10 @@ namespace PoRumble.Views
     {
         [SerializeField] private BoxerConfig _boxerConfig;
 
+        [Tooltip("Everything the commentator can say. Optional: leave empty and the " +
+                 "commentator is silent, which is what the training arenas want.")]
+        [SerializeField] private CommentaryBank _commentaryBank;
+
         protected override void Configure(IContainerBuilder builder)
         {
             MessagePipeOptions options = builder.RegisterMessagePipe();
@@ -33,6 +37,12 @@ namespace PoRumble.Views
             builder.Register<RatingModel>(Lifetime.Singleton);
             builder.Register<FightStatsModel>(Lifetime.Singleton);
             builder.Register<DirectorModel>(Lifetime.Singleton);
+            builder.Register<CommentaryModel>(Lifetime.Singleton);
+
+            // Registered through a factory rather than RegisterInstance, because this one is
+            // allowed to be null - a training scene assigns no bank - and RegisterInstance
+            // will not take a null.
+            builder.Register(_ => _commentaryBank, Lifetime.Singleton);
 
             builder.Register<BoxerSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<CombatSystem>(Lifetime.Singleton).AsSelf();
@@ -43,6 +53,7 @@ namespace PoRumble.Views
             builder.Register<RatingSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<FightStatsSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<DirectorSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<CommentarySystem>(Lifetime.Singleton).AsSelf();
 
             // The league table on disk. A plain C# class rather than a component, so it is
             // registered as an instance; RatingSystem only ever sees the interface.
@@ -78,6 +89,11 @@ namespace PoRumble.Views
                 container.Resolve<FightStatsSystem>();
                 container.Resolve<DirectorSystem>();
 
+                // Same again, and it matters more here: the commentator's first line is the
+                // bell, which fires the instant the flow loop enters Fighting. Resolved late,
+                // he would subscribe after the fight he was meant to introduce had started.
+                container.Resolve<CommentarySystem>();
+
                 // Presentation components are all optional: the training scenes deliberately
                 // have no HUD, no camera rig and no feedback layer, and
                 // RegisterComponentInHierarchy would throw when they are absent.
@@ -94,6 +110,7 @@ namespace PoRumble.Views
                 InjectOptional<KnockoutMoodView>(container);
                 InjectOptional<FightStatsHudView>(container);
                 InjectOptional<CameraDirectorView>(container);
+                InjectOptional<CommentaryView>(container);
             });
         }
 

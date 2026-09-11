@@ -1,0 +1,89 @@
+{
+  "_comment": [
+    "The commentary script, and the single source of truth for it.",
+    "",
+    "Tools/bake_commentary.sh reads this and writes one WAV per entry into",
+    "Assets/Audio/Commentary/. Temp/evals/build_commentary_bank.cs reads the same file and",
+    "fills CommentaryBank.asset with the text and the matching clip. Keeping both ends on one",
+    "file is the point: a line whose spoken audio and printed subtitle disagree is worse than",
+    "having no subtitle at all, and that is exactly what two hand-maintained lists produce.",
+    "",
+    "'usesName' prefixes the line with the fighter's own name clip at playback, so the body",
+    "has to be phrased to follow one - 'is in real trouble' rather than 'he is in real",
+    "trouble'. Bodies that name nobody are phrased to stand alone.",
+    "",
+    "Four variants per event, matching the rule the impact sounds already follow: a match is",
+    "the same handful of events fired over and over, and the ear locks onto a repeated",
+    "waveform far faster than the eye locks onto a repeated sprite."
+  ],
+
+  "voice": "en_GB-northern_english_male-medium",
+
+  "names": {
+    "ALAN": "Alan",
+    "BIGGIE": "Biggie",
+    "BLIPPI": "Blippy",
+    "BRENDAN": "Brendan",
+    "DUPEE": "Doopee",
+    "EPSTEIN": "Epstein",
+    "HEURISTIC": "Heuristic",
+    "STANDARD RL": "Standard R L"
+  },
+
+  "lines": [
+    { "id": "bell_0", "event": "Bell", "usesName": false, "text": "And we are underway!" },
+    { "id": "bell_1", "event": "Bell", "usesName": false, "text": "There's the bell, and here we go." },
+    { "id": "bell_2", "event": "Bell", "usesName": false, "text": "Ten of them, one winner. Let's have it." },
+    { "id": "bell_3", "event": "Bell", "usesName": false, "text": "Right then. Hands up, chins down." },
+
+    { "id": "counter_0", "event": "Counter", "usesName": true, "text": "saw that coming a mile off!" },
+    { "id": "counter_1", "event": "Counter", "usesName": true, "text": "blocks, and makes him pay for it." },
+    { "id": "counter_2", "event": "Counter", "usesName": false, "text": "Straight back over the top! Beautiful counter." },
+    { "id": "counter_3", "event": "Counter", "usesName": true, "text": "was waiting for exactly that." },
+
+    { "id": "haymaker_0", "event": "Haymaker", "usesName": false, "text": "Oh, that is a big one!" },
+    { "id": "haymaker_1", "event": "Haymaker", "usesName": true, "text": "lands the big right hand!" },
+    { "id": "haymaker_2", "event": "Haymaker", "usesName": false, "text": "He winds it up and it lands flush!" },
+    { "id": "haymaker_3", "event": "Haymaker", "usesName": false, "text": "You could hear that one from the back row." },
+
+    { "id": "flurry_0", "event": "Flurry", "usesName": true, "text": "is letting them go now!" },
+    { "id": "flurry_1", "event": "Flurry", "usesName": false, "text": "Three, four, five unanswered!" },
+    { "id": "flurry_2", "event": "Flurry", "usesName": true, "text": "has found his range and he is not stopping." },
+    { "id": "flurry_3", "event": "Flurry", "usesName": false, "text": "It's raining leather in there!" },
+
+    { "id": "hurt_0", "event": "Hurt", "usesName": true, "text": "is in real trouble here." },
+    { "id": "hurt_1", "event": "Hurt", "usesName": true, "text": "is hanging on by his fingernails." },
+    { "id": "hurt_2", "event": "Hurt", "usesName": false, "text": "He's hurt. He is badly hurt." },
+    { "id": "hurt_3", "event": "Hurt", "usesName": true, "text": "needs to hold on and get his head clear." },
+
+    { "id": "defence_0", "event": "Defence", "usesName": true, "text": "cannot be hit tonight." },
+    { "id": "defence_1", "event": "Defence", "usesName": false, "text": "Nothing getting through that guard." },
+    { "id": "defence_2", "event": "Defence", "usesName": true, "text": "is making him miss by inches." },
+    { "id": "defence_3", "event": "Defence", "usesName": false, "text": "Slipping everything. Lovely work." },
+
+    { "id": "elimination_0", "event": "Elimination", "usesName": true, "text": "is finished! He's out of it!" },
+    { "id": "elimination_1", "event": "Elimination", "usesName": true, "text": "is down and he is not getting up." },
+    { "id": "elimination_2", "event": "Elimination", "usesName": false, "text": "That's it! That is the end of him!" },
+    { "id": "elimination_3", "event": "Elimination", "usesName": true, "text": "has nothing left. Take him out of there." },
+
+    { "id": "finaltwo_0", "event": "FinalTwo", "usesName": false, "text": "And then there were two." },
+    { "id": "finaltwo_1", "event": "FinalTwo", "usesName": false, "text": "Two left standing. One of them goes home a winner." },
+    { "id": "finaltwo_2", "event": "FinalTwo", "usesName": false, "text": "Eight down. This is for everything." },
+    { "id": "finaltwo_3", "event": "FinalTwo", "usesName": false, "text": "Here we are then. Last two." },
+
+    { "id": "winner_0", "event": "Winner", "usesName": true, "text": "takes it! What a performance!" },
+    { "id": "winner_1", "event": "Winner", "usesName": true, "text": "is your winner, and deservedly so." },
+    { "id": "winner_2", "event": "Winner", "usesName": true, "text": "has done it. Last one standing." },
+    { "id": "winner_3", "event": "Winner", "usesName": true, "text": "wins it. Hand on heart, he earned that." },
+
+    { "id": "upset_0", "event": "Upset", "usesName": true, "text": "has turned the whole card upside down!" },
+    { "id": "upset_1", "event": "Upset", "usesName": false, "text": "Nobody saw that coming. Nobody!" },
+    { "id": "upset_2", "event": "Upset", "usesName": true, "text": "was not supposed to win that, and he has." },
+    { "id": "upset_3", "event": "Upset", "usesName": false, "text": "Tear up the form book. Tear it up!" },
+
+    { "id": "draw_0", "event": "Draw", "usesName": false, "text": "Nothing between them. We go to the cards." },
+    { "id": "draw_1", "event": "Draw", "usesName": false, "text": "A draw. Neither of them deserved to lose that." },
+    { "id": "draw_2", "event": "Draw", "usesName": false, "text": "Dead level at the bell." },
+    { "id": "draw_3", "event": "Draw", "usesName": false, "text": "No separating them tonight." }
+  ]
+}

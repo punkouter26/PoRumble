@@ -28,7 +28,7 @@ Renderer, so 3D lit materials will not light correctly.
 | Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 165 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 172 EditMode tests |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
@@ -470,6 +470,7 @@ every one of them.
 | `Standings` | `StandingsHudView` | Top three of the Elo table |
 | `FightStats` | `FightStatsHudView` | The telemetry board — thrown/landed/connect/blocked/slips/damage for the pair the director is watching, plus a momentum bar and sparkline |
 | `CameraRig` | `CameraDirectorView` | Owns `ImpactCam` and hands it the frame on a knockout or a landed haymaker |
+| `Commentary` | `CommentaryView` | Speaks the baked commentary and prints the subtitle |
 
 ## The Camera Director
 
@@ -552,7 +553,59 @@ through a pool of positioned 3D voices (`SpatialVoicePool`) so a hit across the 
 quieter and off to one side; the bell and countdown are non-positional and go to UI. DSP
 buffer is 512 rather than the default 1024, because ~23ms of latency is audible on a punch.
 
-**Audio is synthesised at runtime** in `ProceduralSfx` — the project has no audio assets, and
+## Commentary
+
+`CommentarySystem` watches the message bus and decides what a commentator would say;
+`CommentaryView` speaks it and prints a subtitle. Like the board and the director it is pure
+observation — it mutates no boxer and publishes nothing.
+
+- **The voice is baked, not synthesised at runtime.** Piper is a native binary plus a 63MB
+  ONNX voice, and the obvious pure-C# alternative (`System.Speech`) does not exist outside
+  Windows and Mono — so neither could ship in an ARM64 IL2CPP build.
+  `Tools/bake_commentary.sh` turns `Tools/commentary_lines.json` into 52 WAVs that cost
+  nothing at runtime and behave identically on a phone. **This is the project's first audio
+  asset**; everything else is still `ProceduralSfx`.
+- **`Tools/commentary_lines.json` is the single source of truth.** The bake script turns it
+  into clips and `Temp/evals/build_commentary_bank.cs` turns the same file into
+  `CommentaryBank.asset`, pairing each clip with its subtitle. Edit the text without
+  rebuilding the bank and the printed line says something the voice does not — which is worse
+  than having no subtitle.
+- **A line is up to two clips, joined on the DSP clock.** Baking every name into every line
+  would be eight contestants times forty-four lines; concatenating a name clip with a body
+  clip keeps the bank at 52. The join uses `AudioSource.PlayScheduled`, not a frame-timed
+  wait: a frame-timed join lands a whole frame late at 60fps and later still under hitstop,
+  which is an audible gap in the middle of a sentence and the one artefact that gives away
+  that the two halves were recorded apart.
+- **Bodies for named lines are phrased to follow a name** — "is in real trouble here", not
+  "he is in real trouble here" — and still read as a sentence about "he" when the name is
+  missing. That is not hypothetical: a scene with no fight card has no names, so every
+  training arena takes that path.
+- **Almost all of the logic is about when *not* to speak.** A ten-way publishes several landed
+  punches a second. A priority (a knockout cuts across a flurry, never the reverse), a hold so
+  a started line finishes, and a cooldown after it. Lines are dropped rather than queued: by
+  the time a backed-up flurry line reached the front, the flurry would be ten seconds gone.
+- **"He's in trouble" is latched per fighter per match.** Health only falls inside a match, so
+  an unlatched call re-fires on every subsequent punch — the fastest way to make a commentator
+  sound broken. `CommentaryTests.AFighterIsOnlyCalledHurtOnce` pins it.
+- **`CommentaryCue` carries a sequence number, and it is load-bearing.** `ReactiveProperty`
+  compares with `EqualityComparer<T>.Default` before notifying, so two identical cues in a row
+  — the same fighter hurt in two successive matches — would be silently swallowed without it.
+  The struct also implements `IEquatable` for cost, not correctness: the default comparer for
+  a struct holding a reference field compares by reflection and boxes to do it.
+- **The voice licence is the one that matters, not the tool's.** Piper and espeak-ng are GPL
+  and are never shipped — running a program to generate data does not make the data a
+  derivative of it. The *voice model's training dataset* does reach the output:
+  `en_GB-northern_english_male-medium` is CC BY-SA 4.0, which permits commercial use with
+  attribution, and `Assets/Audio/Commentary/ATTRIBUTION.md` carries it exactly as
+  `Assets/Art/Fonts/` carries its OFL licences. The obvious alternatives were rejected for
+  this reason: `en_US-ryan-high` is CC BY-**NC**-SA (non-commercial) and `en_US-lessac-medium`
+  carries the Blizzard Challenge licence. **Check a replacement voice's `MODEL_CARD` for the
+  dataset licence, never the repository licence** — that is MIT for every voice in the
+  collection and says nothing about the recordings underneath.
+- **`Tools/piper/` is gitignored.** An 85MB build dependency does not belong in a game repo's
+  history; the bake script fetches it on demand.
+
+**Audio is otherwise synthesised at runtime** in `ProceduralSfx` — the rest of the project has no audio assets, and
 a boxing game where landing, blocking and whiffing all sound identical loses most of what
 tells the player what happened. Swap in recorded one-shots whenever they exist; nothing but
 that one class has to change.

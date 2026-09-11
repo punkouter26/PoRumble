@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The commentary subtitle.
+
+  One label in its own document rather than a child of the match HUD, for the reason the
+  result banner was moved out of the panel: this line changes length every time it is written,
+  and anything sharing a layout with it inherits that movement.
+
+  It sits well clear of the bottom edge so it does not land on the fight-card button, and well
+  clear of the centre so it does not land on the result banner. Those are the two things that
+  are on screen at the same moment a match-ending line is spoken.
+
+  picking-mode="Ignore" throughout: it sits over a live ring and must never eat a click.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="commentary-band" class="commentary-band" picking-mode="Ignore">
+        <ui:Label name="commentary" class="text text--md commentary" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>
