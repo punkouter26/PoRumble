@@ -73,6 +73,22 @@ namespace PoRumble.Views
         [Range(0.05f, 0.6f)]
         [SerializeField] private float _cockFraction = 0.22f;
 
+        [Header("Fatigue")]
+        [Tooltip("Shoulder angle the guard sags toward when the fighter is spent. The arm " +
+                 "drops away from the face rather than folding differently: a tired boxer " +
+                 "stops holding the guard up, they do not adopt a new one.")]
+        [SerializeField] private float _shoulderDroopAngle = -14f;
+
+        [Tooltip("Elbow angle the guard sags toward. Less flexed than the guard pose, which " +
+                 "is what lets the glove fall away from the head.")]
+        [SerializeField] private float _elbowDroopAngle = 78f;
+
+        [Tooltip("How far the guard is allowed to sag at full fatigue, 0 not at all and 1 " +
+                 "all the way to the droop angles. Held below 1 because a fighter whose hands " +
+                 "are at their waist reads as unconscious rather than as tired.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _maxDroop = 0.75f;
+
         [Header("Servo")]
         [SerializeField] private float _servoGain = 90f;
 
@@ -94,9 +110,26 @@ namespace PoRumble.Views
 
         private ArmModel _model;
 
+        /// <summary>How far the guard is currently sagging, 0..1. Written by BoxerView.</summary>
+        private float _droop;
+
         public void Bind(ArmModel model)
         {
             _model = model;
+        }
+
+        /// <summary>
+        /// Sets how spent the fighter is, 0 fresh and 1 finished, which is drawn as the guard
+        /// dropping away from the face.
+        ///
+        /// Pushed in by <see cref="BoxerView"/> rather than read from a model here, because an
+        /// arm knows about its own <see cref="ArmModel"/> and nothing else — and fatigue is a
+        /// property of the whole fighter. Keeping the arm ignorant of the boxer is what lets
+        /// the same component serve both arms without either of them reaching across.
+        /// </summary>
+        public void SetFatigue(float fatigue)
+        {
+            _droop = Mathf.Clamp01(fatigue) * _maxDroop;
         }
 
         private void FixedUpdate()
@@ -112,13 +145,20 @@ namespace PoRumble.Views
             float extension = ShapeStrike(_model.Extension) - _model.Windup * _windupPullback;
             float sign = _mirror ? -1f : 1f;
 
+            // Fatigue moves the guard pose and nothing else. Because both angles are reached
+            // by LerpUnclamped at extension 1 regardless of where the guard sits, a drooping
+            // arm still puts the drawn fist at ArmReach on the frame the hit resolves - which
+            // is the one thing about this rig that is not negotiable.
+            float shoulderGuard = Mathf.Lerp(_shoulderGuardAngle, _shoulderDroopAngle, _droop);
+            float elbowGuard = Mathf.Lerp(_elbowGuardAngle, _elbowDroopAngle, _droop);
+
             ServoTo(
                 _shoulderJoint,
-                sign * Mathf.LerpUnclamped(_shoulderGuardAngle, _shoulderPunchAngle, extension),
+                sign * Mathf.LerpUnclamped(shoulderGuard, _shoulderPunchAngle, extension),
                 _maxMotorTorque);
             ServoTo(
                 _elbowJoint,
-                sign * Mathf.LerpUnclamped(_elbowGuardAngle, _elbowPunchAngle, extension),
+                sign * Mathf.LerpUnclamped(elbowGuard, _elbowPunchAngle, extension),
                 _maxMotorTorque * _elbowTorqueScale);
             ServoTo(
                 _wristJoint,

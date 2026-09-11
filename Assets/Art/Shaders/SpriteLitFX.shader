@@ -12,6 +12,9 @@
 // would have been a bad trade.
 //
 // SRP Batcher compatibility: the UnityPerMaterial block is byte-identical in all three passes.
+// The damage block (_BruiseColor, _SwellLeft, _SwellRight, _CutAmount) was added to all three
+// together for exactly that reason - it is the easiest of the five effects to add to only the
+// pass being looked at, and doing so drops the fighters out of the batcher with no error.
 // Unity silently drops a shader out of the batcher if the layouts disagree between passes, so
 // any property added here must be added to every one of them.
 Shader "PoRumble/SpriteLitFX"
@@ -44,6 +47,15 @@ Shader "PoRumble/SpriteLitFX"
         _OutlineColor("Outline Colour", Color) = (1,0.85,0.25,1)
         _OutlineAmount("Outline Amount", Range(0,1)) = 0
         _OutlineWidth("Outline Width (px)", Range(0,6)) = 1.5
+
+        // Accumulated damage, written per renderer by BoxerView and only ever onto the head.
+        // Two swelling values rather than one, because which side a fighter has been marked
+        // on is the whole tell - a single averaged number renders every boxer equally puffy.
+        [Header(Damage)]
+        _BruiseColor("Bruise Tint", Color) = (0.62,0.36,0.46,1)
+        _SwellLeft("Swell Left", Range(0,1)) = 0
+        _SwellRight("Swell Right", Range(0,1)) = 0
+        _CutAmount("Cut Amount", Range(0,1)) = 0
 
         // Legacy properties, kept so materials can fall back to the built-in sprite shader.
         [HideInInspector] _Color("Tint", Color) = (1,1,1,1)
@@ -97,12 +109,16 @@ Shader "PoRumble/SpriteLitFX"
                 half4 _DissolveEdgeColor;
                 half4 _RimColor;
                 half4 _OutlineColor;
+                half4 _BruiseColor;
                 half _FlashAmount;
                 half _DissolveAmount;
                 half _RimAmount;
                 half _RimPower;
                 half _OutlineAmount;
                 half _OutlineWidth;
+                half _SwellLeft;
+                half _SwellRight;
+                half _CutAmount;
             CBUFFER_END
 
             #include "SpriteFX.hlsl"
@@ -140,7 +156,8 @@ Shader "PoRumble/SpriteLitFX"
                 return ApplySpriteFX(lit, input.uv, _FlashColor, _FlashAmount,
                                      _DissolveAmount, _DissolveEdgeColor,
                                      normalTS, _RimColor, _RimAmount, _RimPower,
-                                     _OutlineColor, _OutlineAmount, innerEdge);
+                                     _OutlineColor, _OutlineAmount, innerEdge,
+                                     _SwellLeft, _SwellRight, _CutAmount, _BruiseColor);
             }
             ENDHLSL
         }
@@ -179,12 +196,16 @@ Shader "PoRumble/SpriteLitFX"
                 half4 _DissolveEdgeColor;
                 half4 _RimColor;
                 half4 _OutlineColor;
+                half4 _BruiseColor;
                 half _FlashAmount;
                 half _DissolveAmount;
                 half _RimAmount;
                 half _RimPower;
                 half _OutlineAmount;
                 half _OutlineWidth;
+                half _SwellLeft;
+                half _SwellRight;
+                half _CutAmount;
             CBUFFER_END
 
             Varyings NormalsRenderingVertex(Attributes input)
@@ -241,12 +262,16 @@ Shader "PoRumble/SpriteLitFX"
                 half4 _DissolveEdgeColor;
                 half4 _RimColor;
                 half4 _OutlineColor;
+                half4 _BruiseColor;
                 half _FlashAmount;
                 half _DissolveAmount;
                 half _RimAmount;
                 half _RimPower;
                 half _OutlineAmount;
                 half _OutlineWidth;
+                half _SwellLeft;
+                half _SwellRight;
+                half _CutAmount;
             CBUFFER_END
 
             #include "SpriteFX.hlsl"
@@ -281,7 +306,8 @@ Shader "PoRumble/SpriteLitFX"
                 return ApplySpriteFX(lit, input.uv, _FlashColor, _FlashAmount,
                                      _DissolveAmount, _DissolveEdgeColor,
                                      half3(0.0, 0.0, 1.0), _RimColor, _RimAmount, _RimPower,
-                                     _OutlineColor, _OutlineAmount, innerEdge);
+                                     _OutlineColor, _OutlineAmount, innerEdge,
+                                     _SwellLeft, _SwellRight, _CutAmount, _BruiseColor);
             }
             ENDHLSL
         }

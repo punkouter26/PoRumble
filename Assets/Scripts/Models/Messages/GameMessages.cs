@@ -16,8 +16,19 @@ namespace PoRumble.Models
         /// <summary>Charge the swing carried, 0 for an ordinary punch, 1 for a full haymaker.</summary>
         public readonly float ChargeLevel;
 
+        /// <summary>
+        /// Which side of the defender's face the punch arrived on: -1 hard to their left,
+        /// +1 hard to their right, 0 straight down the middle.
+        ///
+        /// Carried on the message rather than recomputed by whoever reads it, because it
+        /// falls out of the face-arc test for free and by the time a subscriber runs the
+        /// attacker has already moved. It is what lets swelling gather on the side that is
+        /// actually being hit rather than smearing evenly across the whole head.
+        /// </summary>
+        public readonly float ApproachLateral;
+
         public PunchLandedMessage(int attackerId, int targetId, int damage, bool isCloseRange, Vector2 position)
-            : this(attackerId, targetId, damage, isCloseRange, position, false, 0f)
+            : this(attackerId, targetId, damage, isCloseRange, position, false, 0f, 0f)
         {
         }
 
@@ -29,6 +40,19 @@ namespace PoRumble.Models
             Vector2 position,
             bool isCounter,
             float chargeLevel)
+            : this(attackerId, targetId, damage, isCloseRange, position, isCounter, chargeLevel, 0f)
+        {
+        }
+
+        public PunchLandedMessage(
+            int attackerId,
+            int targetId,
+            int damage,
+            bool isCloseRange,
+            Vector2 position,
+            bool isCounter,
+            float chargeLevel,
+            float approachLateral)
         {
             AttackerId = attackerId;
             TargetId = targetId;
@@ -37,6 +61,7 @@ namespace PoRumble.Models
             Position = position;
             IsCounter = isCounter;
             ChargeLevel = chargeLevel;
+            ApproachLateral = approachLateral;
         }
     }
 
@@ -146,6 +171,29 @@ namespace PoRumble.Models
         public MatchEndedMessage(int winnerId)
         {
             WinnerId = winnerId;
+        }
+    }
+
+    /// <summary>
+    /// A fist has started travelling. Raised at commitment rather than at contact, and that
+    /// is the whole point of it: every other punch message reports something the punch ran
+    /// into, so without this there is no count of the ones that hit nothing at all — and a
+    /// connect rate computed over only the punches that reached somebody is not a connect
+    /// rate, it is a tautology.
+    /// </summary>
+    public readonly struct PunchThrownMessage
+    {
+        public readonly int BoxerId;
+        public readonly Vector2 Position;
+
+        /// <summary>Charge the swing carries, 0 for an ordinary punch, 1 for a full haymaker.</summary>
+        public readonly float ChargeLevel;
+
+        public PunchThrownMessage(int boxerId, Vector2 position, float chargeLevel)
+        {
+            BoxerId = boxerId;
+            Position = position;
+            ChargeLevel = chargeLevel;
         }
     }
 }

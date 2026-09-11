@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The telemetry board: the two fighters the camera director has picked out, head to head.
+
+  Two fighters rather than ten, and that is the whole design. Ten rows of punch counts is a
+  spreadsheet; a broadcast stat bar works because it puts exactly two columns of figures either
+  side of one label and lets the eye compare them. The pair shown is the director's, so the
+  board is always reporting on the fight that is actually in frame.
+
+  Everything is picking-mode="Ignore". The board sits over a live ring and must never eat a
+  click meant for the fight card sorted beneath it.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="stats" picking-mode="Ignore">
+        <!--
+          The title sits on its own line rather than between the two names. Sharing the row
+          cost it about 190px of the panel's 480, which left a contestant's name barely wider
+          than the word STANDARD and truncated half the card to an ellipsis. A name is the one
+          thing on this panel that has to be readable.
+        -->
+        <ui:Label name="title" class="text text--xs text--muted stats__title" text="TALE OF THE TAPE" picking-mode="Ignore" />
+
+        <ui:VisualElement name="header" class="stats__header" picking-mode="Ignore">
+            <ui:Label name="name-a" class="text text--md text--bold stats__name" picking-mode="Ignore" />
+            <ui:Label name="name-b" class="text text--md text--bold stats__name stats__name--right" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!--
+          Momentum runs out from the centre in both directions, so which way the exchange is
+          going is legible without reading a number. The two fills are siblings anchored to
+          the same midpoint rather than one bar with an offset, because a single fill would
+          have to move its own left edge as well as its width and the two would visibly
+          disagree for a frame whenever it crossed the middle.
+        -->
+        <ui:VisualElement name="momentum" class="stats__momentum" picking-mode="Ignore">
+            <ui:VisualElement name="momentum-a" class="stats__momentum-fill stats__momentum-fill--a" picking-mode="Ignore" />
+            <ui:VisualElement name="momentum-b" class="stats__momentum-fill stats__momentum-fill--b" picking-mode="Ignore" />
+            <ui:VisualElement name="momentum-centre" class="stats__momentum-centre" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <!-- Drawn with Painter2D from the view; it has no children of its own. -->
+        <ui:VisualElement name="spark" class="stats__spark" picking-mode="Ignore" />
+
+        <ui:VisualElement name="rows" class="stats__rows" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

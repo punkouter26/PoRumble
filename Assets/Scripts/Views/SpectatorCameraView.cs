@@ -77,11 +77,34 @@ namespace PoRumble.Views
 
         [Tooltip("How much less health a rival needs before the camera abandons the fighter it " +
                  "is watching. Without a margin the focus flips on almost every landed punch " +
-                 "and the framing jitters between exchanges.")]
+                 "and the framing jitters between exchanges. Only used as the fallback, when " +
+                 "no director is present to pick the pair.")]
         [SerializeField] private int _focusSwitchMargin = 3;
+
+        [Header("Shots")]
+        [Tooltip("Framing padding multiplier for the tight two-shot. Below 1: a duel is the " +
+                 "one time the fighters should fill the frame.")]
+        [Range(0.2f, 2f)]
+        [SerializeField] private float _duelPaddingScale = 0.55f;
+
+        [Tooltip("Framing padding multiplier for the impact cut, tighter still.")]
+        [Range(0.2f, 2f)]
+        [SerializeField] private float _impactPaddingScale = 0.35f;
+
+        [Tooltip("Framing padding multiplier for the establishing shot. Above 1 so a wide " +
+                 "shot reads as deliberate air rather than as the camera failing to keep up.")]
+        [Range(0.5f, 3f)]
+        [SerializeField] private float _widePaddingScale = 1.6f;
 
         private MatchModel _match;
         private BoxerSpawnPoints _spawnPoints;
+
+        /// <summary>
+        /// The director's decision, when there is one. Optional: a scene with no director
+        /// falls back to picking the most hurt fighter, which is what this did before one
+        /// existed and is still the right answer with nothing better available.
+        /// </summary>
+        private DirectorModel _director;
 
         private Vector2 _smoothedCenter;
         private float _smoothedSize;
@@ -95,10 +118,11 @@ namespace PoRumble.Views
         private int _focusId = -1;
 
         [Inject]
-        public void Construct(MatchModel match, BoxerSpawnPoints spawnPoints)
+        public void Construct(MatchModel match, BoxerSpawnPoints spawnPoints, DirectorModel director)
         {
             _match = match;
             _spawnPoints = spawnPoints;
+            _director = director;
         }
 
         /// <summary>
@@ -142,7 +166,7 @@ namespace PoRumble.Views
             float maxByRing = aspect < 1f ? fitWhole : cropToFill;
 
             float desiredSize = Mathf.Clamp(
-                extent + _framingPadding,
+                extent + _framingPadding * ResolvePaddingScale(),
                 ResolveMinimumSize(aspect),
                 Mathf.Min(_maxOrthographicSize, maxByRing));
 
@@ -199,6 +223,70 @@ namespace PoRumble.Views
             return aspect < 1f ? _portraitMinOrthographicSize : _minOrthographicSize;
         }
 
+        /// <summary>
+        /// How much air the current shot wants around the fighters.
+        ///
+        /// The shot changes the padding rather than the orthographic size directly, so every
+        /// clamp above it still applies: a tight shot on two fighters backed into a corner
+        /// still cannot point the camera out of the ring, and a wide shot still cannot pull
+        /// out past what the ring-fit rule allows. Driving the size would have to repeat all
+        /// of that, and would get it subtly wrong in portrait.
+        /// </summary>
+        private float ResolvePaddingScale()
+        {
+            if (_director == null)
+            {
+                return 1f;
+            }
+
+            switch (_director.Shot.Value)
+            {
+                case ShotType.Duel:
+                    return _duelPaddingScale;
+                case ShotType.Impact:
+                    return _impactPaddingScale;
+                case ShotType.Wide:
+                    return _widePaddingScale;
+                default:
+                    return 1f;
+            }
+        }
+
+        /// <summary>
+        /// The fighter the director has chosen, or null when it has chosen nobody or asked
+        /// for the establishing shot — where the answer is deliberately "everyone", which is
+        /// what a null focus already means to <see cref="TryMeasureFight"/>.
+        /// </summary>
+        private BoxerModel ResolveDirectedFocus(IReadOnlyList<BoxerModel> boxers)
+        {
+            if (!_focusOnFight || _director == null || _director.Shot.Value == ShotType.Wide)
+            {
+                return null;
+            }
+
+            return FindAlive(boxers, _director.FocusId);
+        }
+
+        private static BoxerModel FindAlive(IReadOnlyList<BoxerModel> boxers, int boxerId)
+        {
+            if (boxerId == DirectorModel.NOBODY)
+            {
+                return null;
+            }
+
+            for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
+            {
+                BoxerModel boxer = boxers[boxerIndex];
+
+                if (boxer.Id == boxerId && boxer.IsAlive.Value)
+                {
+                    return boxer;
+                }
+            }
+
+            return null;
+        }
+
         private static float CurrentAspect()
         {
             return Mathf.Max(0.1f, Screen.width / (float)Mathf.Max(1, Screen.height));
@@ -241,7 +329,22 @@ namespace PoRumble.Views
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
             int humanId = _spawnPoints != null ? _spawnPoints.HumanBoxerId : -1;
 
-            BoxerModel focus = _focusOnFight ? ResolveFocus(boxers, humanId) : null;
+            // Who the camera watches, in order of who has the strongest claim.
+            //
+            // The human first and unconditionally: you should never have to hunt the ring for
+            // yourself, and no amount of drama elsewhere outranks that. Then the director's
+            // pair, which has weighed proximity, health, a cocked haymaker and what has just
+            // landed - and is the same choice the cut camera is acting on, so the two can
+            // never end up framing different fights. The old health-only pick survives only
+            // as the fallback for a scene with no director at all.
+            BoxerModel human = _focusOnFight ? FindAlive(boxers, humanId) : null;
+            BoxerModel directed = human != null ? null : ResolveDirectedFocus(boxers);
+            BoxerModel focus = human != null ? human : directed;
+
+            if (focus == null && _director == null && _focusOnFight)
+            {
+                focus = ResolveFocus(boxers, humanId);
+            }
 
             Vector2 min = new(float.MaxValue, float.MaxValue);
             Vector2 max = new(float.MinValue, float.MinValue);
@@ -249,10 +352,23 @@ namespace PoRumble.Views
             Vector2 playerPosition = Vector2.zero;
             bool playerAlive = false;
 
-            // Whoever is nearest the focus is kept in frame no matter how far away they are.
+            // Whoever the focus is fighting is kept in frame no matter how far away they are.
             // A focus fighter alone in shot is not a fight, and the moment the last two are
             // circling at range is exactly when the camera must not cut one of them off.
-            BoxerModel nearest = focus == null ? null : NearestTo(boxers, focus);
+            //
+            // The director names the rival outright; without one, the nearest living boxer is
+            // the best guess available.
+            BoxerModel nearest = null;
+
+            if (focus != null)
+            {
+                nearest = directed != null ? FindAlive(boxers, _director.RivalId) : null;
+
+                if (nearest == null)
+                {
+                    nearest = NearestTo(boxers, focus);
+                }
+            }
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {

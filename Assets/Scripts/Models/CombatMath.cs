@@ -8,11 +8,27 @@ namespace PoRumble.Models
         public readonly int Damage;
         public readonly bool IsCloseRange;
 
+        /// <summary>
+        /// Which side of the defender's face the attacker was standing on: -1 hard to the
+        /// defender's left, +1 hard to their right, 0 straight down the middle.
+        ///
+        /// Computed here because the face-arc test already has both the facing and the
+        /// approach vector in hand; working it out again anywhere else would mean repeating
+        /// the one piece of geometry that decided whether this was a hit at all.
+        /// </summary>
+        public readonly float ApproachLateral;
+
         public HitResult(bool isHit, int damage, bool isCloseRange)
+            : this(isHit, damage, isCloseRange, 0f)
+        {
+        }
+
+        public HitResult(bool isHit, int damage, bool isCloseRange, float approachLateral)
         {
             IsHit = isHit;
             Damage = damage;
             IsCloseRange = isCloseRange;
+            ApproachLateral = approachLateral;
         }
 
         public static HitResult Miss => new(false, 0, false);
@@ -130,7 +146,15 @@ namespace PoRumble.Models
             bool isCloseRange = range <= settings.CloseRangeThreshold;
             int damage = isCloseRange ? settings.ClosePunchDamage : settings.LongPunchDamage;
 
-            return new HitResult(true, damage, isCloseRange);
+            // Rotating the facing by -90 degrees gives the defender's own right-hand side, so
+            // projecting the approach onto it reads positive for a punch coming in over their
+            // right. Taken from the same normalised approach vector the arc test just used,
+            // which is what keeps "this landed" and "this landed on that side" from ever
+            // disagreeing about where the attacker was standing.
+            Vector2 defendersRight = new(facing.y, -facing.x);
+            float approachLateral = Vector2.Dot(headToAttacker.normalized, defendersRight);
+
+            return new HitResult(true, damage, isCloseRange, approachLateral);
         }
 
 

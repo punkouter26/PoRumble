@@ -23,6 +23,7 @@ namespace PoRumble.Views
             builder.RegisterMessageBroker<BoxerDamagedMessage>(options);
             builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             builder.RegisterMessageBroker<MatchEndedMessage>(options);
+            builder.RegisterMessageBroker<PunchThrownMessage>(options);
 
             builder.RegisterInstance(_boxerConfig);
             builder.Register<MatchModel>(Lifetime.Singleton);
@@ -30,6 +31,8 @@ namespace PoRumble.Views
             builder.Register<MatchFlowModel>(Lifetime.Singleton);
             builder.Register<RosterModel>(Lifetime.Singleton);
             builder.Register<RatingModel>(Lifetime.Singleton);
+            builder.Register<FightStatsModel>(Lifetime.Singleton);
+            builder.Register<DirectorModel>(Lifetime.Singleton);
 
             builder.Register<BoxerSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<CombatSystem>(Lifetime.Singleton).AsSelf();
@@ -38,6 +41,8 @@ namespace PoRumble.Views
             builder.Register<SpawnSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<RosterSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<RatingSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<FightStatsSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<DirectorSystem>(Lifetime.Singleton).AsSelf();
 
             // The league table on disk. A plain C# class rather than a component, so it is
             // registered as an instance; RatingSystem only ever sees the interface.
@@ -61,6 +66,18 @@ namespace PoRumble.Views
                 // would resolve with the standings silently untouched.
                 container.Resolve<RatingSystem>();
 
+                // FightStatsSystem is in the same position again: it only ever subscribes, so
+                // nothing injects it. MatchDirector does tick it, but VContainer resolves
+                // MatchDirector's own dependencies lazily too, and a board that only fills in
+                // once something happens to ask for it would miss the opening exchange.
+                //
+                // DirectorSystem is not in that position - MatchDirector takes it directly -
+                // but it is resolved here anyway so the two halves of the loop come up
+                // together, and so its subscriptions are live before the first bell rather
+                // than from whenever the director happened to be built.
+                container.Resolve<FightStatsSystem>();
+                container.Resolve<DirectorSystem>();
+
                 // Presentation components are all optional: the training scenes deliberately
                 // have no HUD, no camera rig and no feedback layer, and
                 // RegisterComponentInHierarchy would throw when they are absent.
@@ -75,6 +92,8 @@ namespace PoRumble.Views
                 InjectOptional<RosterSelectionView>(container);
                 InjectOptional<StandingsHudView>(container);
                 InjectOptional<KnockoutMoodView>(container);
+                InjectOptional<FightStatsHudView>(container);
+                InjectOptional<CameraDirectorView>(container);
             });
         }
 

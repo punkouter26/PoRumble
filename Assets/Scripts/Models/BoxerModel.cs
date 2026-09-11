@@ -62,6 +62,31 @@ namespace PoRumble.Models
         public bool CanDodge => DodgeWindow <= 0f && DodgeCooldown <= 0f;
 
         /// <summary>
+        /// How swollen each side of the face is, 0 clean and 1 shut. Left and right are kept
+        /// apart because that is the whole tell: a fighter who has spent a match circling into
+        /// a right hand should be marked on one side, and a single averaged number would
+        /// render every fighter identically puffy.
+        ///
+        /// Plain floats rather than ReactiveProperties. They only move when a punch lands, but
+        /// the renderer that reads them is already running an unscaled effect loop for the hit
+        /// flash and the dissolve, so a subscription would wake a second path to do work that
+        /// path is doing anyway.
+        /// </summary>
+        public float SwellLeft { get; set; }
+
+        public float SwellRight { get; set; }
+
+        /// <summary>
+        /// How cut the face is, 0..1. Opened by heavy single punches rather than by volume:
+        /// a cut is a discrete event in a way that swelling is not, which is why it does not
+        /// simply track accumulated damage.
+        /// </summary>
+        public float Cut { get; set; }
+
+        /// <summary>The worse of the two sides, which is what a single-value read wants.</summary>
+        public float Swell => SwellLeft > SwellRight ? SwellLeft : SwellRight;
+
+        /// <summary>
         /// Physical differences from the shipped tuning — power, chin, speed, breath.
         ///
         /// Set once when a contestant takes this seat and read by the systems every tick. It
@@ -139,6 +164,9 @@ namespace PoRumble.Models
             DodgeWindow = 0f;
             DodgeCooldown = 0f;
             DodgeDirection = Vector2.zero;
+            SwellLeft = 0f;
+            SwellRight = 0f;
+            Cut = 0f;
             LeftArm.ForceRetract();
             RightArm.ForceRetract();
             Health.Value = maxHealth;

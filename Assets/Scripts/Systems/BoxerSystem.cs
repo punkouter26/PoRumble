@@ -21,6 +21,7 @@ namespace PoRumble.Systems
         private readonly IPublisher<PunchBlockedMessage> _blockedPublisher;
         private readonly IPublisher<HaymakerThrownMessage> _haymakerPublisher;
         private readonly IPublisher<BoxerDodgedMessage> _dodgedPublisher;
+        private readonly IPublisher<PunchThrownMessage> _thrownPublisher;
 
         // Hits are buffered for the whole tick so that punches thrown on the same tick all
         // resolve against the state at the start of that tick. Without this, whichever boxer
@@ -36,7 +37,8 @@ namespace PoRumble.Systems
             IPublisher<PunchEvadedMessage> evadedPublisher,
             IPublisher<PunchBlockedMessage> blockedPublisher,
             IPublisher<HaymakerThrownMessage> haymakerPublisher,
-            IPublisher<BoxerDodgedMessage> dodgedPublisher)
+            IPublisher<BoxerDodgedMessage> dodgedPublisher,
+            IPublisher<PunchThrownMessage> thrownPublisher)
         {
             _match = match;
             _config = config;
@@ -45,6 +47,7 @@ namespace PoRumble.Systems
             _blockedPublisher = blockedPublisher;
             _haymakerPublisher = haymakerPublisher;
             _dodgedPublisher = dodgedPublisher;
+            _thrownPublisher = thrownPublisher;
         }
 
         public void SetMoveInput(int boxerId, Vector2 moveInput)
@@ -229,6 +232,7 @@ namespace PoRumble.Systems
             {
                 requested.TryPunch(chargeLevel);
                 SpendPunchStamina(boxer);
+                ReportThrown(boxer, chargeLevel);
                 return true;
             }
 
@@ -238,10 +242,24 @@ namespace PoRumble.Systems
             {
                 other.TryPunch(chargeLevel);
                 SpendPunchStamina(boxer);
+                ReportThrown(boxer, chargeLevel);
                 return true;
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Announces a fist starting to travel.
+        ///
+        /// Published immediately rather than buffered into <see cref="_pendingHits"/>, because
+        /// unlike a landed punch this changes nothing: the buffer exists so that simultaneous
+        /// knockouts both count, and a throw cannot knock anybody out. Publishing on the spot
+        /// also means the count is right even for a punch that resolves on a later tick.
+        /// </summary>
+        private void ReportThrown(BoxerModel boxer, float chargeLevel)
+        {
+            _thrownPublisher.Publish(new PunchThrownMessage(boxer.Id, boxer.Position, chargeLevel));
         }
 
         private const float WORKING_RECOVERY_SCALE = 0.5f;
@@ -633,7 +651,8 @@ namespace PoRumble.Systems
                     result.IsCloseRange,
                     glovePosition,
                     isCounter,
-                    arm.ChargeLevel));
+                    arm.ChargeLevel,
+                    result.ApproachLateral));
 
                 return;
             }

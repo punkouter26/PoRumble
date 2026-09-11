@@ -26,9 +26,9 @@ namespace PoRumble.Views
 
         [Header("Role colours")]
         [Tooltip("Learning agents.")]
-        [SerializeField] private Color _rlColor = new(0.11f, 0.11f, 0.13f);
+        [SerializeField] private Color _rlColor = new(0.12f, 0.75f, 0.25f);
         [Tooltip("The hand-written sparring partner.")]
-        [SerializeField] private Color _scriptedColor = new(0.95f, 0.95f, 0.93f);
+        [SerializeField] private Color _scriptedColor = new(0.85f, 0.12f, 0.12f);
 
         [Header("Impact")]
         [Tooltip("Seconds the white hit flash takes to fade.")]
@@ -48,6 +48,19 @@ namespace PoRumble.Views
         [Tooltip("Beats per second the counter outline pulses at, so it reads as a timer " +
                  "running out rather than as a state that is simply on.")]
         [SerializeField] private float _counterPulseHz = 6f;
+
+        [Header("Damage")]
+        [Tooltip("Health fraction at which a fighter is considered fully hurt for the purpose " +
+                 "of dropping their guard. Above zero because a boxer on their last point of " +
+                 "health should already have their hands down, not reach that state as they " +
+                 "fall.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _hurtGuardThreshold = 0.35f;
+
+        [Tooltip("Head sprites are authored looking up the screen. Tick this if a face is " +
+                 "ever cropped mirrored, so swelling stays on the cheek that was actually " +
+                 "being hit - the shader has no way to know which way round a photograph went.")]
+        [SerializeField] private bool _mirrorFaceDamage;
 
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =
@@ -69,9 +82,13 @@ namespace PoRumble.Views
         private static readonly int DissolveAmountId = Shader.PropertyToID("_DissolveAmount");
         private static readonly int OutlineAmountId = Shader.PropertyToID("_OutlineAmount");
         private static readonly int OutlineColorId = Shader.PropertyToID("_OutlineColor");
+        private static readonly int SwellLeftId = Shader.PropertyToID("_SwellLeft");
+        private static readonly int SwellRightId = Shader.PropertyToID("_SwellRight");
+        private static readonly int CutAmountId = Shader.PropertyToID("_CutAmount");
 
         private readonly CompositeDisposable _disposables = new();
 
+        private BoxerConfig _config;
         private BoxerModel _model;
         private MaterialPropertyBlock _propertyBlock;
         private Color _aliveColor = Color.white;
@@ -98,8 +115,9 @@ namespace PoRumble.Views
         private bool _isPlayer;
 
         [Inject]
-        public void Construct(ISubscriber<BoxerDamagedMessage> damagedSubscriber)
+        public void Construct(BoxerConfig config, ISubscriber<BoxerDamagedMessage> damagedSubscriber)
         {
+            _config = config;
             damagedSubscriber.Subscribe(OnBoxerDamaged).AddTo(_disposables);
         }
 
@@ -212,6 +230,8 @@ namespace PoRumble.Views
                 return;
             }
 
+            PushFatigue();
+
             float facingDegrees = Mathf.Atan2(_model.Facing.y, _model.Facing.x) * Mathf.Rad2Deg - 90f;
 
             // Moved through physics rather than by assigning a transform, because the fists are
@@ -296,6 +316,47 @@ namespace PoRumble.Views
             if (!_effectsActive)
             {
                 ClearEffectProperties();
+            }
+        }
+
+        /// <summary>
+        /// Tells both arms how spent this fighter is, so the guard visibly drops as the match
+        /// wears them down.
+        ///
+        /// The worse of breath and health rather than either alone, because they say different
+        /// things and both end with the hands coming down: a fighter who has punched themselves
+        /// out has no strength to hold a guard, and one who has been hurt has no inclination to.
+        ///
+        /// Only the drawn pose changes. Blocking is decided in CombatMath.ArmBlocks against the
+        /// straight shoulder-to-glove segment the model believes in, and the model does not
+        /// know this happened - so a tired fighter looks like they are guarding worse without
+        /// the hit maths quietly agreeing, which would be a balance change smuggled in as a
+        /// visual one and would put the shipped policy out of calibration again.
+        /// </summary>
+        private void PushFatigue()
+        {
+            if (_config == null)
+            {
+                return;
+            }
+
+            float breath = 1f - Mathf.Clamp01(_model.Stamina.Value);
+
+            float healthRatio = _model.Health.Value / (float)Mathf.Max(1, _config.MaxHealth);
+            float hurt = _hurtGuardThreshold > 0f
+                ? Mathf.Clamp01(1f - healthRatio / _hurtGuardThreshold)
+                : 0f;
+
+            float fatigue = Mathf.Max(breath, hurt);
+
+            if (_leftArmView != null)
+            {
+                _leftArmView.SetFatigue(fatigue);
+            }
+
+            if (_rightArmView != null)
+            {
+                _rightArmView.SetFatigue(fatigue);
             }
         }
 
@@ -389,8 +450,47 @@ namespace PoRumble.Views
                 _propertyBlock.SetFloat(DissolveAmountId, dissolve);
                 _propertyBlock.SetFloat(OutlineAmountId, outline);
                 _propertyBlock.SetColor(OutlineColorId, outlineColor);
+
+                // Damage is written onto the head and nowhere else. Partly because a bruise
+                // on a glove would be nonsense, and partly for cost: swelling has no end
+                // condition inside a match, so whatever carries it stays out of the shared
+                // sprite batch until the bell. One renderer per marked fighter is affordable;
+                // all nine would be the ninety-draw-call trap this loop exists to avoid.
+                bool isHead = _headRenderer != null && target == _headRenderer;
+                WriteDamage(_propertyBlock, isHead);
+
                 target.SetPropertyBlock(_propertyBlock);
             }
+        }
+
+        /// <summary>
+        /// Writes the face's accumulated swelling and cut into a block, or zeroes them for a
+        /// renderer that is not the head.
+        /// </summary>
+        private void WriteDamage(MaterialPropertyBlock block, bool isHead)
+        {
+            if (!isHead || _model == null)
+            {
+                block.SetFloat(SwellLeftId, 0f);
+                block.SetFloat(SwellRightId, 0f);
+                block.SetFloat(CutAmountId, 0f);
+                return;
+            }
+
+            float left = _mirrorFaceDamage ? _model.SwellRight : _model.SwellLeft;
+            float right = _mirrorFaceDamage ? _model.SwellLeft : _model.SwellRight;
+
+            block.SetFloat(SwellLeftId, left);
+            block.SetFloat(SwellRightId, right);
+            block.SetFloat(CutAmountId, _model.Cut);
+        }
+
+        /// <summary>True once this fighter carries a mark worth keeping on screen.</summary>
+        private bool HasVisibleDamage()
+        {
+            return _model != null
+                   && _model.IsAlive.Value
+                   && (_model.Swell > 0.01f || _model.Cut > 0.01f);
         }
 
         private void ClearEffectProperties()
@@ -409,6 +509,19 @@ namespace PoRumble.Views
                     target.SetPropertyBlock(null);
                 }
             }
+
+            // Everything else here switches itself off, and damage does not: a marked face
+            // stays marked until the bell. So the head gets its block put straight back,
+            // carrying the bruise and nothing else, while the other eight renderers go back
+            // into the shared batch where they belong.
+            if (_headRenderer == null || !HasVisibleDamage())
+            {
+                return;
+            }
+
+            _headRenderer.GetPropertyBlock(_propertyBlock);
+            WriteDamage(_propertyBlock, true);
+            _headRenderer.SetPropertyBlock(_propertyBlock);
         }
 
         /// <summary>

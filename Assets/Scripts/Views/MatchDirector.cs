@@ -26,6 +26,8 @@ namespace PoRumble.Views
         private readonly MatchFlowModel _flow;
         private readonly BoxerConfig _config;
         private readonly BoxerSpawnPoints _spawnPoints;
+        private readonly FightStatsSystem _statsSystem;
+        private readonly DirectorSystem _directorSystem;
 
         /// <summary>
         /// Physics steps of margin between resolving a match on health and the point
@@ -65,7 +67,9 @@ namespace PoRumble.Views
             MatchFlowSystem flowSystem,
             MatchFlowModel flow,
             BoxerConfig config,
-            BoxerSpawnPoints spawnPoints)
+            BoxerSpawnPoints spawnPoints,
+            FightStatsSystem statsSystem,
+            DirectorSystem directorSystem)
         {
             _spawnSystem = spawnSystem;
             _boxerSystem = boxerSystem;
@@ -75,6 +79,8 @@ namespace PoRumble.Views
             _flow = flow;
             _config = config;
             _spawnPoints = spawnPoints;
+            _statsSystem = statsSystem;
+            _directorSystem = directorSystem;
         }
 
         /// <summary>True in a training scene, where the presentation loop is skipped.</summary>
@@ -131,7 +137,21 @@ namespace PoRumble.Views
                 return;
             }
 
-            _flowSystem.Tick(Time.unscaledDeltaTime);
+            float delta = Time.unscaledDeltaTime;
+
+            _flowSystem.Tick(delta);
+
+            // Both are presentation and both are ticked here rather than from the views that
+            // read them, because there may be no such view: the board and the cut camera are
+            // optional scene objects, and a decayed momentum reading that only exists while
+            // somebody is looking at it is not a reading.
+            //
+            // Skipped entirely in training for the same reason the flow loop is. A training
+            // scene has no camera to direct and no board to fill in, and the tension score is
+            // quadratic in the roster - forty-five pairs a frame is not much, but it is not
+            // nothing either, and it would be bought for no return at all.
+            _statsSystem.Tick(delta);
+            _directorSystem.Tick(delta);
         }
 
         public void FixedTick()

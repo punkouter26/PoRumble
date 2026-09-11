@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One line of the telemetry board: a figure for each fighter with the stat's name between them.
+
+  The name sits in the middle rather than at the left so the two columns of figures line up
+  against the edges the fighters' names are already anchored to. A broadcast stat bar is read
+  by comparing the two numbers, and the eye does that fastest when they are as far apart as the
+  panel allows and nothing changes position between them.
+
+  Cloned once per stat. Nothing here is per fighter, so the same template serves every row.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="row" class="stats__row" picking-mode="Ignore">
+        <ui:Label name="value-a" class="text text--sm text--bold stats__value" picking-mode="Ignore" />
+        <ui:Label name="label" class="text text--xs text--muted stats__label" picking-mode="Ignore" />
+        <ui:Label name="value-b" class="text text--sm text--bold stats__value stats__value--right" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

@@ -1965,8 +1965,8 @@ MonoBehaviour:
   _leftArmView: {fileID: 2749685362711538530}
   _rightArmView: {fileID: 7672527761864111436}
   _eliminatedColor: {r: 0.22, g: 0.24, b: 0.22, a: 1}
-  _rlColor: {r: 0.11, g: 0.11, b: 0.13, a: 1}
-  _scriptedColor: {r: 0.95, g: 0.95, b: 0.93, a: 1}
+  _rlColor: {r: 0.12, g: 0.75, b: 0.25, a: 1}
+  _scriptedColor: {r: 0.85, g: 0.12, b: 0.12, a: 1}
   _flashSeconds: 0.11
   _dissolveSeconds: 0.9
   _counterOutlineColor: {r: 1, g: 0.85, b: 0.25, a: 1}

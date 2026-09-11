@@ -50,13 +50,73 @@ half PoRumbleInnerEdge(TEXTURE2D_PARAM(tex, samp), float2 uv, float2 step, half 
     return saturate(ownAlpha - neighbour);
 }
 
+// Swelling and a cut, drawn into the sprite's own UV space.
+//
+// UV space rather than world space, and that is the point of doing it in the shader at all:
+// the head is a child of the torso and turns with the fighter, so a mark placed at uv.x 0.25
+// stays on the same cheek for the whole match however the boxer pivots. Anything computed
+// from a world direction would slide around the head as the fighter turned.
+//
+// The vertical band keeps both marks up around the eye and brow. A swelling that covered the
+// whole sprite evenly would read as the fighter having been recoloured rather than hit, and
+// the faces are circular-cropped photographs, so the interesting half of the sprite is the
+// top of it.
+//
+// Note the side convention: uv.x below 0.5 is taken as the fighter's left. If a head sprite
+// is ever authored mirrored, the two arguments swap at the call site rather than here - the
+// shader has no way to know which way round a photograph was cropped.
+half3 PoRumbleApplyBruise(
+    half3 shaded,
+    float2 uv,
+    half swellLeft,
+    half swellRight,
+    half cut,
+    half4 bruiseColor)
+{
+    // Wide, soft side masks that overlap in the middle, so a punch straight down the centre
+    // marks both cheeks a little instead of picking one at random.
+    half leftMask = smoothstep(0.62, 0.16, uv.x);
+    half rightMask = smoothstep(0.38, 0.84, uv.x);
+
+    // A soft horizontal band across the eyes. Gaussian rather than a smoothstep pair because
+    // it has to fall off in both directions and a single exp is cheaper than two steps.
+    half fromBrow = (uv.y - 0.60) * 3.2;
+    half band = exp(-fromBrow * fromBrow);
+
+    half swelling = saturate((leftMask * swellLeft + rightMask * swellRight) * band);
+
+    // Multiplied toward the bruise colour rather than lerped to it: a bruise darkens the skin
+    // that is already there. Lerping would paint the same flat purple onto every fighter and
+    // lose the photograph underneath.
+    shaded = lerp(shaded, shaded * bruiseColor.rgb, swelling);
+
+    if (cut > 0.0)
+    {
+        // A short diagonal above the brow. Signed distance to a sloped line, clipped to the
+        // middle of the face so it reads as a cut over one eye rather than as a scratch
+        // across the whole head.
+        half toLine = abs((uv.y - 0.74) - (uv.x - 0.5) * 0.30);
+        half streak = smoothstep(0.035, 0.004, toLine);
+        half span = smoothstep(0.16, 0.30, uv.x) * smoothstep(0.74, 0.60, uv.x);
+
+        shaded = lerp(shaded, bruiseColor.rgb * 0.35, saturate(streak * span * cut));
+    }
+
+    return shaded;
+}
+
 // Applies rim light, outline, hit flash and knockout dissolve on top of a shaded sprite.
 //
 // The order is deliberate and each step depends on the one before it:
+//   bruise   - accumulated damage, which is part of the sprite by the time anything else runs
 //   rim      - shape, so it sits under everything that is an event
 //   outline  - a state tell (counter window, the player's own fighter), over the shape
 //   flash    - the impact itself, which should wash out both of the above
 //   dissolve - last, because it eats alpha and nothing may draw into what it removed
+//
+// The bruise goes first because it is the only one of the five that is a change to the
+// fighter rather than a thing happening to them: a rim light should trace a swollen face,
+// and a hit flash should white it out, which only works in that order.
 //
 // normalTS is the tangent-space normal already unpacked by the caller. The unlit pass has no
 // normal map bound, so it passes a flat (0,0,1) and the rim term falls out to zero on its own.
@@ -73,8 +133,18 @@ half4 ApplySpriteFX(
     half rimPower,
     half4 outlineColor,
     half outlineAmount,
-    half innerEdge)
+    half innerEdge,
+    half swellLeft,
+    half swellRight,
+    half cutAmount,
+    half4 bruiseColor)
 {
+    if (swellLeft > 0.0 || swellRight > 0.0 || cutAmount > 0.0)
+    {
+        shaded.rgb = PoRumbleApplyBruise(
+            shaded.rgb, uv, swellLeft, swellRight, cutAmount, bruiseColor);
+    }
+
     // Rim from the normal map's z: 1 where the surface faces the viewer, 0 where it has
     // turned side-on. Now that the sprites carry real domes this traces the actual volume of
     // a glove or a shoulder, which is the whole reason the normal maps were worth generating.

@@ -48,6 +48,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchBlockedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
+            builder.RegisterMessageBroker<PunchThrownMessage>(options);
             _container = builder.Build();
 
             _config = ScriptableObject.CreateInstance<BoxerConfig>();
@@ -60,7 +61,8 @@ namespace PoRumble.Tests
                 _container.Resolve<IPublisher<PunchEvadedMessage>>(),
                 _container.Resolve<IPublisher<PunchBlockedMessage>>(),
                 _container.Resolve<IPublisher<HaymakerThrownMessage>>(),
-                _container.Resolve<IPublisher<BoxerDodgedMessage>>());
+                _container.Resolve<IPublisher<BoxerDodgedMessage>>(),
+                _container.Resolve<IPublisher<PunchThrownMessage>>());
 
             _landed.Clear();
             _blocked.Clear();

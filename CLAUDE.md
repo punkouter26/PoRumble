@@ -28,12 +28,22 @@ Renderer, so 3D lit materials will not light correctly.
 | Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 131 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 165 EditMode tests |
 
-**Art is in Git LFS.** A fresh clone that has not run `git lfs pull` leaves every `.png` as a
-129-byte pointer file, and Unity imports those as nothing at all: the sprites silently resolve
-to null, the fighters render as invisible transforms and the prefab looks broken rather than
-unfetched. `ls -la Assets/Art/Sprites` tells you immediately - a real sprite is kilobytes.
+**Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
+leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
+sprites silently resolve to null, the fighters render as invisible transforms and the prefab
+looks broken rather than unfetched. `ls -la Assets/Art/Sprites` tells you immediately - a real
+sprite is kilobytes.
+
+The **fonts fail differently and more confusingly**, because the half of them that is not in
+LFS still works. The SDF `.asset` atlases are committed as ordinary files and import fine; only
+the source `.ttf` faces are LFS. TextCore needs the face to initialise the atlas, so an
+unfetched clone floods the console with `Failed to load font 'Barlow Condensed' (style:
+'Medium'). The font face could not be initialized.` - one per text element per frame - and the
+entire HUD renders as panels and bars with no text in them at all. It looks like a stylesheet
+problem and is not. `git lfs pull` is the whole fix; `ls -la Assets/Art/Fonts` is the check,
+and a real face is ~100KB against a 131-byte pointer.
 
 **Two configs on purpose**, though they now carry the same numbers. `BoxerConfig.asset` is
 the game; `BoxerConfig_Training.asset` is what the training scenes load, so the curriculum
@@ -94,10 +104,24 @@ MatchFlowSystem ─► MatchFlowModel.Phase ─┬─► MatchDirector   (gates 
                                          ├─► MatchHudView    (countdown, result, restart prompt)
                                          └─► CombatFeedbackView (bell, countdown beeps)
 
-PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
+PunchThrown / PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
         ├─► BoxerAgentView      (reward shaping — as before)
         ├─► CombatFeedbackView  (hitstop, impulse shake, particles, audio)
-        └─► PlayerStatusHudView (damage vignette, counter flash)
+        ├─► PlayerStatusHudView (damage vignette, counter flash)
+        ├─► FightStatsSystem    (the telemetry board's tallies)
+        └─► DirectorSystem      (cuts the camera on a knockout or a landed haymaker)
+```
+
+On top of that sits the broadcast layer, which is derived state and nothing else — delete all
+of it and the ring behaves identically, which is what makes it safe to add to a project whose
+shipped policy is calibrated against that ring.
+
+```
+FightStatsSystem ─► FightStatsModel ──┬─► FightStatsHudView (the telemetry board)
+                                      └─► DirectorSystem    (recent damage → tension)
+
+DirectorSystem ─► DirectorModel ──┬─► SpectatorCameraView (which pair, how tight)
+                                  └─► CameraDirectorView  (the hard cut to ImpactCam)
 ```
 
 ### Things that are easy to get wrong
@@ -377,11 +401,23 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
 
 ### Custom shader
 
-`PoRumble/SpriteLitFX` is a variant of URP's Sprite-Lit-Default adding four effects the stock
+`PoRumble/SpriteLitFX` is a variant of URP's Sprite-Lit-Default adding five effects the stock
 one cannot express: `_FlashAmount` (white hit flash), `_DissolveAmount` (knockout burn-away,
-procedural noise, no extra texture), `_RimAmount` (rim light read from the sprite's normal map)
-and `_OutlineAmount` (an inner outline). Built as a variant rather than from scratch so the
-fighters keep responding to 2D lights and keep writing normals.
+procedural noise, no extra texture), `_RimAmount` (rim light read from the sprite's normal map),
+`_OutlineAmount` (an inner outline) and the damage block — `_SwellLeft` / `_SwellRight` /
+`_CutAmount` / `_BruiseColor`. Built as a variant rather than from scratch so the fighters keep
+responding to 2D lights and keep writing normals.
+
+**The bruise is drawn in the sprite's own UV space, and that is why it is in the shader at
+all.** The head is a child of the torso and turns with the fighter, so a mark placed at
+`uv.x` 0.25 stays on the same cheek for the whole match however the boxer pivots; anything
+computed from a world direction would slide around the head as they turned. The side
+convention is that `uv.x` below 0.5 is the fighter's left, which no shader can verify — so
+`BoxerView._mirrorFaceDamage` exists for a face that is ever cropped mirrored.
+
+**The bruise is applied first of the five**, before the rim. It is the only one that is a
+change to the fighter rather than a thing happening to them: a rim light should trace a
+swollen face and a hit flash should white it out, which only works in that order.
 
 **Rim and outline say different things on purpose.** The rim is *shape* — it traces the volume
 the normal map describes and is set once on the material (0.38). The outline is *state*, driven
@@ -406,7 +442,10 @@ nobody.
 Two constraints when touching it:
 
 1. **The `UnityPerMaterial` CBUFFER must be byte-identical in all three passes.** Unity
-   silently drops a shader out of the SRP Batcher when pass layouts disagree.
+   silently drops a shader out of the SRP Batcher when pass layouts disagree. The damage block
+   was added to all three together for exactly that reason — it is the easiest of the five to
+   add to only the pass you happen to be looking at, and doing so costs the batcher with no
+   error anywhere.
 2. **`BoxerView` clears its MaterialPropertyBlock the moment an effect ends.** A property
    block takes a renderer out of the shared sprite batch, so leaving one set permanently
    would turn ninety renderers into ninety draw calls for the whole match.
@@ -429,6 +468,68 @@ every one of them.
 | `RosterCard` | `RosterSelectionView` | The fight card — pick who is in the ring (**Tab**) |
 | `KnockoutMood` | `KnockoutMoodView` | Blends a desaturated, vignetted grade **and** the mixer's `Knockout` snapshot for the knockout hold |
 | `Standings` | `StandingsHudView` | Top three of the Elo table |
+| `FightStats` | `FightStatsHudView` | The telemetry board — thrown/landed/connect/blocked/slips/damage for the pair the director is watching, plus a momentum bar and sparkline |
+| `CameraRig` | `CameraDirectorView` | Owns `ImpactCam` and hands it the frame on a knockout or a landed haymaker |
+
+## The Camera Director
+
+`DirectorSystem` picks a pair and a shot; two views act on the decision and neither makes one
+of its own. `TensionMath.ScorePair` is the rule, and it is pure and static for the same reason
+`CombatMath` and `ThreatMath` are — the camera and its tests must agree on where the fight is.
+
+- **Proximity scales the whole score rather than merely contributing to it.** Without that, a
+  dying fighter alone across the ring outscores a healthy pair in close, and the camera frames
+  the most hurt boxer plus whoever happens to be nearest them — with the ring in between.
+  `TensionMathTests.ADyingFighterAloneAcrossTheRingLosesToAHealthyPairInClose` pins it.
+- **Three things make it a director rather than a twitch**, and all three are load-bearing: a
+  minimum shot length (1.6s), hysteresis on the pair (tension moves several times a second
+  across forty-five pairs, so the best one by a hair changes constantly), and a hard
+  preemption for impacts — a knockout the camera reaches a second and a half late is one it
+  missed.
+- **`Wide`, `Tracking` and `Duel` are the same camera at different padding; only `Impact` is a
+  second camera.** The shot scales `SpectatorCameraView._framingPadding` rather than writing
+  an orthographic size, so every clamp above it still applies — a tight shot on two fighters
+  in a corner still cannot point the camera out of the ring, and the portrait/landscape
+  ring-fit rule does not have to be repeated.
+- **The brain's default blend is `Cut`, and the two cameras' priorities must not tie.**
+  `SpectatorCam` is 10, `ImpactCam` rests at 0 and is raised to 30. Both shipped at the
+  default 0 at first, which makes the choice a tie resolved by activation order — and strands
+  the cut camera live after the first knockout of the session.
+- **The human seat outranks the director.** `SpectatorCameraView` frames the human
+  unconditionally when there is one; you should never have to hunt the ring for yourself, and
+  no amount of drama elsewhere outranks that. The shipped Android build sets `_humanBoxerId`
+  to -1, so there the director always wins.
+- **Both new systems are ticked from `MatchDirector.Tick` on unscaled time, and skipped
+  entirely in training.** Scaled time would stretch an impact cut by exactly the factor the
+  knockout hold just applied — the same trap the flow loop already documents — and a training
+  scene has no camera to direct and no board to fill in, so the tension score's forty-five
+  pairs a frame would be bought for no return.
+
+## The Telemetry Board
+
+- **`PunchThrownMessage` exists solely so the connect rate is not a tautology.** Every other
+  punch message reports something the punch ran into, so a rate computed over landed,
+  blocked and evaded counts only punches that reached somebody and reports something close to
+  100%. `FightStatsTests.ConnectRateIsLandedOverThrownRatherThanOverPunchesThatReachedSomebody`
+  pins it.
+- **The board reports the director's pair, not a fixed pair and not the whole field.** Ten
+  rows of punch counts is a spreadsheet; two columns either side of one label is a stat bar.
+  It also means the figures always belong to what is on screen.
+- **`FightStatsModel` is sized lazily from `Tick`, not only from the phase subscription.**
+  `MatchModel` starts in `InProgress`, so subscribing fires immediately — before `SpawnSystem`
+  has put a single boxer in the ring — and sizes every table to zero. Every tally then
+  silently goes nowhere and the board draws a blank column for the whole match, which is
+  exactly how it first ran.
+- **The sparkline is `Painter2D`, and that is a decision rather than an omission.** Every
+  third-party 2D charting package for Unity is built on UGUI; this HUD is UI Toolkit
+  throughout, so pulling one in would mean a second canvas, a second event system and a second
+  set of scaling rules over the same screen, to draw forty-eight line segments.
+- **The momentum bar is driven by the *difference* between the pair.** Two fighters both being
+  battered by the rest of the ring would otherwise fill the bar from both ends and read as a
+  furious exchange between the two of them, which is the opposite of what happened.
+- **Neither momentum fill carries a transition**, for the reason the stylesheet already gives
+  for stamina and charge: easing a value recomputed every tick just renders it permanently
+  behind the model reporting it.
 
 ## Audio
 
@@ -582,6 +683,28 @@ during a session and Unity's own shadow counter reads zero for 2D casters.
   failure the sibling-arm layout exists to avoid, reached from the other direction. If it is
   ever attempted again the colliders must also stay off the perception layers, since an
   untagged collider still *occludes* a ray and a fighter's own guard would blind it.
+- **Damage shows on the face.** `BoxerModel` carries `SwellLeft`, `SwellRight` and `Cut`,
+  written by `CombatSystem.MarkFace` and drawn by two new `SpriteLitFX` properties. Swelling
+  is volume and rises with every punch; a cut is a single event and needs one heavy punch, so
+  it is gated on damage share first and scaled afterwards. Both constants are calibrated
+  against measured matches — the numbers and what went wrong at other values are in the
+  source.
+  **Which side is the whole tell.** `CombatMath.ResolveHit` returns `ApproachLateral` — the
+  approach vector projected onto the defender's own right — so a fighter who has spent a match
+  circling into a right hand is marked on one side. A single averaged number renders every
+  boxer equally puffy, which is as uninformative as no swelling at all.
+  **It is presentational and stays that way.** Nothing reads these back into combat, so a
+  fighter with a shut eye is exactly as effective as one without and the shipped policy is not
+  being quietly recalibrated underneath. The same applies to the guard droop: `ArmView`
+  biases only the *guard* pose by fatigue, and because both angles are reached by
+  `LerpUnclamped` at extension 1, a drooping arm still puts the drawn fist at `ArmReach` on
+  the frame the hit resolves. Blocking is still judged against the straight shoulder-to-glove
+  segment the model believes in.
+  **Damage is written to the head renderer only.** Swelling has no end condition inside a
+  match, so whatever carries it stays out of the shared sprite batch until the bell — one
+  renderer per marked fighter is affordable, all nine would be the ninety-draw-call trap
+  `BoxerView`'s effect loop exists to avoid. `ClearEffectProperties` therefore clears all nine
+  and immediately puts the head's block back carrying the bruise and nothing else.
 - **Counter window.** Blocking a punch opens `CounterWindowDuration` seconds during which your
   next landed punch takes `CounterDamageBonus`. Consumed by the punch that uses it, so one
   block buys exactly one counter. This applies to every fighter, the trained policy included —
@@ -781,3 +904,74 @@ installs, launches and dumps the Unity log in one step.
   packs the boxer parts and the impact spark. The tiling `ring_canvas` and `ring_rope` are
   deliberately *outside* it: they are sampled by a material with Repeat wrapping, which
   atlasing breaks. Sprite Atlas V2 is the project's packer mode.
+
+---
+
+## Standing Working Rules
+
+These are the user's standing instructions for this project and any RL project like it.
+They override defaults; where one clashes with something above, this section wins.
+
+### Git & branches
+
+- **Work only on the default branch** — `main` here. Use another branch only when explicitly
+  asked. (The user says "master"; this repo's default is `main`, and that is the branch meant.)
+- **A git sync commits everything first.** Never sync, pull or push with uncommitted changes
+  sitting in the tree — commit them as part of the sync.
+
+### Orientation
+
+- **Check for a `DOCS/` folder at the repo root** before starting work; it carries the
+  overall project summary. (There is none here yet — this file is the summary.)
+
+### Training
+
+- **Start TensorBoard whenever training starts**, so the run is watchable live. This restates
+  `.claude/rules/training.md`, which is the full version.
+- **Clear obsolete runs out of TensorBoard first.** Stale run directories under `results/`
+  clutter the scalar view and make it hard to read the run that matters — prune them (keep
+  anything in `results/_preserved/`) before launching.
+- **For a training run of 30+ minutes, close the Unity Editor first** (saving work), let the
+  run have the machine, and tell the user explicitly when it has finished and the Editor can
+  be reopened.
+
+### Roster conventions for RL projects
+
+- **Scripted/heuristic bots are RED.** Always, no exceptions — that colour is how the user
+  identifies a hand-coded opponent on sight.
+- **The reference RL bot is GREEN and untextured** — the plain `PoRumbleBoxer.onnx` policy
+  driven straight through, before any style or art variation.
+- **Variant RL fighters carry custom textures and meshes** supplied by the user; those are
+  the only roster entries free to look like anything.
+- **Every RL app fields all three**: one heuristic bot, one reference bot, and zero or more
+  custom bots. A roster missing the red or the green seat has lost its baseline.
+
+  Here those colours live in two places and both have to agree. `Fighter_HEURISTIC._tint` and
+  `Fighter_STANDARDRL._tint` drive the fight card, and `BoxerView._scriptedColor` / `_rlColor`
+  (serialized on `Boxer.prefab`) drive `SetRoleColor`, which is the path the training scenes
+  take — `SampleScene` has `_useRoleColors: 0` because the card supplies a tint per
+  contestant, `Training1v1` has it on. Change one and the red bot goes red in only half the
+  project.
+
+### Simulation fidelity
+
+- **Creatures move under Earth gravity with realistic joint limits and mass for their size.**
+  No floaty scaling, no torque a real body could not produce.
+- **Joint speed and force resemble a human's** when the trained agent is a human.
+
+### Physics engines outside Unity
+
+- **MuJoCo on Android** builds from <https://github.com/joanllobera/mujoco-bin/>.
+- **Show the simulator's UI during and after training** (MuJoCo, Isaac Lab, or Newton where
+  that is the better viewer) so the user can watch how the creature actually moves.
+
+### Scene authoring
+
+- **Build scene objects and prefabs through MCP, not from code.** Anything static — positions,
+  props, rig objects — should exist in the scene as an asset the user can drag, not as
+  something a script spawns at runtime. Code that creates static scenery takes away the
+  adjustment.
+
+### Answering
+
+- **Any answer longer than ~100 words ends with a 20-word TLDR.**
