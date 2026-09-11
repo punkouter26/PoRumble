@@ -16,7 +16,7 @@ collapsing entropy, or a policy that stopped improving an hour ago.
 Start-Process -WindowStyle Hidden .venv\Scripts\tensorboard.exe -ArgumentList "--logdir results --port 6006"
 
 # 2. Then the trainer
-mlagents-learn Assets/Config/porumble_ffa.yaml --run-id=<run-id>
+mlagents-learn Assets/Config/Training/porumble_10way_ffa.yaml --run-id=<run-id>
 
 # 3. Then press Play in the Editor
 ```

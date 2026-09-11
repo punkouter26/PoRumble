@@ -62,7 +62,7 @@ each `FixedUpdate` by either an ML-Agents policy or human input.
 
 | Item | Value |
 |---|---|
-| **Unity** | 6000.5.8f1 |
+| **Unity** | 6000.6.0f1 |
 | **Pipeline** | URP 17.6.0, **2D Renderer** |
 | **Platform** | StandaloneWindows64, Mono2x, .NET Standard 2.0 |
 | **Physics** | **Physics2D only** — `Rigidbody2D`, `CircleCollider2D`, `BoxCollider2D`. No 3D colliders |
@@ -171,7 +171,7 @@ variable-length list.
 | 2 | 4-way FFA | Multi-threat awareness | `--initialize-from=pr_1v1` |
 | 3 | 10-way FFA | Full battle royale | `--initialize-from=pr_4way` |
 
-Self-play block is already stubbed (commented) in `Assets/Config/porumble_ppo.yaml`.
+Self-play block is already stubbed (commented) in `Assets/Config/Training/porumble_1v1_selfplay.yaml`.
 Behavior name must match the `BehaviorParameters` component exactly.
 
 ---

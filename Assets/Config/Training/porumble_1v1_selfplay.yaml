@@ -2,7 +2,7 @@
 #
 # Stage 1 (1v1 self-play):
 #   .venv\Scripts\activate
-#   mlagents-learn Assets/Config/porumble_ppo.yaml --run-id=pr_1v1
+#   mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1
 #   ...then press Play with Assets/Scenes/Training1v1.unity open.
 #
 # Stage 2/3 transfer:

@@ -1,7 +1,7 @@
 # ML-Agents trainer configuration - PoRumble stage 3 (10-boxer free-for-all)
 #
-#   mlagents-learn Assets/Config/porumble_ffa.yaml --run-id=pr_10way --initialize-from=pr_1v1
-#   ...then open Assets/Scenes/Training10.unity and press Play.
+#   mlagents-learn Assets/Config/Training/porumble_10way_ffa.yaml --run-id=pr_10way --initialize-from=pr_1v1
+#   ...then open Assets/Scenes/Training10Way.unity and press Play.
 #
 # Deliberately has no self_play block. Self-play models two-team symmetric games via team_id;
 # a free-for-all is not that. Here ten boxers simply share one behaviour and train against

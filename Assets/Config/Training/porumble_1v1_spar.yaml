@@ -1,6 +1,6 @@
 # Stage 1b - one learner against the hand-written sparring partner.
 #
-#   mlagents-learn Assets/Config/porumble_spar.yaml --run-id=spar_01
+#   mlagents-learn Assets/Config/Training/porumble_1v1_spar.yaml --run-id=spar_01
 #   ...then open Assets/Scenes/Training1v1.unity and press Play.
 #
 # No self_play block on purpose. The opponent is scripted and fixed, so there is no second
