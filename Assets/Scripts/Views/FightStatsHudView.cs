@@ -78,6 +78,7 @@ namespace PoRumble.Views
         private RosterModel _roster;
         private FightStatsModel _stats;
         private DirectorModel _director;
+        private MatchFlowModel _flow;
 
         private VisualElement _panel;
         private VisualElement _spark;
@@ -99,12 +100,14 @@ namespace PoRumble.Views
             MatchModel match,
             RosterModel roster,
             FightStatsModel stats,
-            DirectorModel director)
+            DirectorModel director,
+            MatchFlowModel flow)
         {
             _match = match;
             _roster = roster;
             _stats = stats;
             _director = director;
+            _flow = flow;
         }
 
         private void Start()
@@ -202,6 +205,15 @@ namespace PoRumble.Views
 
         private void Refresh()
         {
+            // The director keeps a pair between matches, so without this the board sat on the
+            // title screen showing a full set of zeroes under the menu. A tale of the tape
+            // describes an exchange that is happening; before the bell there is none.
+            if (_flow != null && !IsBoardWorthShowing(_flow.Phase.Value))
+            {
+                SetVisible(false);
+                return;
+            }
+
             int indexA = IndexOf(_director.FocusId);
             int indexB = IndexOf(_director.RivalId);
 
@@ -424,6 +436,18 @@ namespace PoRumble.Views
         /// content, so the sparkline would have to be rebuilt from scratch on the frame the
         /// board came back - and it comes back every time the director changes its pair.
         /// </summary>
+        /// <summary>
+        /// The phases with an exchange behind the figures. The board stays up through the
+        /// knockout hold and the results, which is exactly when somebody reads it to see how
+        /// the fight was won.
+        /// </summary>
+        private static bool IsBoardWorthShowing(MatchFlowPhase phase)
+        {
+            return phase == MatchFlowPhase.Fighting
+                   || phase == MatchFlowPhase.KnockoutHold
+                   || phase == MatchFlowPhase.Results;
+        }
+
         private void SetVisible(bool visible)
         {
             if (_panel == null)

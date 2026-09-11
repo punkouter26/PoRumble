@@ -166,6 +166,13 @@ DirectorSystem ─► DirectorModel ──┬─► SpectatorCameraView (which p
   timed on scaled time would stretch itself by exactly the factor it just applied.
   `Time.timeScale` is global and outlives Play mode: `MatchDirector.Dispose` and
   `CombatFeedbackView.OnDestroy` both restore it, and so must anything else that touches it.
+- **`MatchPhase` and `MatchFlowPhase` are separate machines, and only one is driven by input.**
+  The first says whether the fight is decided, the second what the player is looking at. Nothing
+  in normal play can end a match before the bell — combat only ticks while `IsFightLive` — but
+  `TryStartFight` checks `MatchPhase` anyway, because the failure is silent and total: the player
+  sits through the intro and a three-second countdown, the bell rings, and `TickFighting` sees an
+  already-`Ended` match and cuts straight to the knockout hold for a fight that never happened.
+  `MatchFlowTests.ADecidedMatchCannotBeIntroduced` pins it.
 - **A training match must be able to end on the clock.** `MatchDirector` resolves an
   unfinished match through `MatchSystem.EndByTimeout` a few steps before the agents' own
   `MaxStep` cuts their trajectories. Without that the ten-way never ends at all: ML-Agents
@@ -339,6 +346,16 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
 - **Sorting layers are `Floor / Shadow / Default / Boxer / Glove / FX / Overlay`,** in render
   order. Everything used to share one layer, so nine renderers per boxer fought over
   order-in-layer and there was nowhere to put shadows or effects.
+- **`Ring/ArenaSurround` fills the portrait void, and is deliberately unlit.** Portrait
+  letterboxes a square ring, so at a wide framing the ring covers under half the frame height
+  and the rest was bare camera clear colour — a mid-slate blue that read as an unrendered area
+  rather than as a room. It is a 160x160 quad on `Floor` at order **-10** (behind the ring floor
+  at order 0) carrying `ArenaSurroundMat`, URP/Unlit and near-black. Unlit on purpose: it sits
+  outside the lit ring and should stay dark as the key light drifts, and an unlit quad costs no
+  2D light work. The camera's clear colour was darkened to match it, so the sliver beyond the
+  quad at extreme aspects is not a different colour. Shadow casting and receiving are off and it
+  carries no collider — the quad primitive arrives with a `MeshCollider` that has no business in
+  a `Physics2D` scene.
 - **Every Light2D must target every sorting layer.** A 2D light carries an explicit list of
   layers it affects. Add a sorting layer without adding it to each light's
   `m_ApplyToSortingLayers` and the fighters go unlit — silently, with no warning.
@@ -784,6 +801,23 @@ is now deliberately blank, and `RosterSelectionView` hides its floating `#open-c
 that phase specifically — the menu carries its own, and with both live the screen showed two
 FIGHT CARD buttons. The results phase still needs the floating one, because no menu is up then.
 
+**Owning the phase means the other panels have to be told.** `MatchHudView`'s branch going blank
+was only half of it: the match panel itself, the tale of the tape and the standings all carried
+on drawing through the menu, so the title screen showed a survivor count of ten at full health
+before a punch, an all-zero stat board, and a league table bleeding through the FIGHT button.
+`StandingsHudView` had no reference to `MatchFlowPhase` at all. All three are now gated on the
+phase, and all three hide by **opacity rather than `display`** — a panel with no resolved layout
+is one `SafeAreaView`'s retry pass waits on for ever. `FightStatsHudView` needs the phase in
+*addition* to its existing pair check, because the director keeps a pair between matches.
+
+**The centre stage is bounded by the band grid, not by the whole screen.** It spanned top 0 to
+bottom 0 and centred its content at 50%, which drove the result banner — the largest text the
+game ever shows — straight through the standings panel starting at `--band-second-row`. Both are
+up on every results screen, so that was not an edge case, it was the results screen.
+`--band-centre-top` / `--band-centre-bottom` bound it between the second row of panels and the
+bottom stack, which makes the clearance structural like the rest of the grid rather than measured
+against whatever the panels happened to be that day.
+
 **`SafeAreaView` insets every panel, and nothing did before.** The survivor count sat 20px from
 the top of a 1920-tall screen, underneath the status bar on any phone that has one. It writes
 padding on each document's *root* rather than margins on the panels: the HUD anchors its panels
@@ -1070,11 +1104,23 @@ installs, launches and dumps the Unity log in one step.
   16:9 screen shows 32 world units across and a 9:16 phone shows 10. The ring is 40 across, so
   the landscape number was doing its job while the same number in portrait produced a tall slot
   with a duel in the middle and most of the frame empty above and below it.
-  `_portraitMinOrthographicSize` is 6, because on a phone the binding dimension is width.
-- **`_maxOrthographicSize` is deliberately larger than any landscape screen needs (45).** The
-  ring-fit rule is what actually binds; the field only matters as a backstop on very tall
-  displays. Set it back down to ~21 and portrait can no longer pull out far enough to fit the
-  ring.
+  `_portraitMinOrthographicSize` is 6, because on a phone the binding dimension is width - and
+  it is quoted **at the 1080x1920 reference and scaled by aspect from there**, so the tightest
+  shot frames the same *width* on every phone. A flat number does not: 6 shows 6.75 world units
+  across at 9:16 and 4.3 at 0.36, which is narrower than two fighters at punching range.
+- **`_maxOrthographicSize` is a backstop, and the ring-fit floor is what stops it cropping.** It
+  is 45, deliberately larger than any landscape screen needs, so the ring-fit rule is what
+  actually binds. But a flat maximum cannot fit a ring whose required size grows as `1/aspect`,
+  and on a tall enough phone the backstop bound *first* and cut the fighters off the sides -
+  measured at aspect 0.36, half-width 16.25 against a ring half-width of 20, while the HUD went
+  on counting ten alive. `FramingMath` therefore raises the portrait cap to at least
+  `arenaHalfExtent.x / aspect`: losing the dressing margin is a blemish, losing the fighters is
+  a broken build. The floor is why 45 can stay; set it back down to ~21 and the floor now
+  carries portrait anyway.
+- **The framing rule lives in `FramingMath`, not in `LateUpdate`.** Pure and static for the same
+  reason `CombatMath` and `TensionMath` are. Both defects above shipped precisely because the
+  rule could only be checked by running the game and measuring the camera; `FramingMathTests`
+  pins them at four real phone aspects now.
 - **The build ships as an all-AI exhibition.** `BoxerSpawnPoints._humanBoxerId` is -1, so
   every boxer is driven by a brain profile or the trained policy and no human UI is built at
   all: `PlayerStatusHudView` and `TouchControlsView` both check for a human boxer and construct

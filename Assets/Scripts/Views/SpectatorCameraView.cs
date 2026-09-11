@@ -38,8 +38,9 @@ namespace PoRumble.Views
         [Header("Framing")]
         [Tooltip("Closest the camera will pull in on a landscape screen.")]
         [SerializeField] private float _minOrthographicSize = 6f;
-        [Tooltip("Closest the camera will pull in on a portrait screen. Deliberately smaller " +
-                 "than the landscape minimum - see the note on ResolveMinimumSize.")]
+        [Tooltip("Closest the camera will pull in on a portrait screen, measured at the " +
+                 "1080x1920 reference. Narrower screens scale it up to hold the same visible " +
+                 "width - see FramingMath.ResolveMinimumSize.")]
         [SerializeField] private float _portraitMinOrthographicSize = 6f;
         [Tooltip("Widest the camera will pull out, for a full ten-way brawl. Sits above what " +
                  "the ring itself allows on a landscape screen, so the ring-fit rule is what " +
@@ -142,33 +143,22 @@ namespace PoRumble.Views
                 return;
             }
 
-            // The widest the camera may pull out before it starts showing the void outside
-            // the ring. Derived from the aspect, because orthographic size is half-HEIGHT: on
-            // a 2.2:1 phone screen a size that frames the ring vertically shows more than
-            // twice the ring's width horizontally, which is most of what made the first
-            // Android build look like it was pointed at a corner.
-            // Only the widest-allowed size uses the margin; see the clamp below.
-            Vector2 bounds = _match.ArenaHalfExtent + Vector2.one * _outsideRingMargin;
+            // How wide the camera may open is pure arithmetic over the ring and the aspect, so
+            // it lives in FramingMath where a test can reach it. The defect it used to carry -
+            // the ring cropped on a tall phone - was reachable only by running the game and
+            // measuring the camera, which is exactly the kind of rule that belongs outside a
+            // LateUpdate.
             float aspect = CurrentAspect();
 
-            // The ring is square and no screen is, so one of two framings has to be chosen.
-            //
-            // Landscape crops: pull out only until the view is as wide as the ring, which
-            // fills the screen and keeps the fighters large. Some of the ring's height is
-            // off-frame, and the camera pans over it.
-            //
-            // Portrait letterboxes instead. Cropping a 0.56 aspect to fill would show barely
-            // half the ring's width, so most of a ten-way brawl would be off-screen while the
-            // HUD still claimed ten fighters were alive. Better to fit the whole ring and let
-            // the spare height above and below carry the HUD.
-            float cropToFill = Mathf.Min(bounds.y, bounds.x / aspect);
-            float fitWhole = Mathf.Max(bounds.y, bounds.x / aspect);
-            float maxByRing = aspect < 1f ? fitWhole : cropToFill;
-
-            float desiredSize = Mathf.Clamp(
-                extent + _framingPadding * ResolvePaddingScale(),
-                ResolveMinimumSize(aspect),
-                Mathf.Min(_maxOrthographicSize, maxByRing));
+            float desiredSize = FramingMath.ResolveOrthographicSize(
+                extent,
+                _framingPadding * ResolvePaddingScale(),
+                aspect,
+                _match.ArenaHalfExtent,
+                _outsideRingMargin,
+                _minOrthographicSize,
+                _portraitMinOrthographicSize,
+                _maxOrthographicSize);
 
             if (!_initialised)
             {
@@ -202,25 +192,6 @@ namespace PoRumble.Views
             {
                 _camera.Lens.OrthographicSize = _smoothedSize;
             }
-        }
-
-        /// <summary>
-        /// The closest the camera may pull in, which is not the same number in both
-        /// orientations.
-        ///
-        /// Orthographic size is half-HEIGHT, so a single minimum means two very different
-        /// framings: at 9 a 16:9 screen shows 32 world units across and a 9:16 phone shows 10.
-        /// The ring is 40 across, so the landscape number was doing its job, while the same
-        /// number in portrait produced a tall slot with a duel in the middle and most of the
-        /// frame empty above and below it.
-        ///
-        /// Portrait therefore carries its own, smaller minimum. On a phone the binding
-        /// dimension is width, and pulling in until the fighters fill it is what makes the
-        /// fight readable.
-        /// </summary>
-        private float ResolveMinimumSize(float aspect)
-        {
-            return aspect < 1f ? _portraitMinOrthographicSize : _minOrthographicSize;
         }
 
         /// <summary>

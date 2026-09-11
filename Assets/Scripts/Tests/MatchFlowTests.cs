@@ -193,5 +193,29 @@ namespace PoRumble.Tests
             Run(4.2f);
             Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Fighting));
         }
+
+        /// <summary>
+        /// The two phase machines are separate - MatchPhase says whether the fight is decided,
+        /// MatchFlowPhase says what the player is looking at - and only the flow one is driven
+        /// by the menu. Introducing an already-decided match fails silently and completely: the
+        /// player sits through the intro and a three-second countdown, the bell rings, and
+        /// TickFighting cuts straight to the knockout hold for a fight that never happened.
+        /// </summary>
+        [Test]
+        public void ADecidedMatchCannotBeIntroduced()
+        {
+            // Back to the menu with a match that is over and has not been re-racked.
+            _flow.Phase.Value = MatchFlowPhase.Title;
+            _match.End(0);
+
+            Assert.That(_flow.CanStartFight, Is.True, "The menu is up, so the seat is willing.");
+            Assert.That(_flowSystem.TryStartFight(), Is.False);
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Title));
+
+            // Re-racking the match is what makes the seat live again.
+            _match.BeginNewEpisode();
+            Assert.That(_flowSystem.TryStartFight(), Is.True);
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Introducing));
+        }
     }
 }

@@ -178,6 +178,17 @@ namespace PoRumble.Systems
                 return false;
             }
 
+            // A decided match cannot be introduced. Combat only ticks while the fight is live,
+            // so nothing in normal play can end a match before the bell - but the two phase
+            // machines are separate, and the one failure this guards is silent and total: the
+            // player sits through the intro and a three-second countdown, the bell rings, and
+            // TickFighting sees an already-Ended match and cuts straight to the knockout hold
+            // for a fight that never happened.
+            if (_match.Phase.Value == MatchPhase.Ended)
+            {
+                return false;
+            }
+
             EnterPhase(MatchFlowPhase.Introducing);
             return true;
         }

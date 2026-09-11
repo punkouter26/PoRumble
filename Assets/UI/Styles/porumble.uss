@@ -108,6 +108,15 @@
     --band-bottom-player: 12%;
     --band-bottom-commentary: 30%;
 
+    /* The clear middle of the screen, between the second row of panels and the bottom stack.
+       The centre stage used to span the whole height and centre its content at 50%, which put
+       the result banner - the largest text the game ever shows - straight through the standings
+       panel starting at --band-second-row. Both are visible at once on every results screen, so
+       that was not an edge case; it was the results screen. Bounding the stage by the same
+       tokens the panels use makes the clearance structural rather than measured. */
+    --band-centre-top: 52%;
+    --band-centre-bottom: 32%;
+
     /* Touch controls. Sized generously: a thumb is far less precise than a cursor. */
     --touch-surface: rgba(244, 246, 250, 0.14);
     --touch-surface-strong: rgba(244, 246, 250, 0.26);
@@ -481,6 +490,11 @@
 .standings__row--gain { color: var(--state-healthy); }
 .standings__row--loss { color: var(--state-hurt); }
 
+/* Faded rather than display:none, to match how the stats board hides. A panel that is only
+   transparent keeps its layout resolved, which is what stops SafeAreaView's retry pass from
+   seeing an unresolved panel and waiting on it for ever. */
+.standings--hidden { opacity: 0; }
+
 /* ----------------------------------------------------------------- match HUD */
 /* Top band, left column. Capped in height as well as width: ten health rows is the tallest
    this panel ever gets, and without the cap a larger roster would grow it down over the ring
@@ -508,6 +522,10 @@
     border-bottom-left-radius: var(--radius);
     border-bottom-right-radius: var(--radius);
 }
+
+/* Faded on the title screen, where there is no fight for the count to describe. Opacity
+   rather than display, for the reason .standings--hidden gives. */
+.match-hud--hidden { opacity: 0; }
 
 .match-hud__roster { margin-top: var(--space-2); }
 
@@ -548,8 +566,8 @@
     position: absolute;
     left: 0;
     right: 0;
-    top: 0;
-    bottom: 0;
+    top: var(--band-centre-top);
+    bottom: var(--band-centre-bottom);
     align-items: center;
     justify-content: center;
 }

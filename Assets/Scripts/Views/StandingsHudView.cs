@@ -36,12 +36,14 @@ namespace PoRumble.Views
         private readonly List<Label> _rows = new();
 
         private RatingModel _ratings;
+        private MatchFlowModel _flow;
         private VisualElement _panel;
 
         [Inject]
-        public void Construct(RatingModel ratings)
+        public void Construct(RatingModel ratings, MatchFlowModel flow)
         {
             _ratings = ratings;
+            _flow = flow;
         }
 
         private void Start()
@@ -89,6 +91,36 @@ namespace PoRumble.Views
 
             _ratings.Revision.Subscribe(_ => Refresh()).AddTo(_disposables);
             Refresh();
+
+            if (_flow != null)
+            {
+                _flow.Phase.Subscribe(OnFlowPhaseChanged).AddTo(_disposables);
+            }
+        }
+
+        /// <summary>
+        /// Shows the table only while there is a fight for it to sit beside.
+        ///
+        /// This panel had no phase awareness at all, so it stayed up through the title screen
+        /// and drew underneath the menu - the league table bleeding through the FIGHT button.
+        /// The menu owns that phase outright, and a standing means nothing before the first
+        /// bout of a session anyway.
+        ///
+        /// Hidden through the intro and countdown as well: those exist to put the fight in
+        /// front of the player, and the table is the one thing on screen looking backwards.
+        /// </summary>
+        private void OnFlowPhaseChanged(MatchFlowPhase phase)
+        {
+            if (_panel == null)
+            {
+                return;
+            }
+
+            bool visible = phase == MatchFlowPhase.Fighting
+                           || phase == MatchFlowPhase.KnockoutHold
+                           || phase == MatchFlowPhase.Results;
+
+            _panel.EnableInClassList("standings--hidden", !visible);
         }
 
         private void Refresh()

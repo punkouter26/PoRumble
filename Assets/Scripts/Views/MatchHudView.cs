@@ -45,6 +45,7 @@ namespace PoRumble.Views
         private MatchFlowModel _flow;
         private RosterModel _roster;
         private BoxerConfig _config;
+        private VisualElement _panel;
         private Label _survivorsLabel;
         private Label _resultLabel;
         private Label _captionLabel;
@@ -89,6 +90,7 @@ namespace PoRumble.Views
 
             _layout.CloneTree(root);
 
+            _panel = root.Q<VisualElement>("panel");
             _survivorsLabel = root.Q<Label>("survivors");
             _resultLabel = root.Q<Label>("result");
             _captionLabel = root.Q<Label>("caption");
@@ -223,6 +225,14 @@ namespace PoRumble.Views
             if (_captionLabel == null)
             {
                 return;
+            }
+
+            // The survivor count and the ten health rows describe a fight in progress. On the
+            // title screen there is none, and the panel sat there claiming ten alive at full
+            // health before a single punch - beside a menu that owns the phase outright.
+            if (_panel != null)
+            {
+                _panel.EnableInClassList("match-hud--hidden", phase == MatchFlowPhase.Title);
             }
 
             switch (phase)
