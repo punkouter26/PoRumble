@@ -323,13 +323,19 @@ namespace PoRumble.Views
             {
                 // Three bands rather than one. A single low-pass reads as rain; what makes a
                 // crowd is that the energy is spread with a hump in the middle where voices
-                // live, and that the top is present but soft.
+                // live.
+                //
+                // The top band is deliberately almost absent. It was at 0.5 and the bed read
+                // as hiss rather than as a room - a real crowd heard from inside it is mostly
+                // chest and vowel, and the air above that is what an arena's walls absorb
+                // first. Anything audible up there also competes directly with the
+                // commentator, who is the one voice that has to cut through.
                 float source = NextNoise();
                 low += (source - low) * 0.020f;
-                mid += (source - mid) * 0.140f;
+                mid += (source - mid) * 0.110f;
                 high += (source - high) * 0.480f;
 
-                float band = low * 1.5f + (mid - low) * 1.9f + (high - mid) * 0.5f;
+                float band = low * 1.8f + (mid - low) * 1.5f + (high - mid) * 0.08f;
 
                 // Two slow, mutually prime swells so the bed never settles into an obvious
                 // period. Both complete a whole number of cycles over the clip, or the
@@ -364,7 +370,7 @@ namespace PoRumble.Views
 
                 float source = NextNoise();
                 low += (source - low) * 0.030f;
-                mid += (source - mid) * 0.190f;
+                mid += (source - mid) * 0.150f;
 
                 // Rises over the first third and falls away over the rest. Raised to a power
                 // so the attack is a swell rather than a step.
@@ -372,7 +378,9 @@ namespace PoRumble.Views
                     ? Mathf.Pow(progress / peak, 1.7f)
                     : Mathf.Pow(1f - (progress - peak) / (1f - peak), 1.4f);
 
-                return (low * 1.4f + (mid - low) * 2.3f) * envelope * 0.8f;
+                // Weighted low, like the bed and for the same reason: a bright roar sits in
+                // the same band as the commentator and buries him.
+                return (low * 1.7f + (mid - low) * 1.5f) * envelope * 0.8f;
             });
         }
 

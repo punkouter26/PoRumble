@@ -33,11 +33,13 @@ namespace PoRumble.Views
         [Header("Bed")]
         [Tooltip("Level of the crowd bed while the ring is racked and nothing is happening.")]
         [Range(0f, 1f)]
-        [SerializeField] private float _idleVolume = 0.18f;
+        [SerializeField] private float _idleVolume = 0.05f;
 
-        [Tooltip("Level of the crowd bed with the fight at its most heated.")]
+        [Tooltip("Level of the crowd bed with the fight at its most heated. Low, and it has " +
+                 "to be: this is a broadband noise bed sitting underneath a speaking voice, " +
+                 "and it only has to be noticed when it stops.")]
         [Range(0f, 1f)]
-        [SerializeField] private float _peakVolume = 0.62f;
+        [SerializeField] private float _peakVolume = 0.22f;
 
         [Tooltip("How quickly the bed follows the fight. Low values drift between exchanges " +
                  "rather than tracking each punch, which is what a room actually does.")]
@@ -52,7 +54,14 @@ namespace PoRumble.Views
         [SerializeField] private int _swellVariants = 3;
 
         [Range(0f, 1f)]
-        [SerializeField] private float _swellVolume = 0.75f;
+        [SerializeField] private float _swellVolume = 0.34f;
+
+        [Tooltip("Momentum, in hit points, that counts as the crowd being fully worked up. " +
+                 "Momentum accumulates raw damage and decays, so it is NOT a 0..1 measure - " +
+                 "clamping it directly pinned the bed at its peak within seconds of the bell " +
+                 "and left the room at full volume for the whole fight. Eight is roughly one " +
+                 "clean flurry, on the same reasoning as the telemetry board's full scale.")]
+        [SerializeField] private float _momentumForPeak = 8f;
 
         [Tooltip("Damage in one punch at or above which the crowd reacts. Below this the bed " +
                  "rising is the whole response - a roar on every jab is a roar on nothing.")]
@@ -61,6 +70,31 @@ namespace PoRumble.Views
         [Tooltip("Seconds after a reaction before another can fire, so a flurry of heavy " +
                  "punches produces one sustained roar rather than four overlapping ones.")]
         [SerializeField] private float _reactionCooldown = 2.4f;
+
+        [Header("Commentary duck")]
+        [Tooltip("What the crowd falls to while the commentator is speaking, as a fraction of " +
+                 "where it would otherwise be. Standard broadcast practice, and the reason it " +
+                 "is needed here rather than optional: the bed is broadband noise and the " +
+                 "commentator is one voice, so without it he is simply not audible over a " +
+                 "busy exchange - which is exactly when he has most to say.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _duckLevel = 0.3f;
+
+        [Tooltip("Seconds a line is assumed to last. Matches CommentarySystem's own " +
+                 "ASSUMED_LINE_SECONDS, and that is not a coincidence: the duck has to cover " +
+                 "the line and stop, not the line plus the cooldown after it. At 2.6 it was " +
+                 "longer than the 2.55s minimum between line starts, so a busy ten-way " +
+                 "re-armed it before it could ever release and the crowd sat permanently " +
+                 "ducked - a level cut wearing a ducker's clothes. At 1.9 the room breathes " +
+                 "back up through the gap between lines, which is the whole effect.\n\n" +
+                 "Time-based rather than tied to the clip, because the crowd has no business " +
+                 "knowing what CommentaryView is playing.")]
+        [SerializeField] private float _duckSeconds = 1.9f;
+
+        [Tooltip("How quickly the duck closes and releases. Fast in, slower out, which is " +
+                 "what stops the room audibly pumping on every line.")]
+        [SerializeField] private float _duckAttack = 9f;
+        [SerializeField] private float _duckRelease = 2.2f;
 
         private readonly CompositeDisposable _disposables = new();
 
@@ -74,6 +108,14 @@ namespace PoRumble.Views
 
         private float _excitement;
         private float _reactionCooldownRemaining;
+        private float _duckRemaining;
+
+        /// <summary>
+        /// 1 when the crowd is at full level, <c>_duckLevel</c> while the commentator is
+        /// speaking. Eased rather than switched, so the room steps back rather than jumping.
+        /// </summary>
+        private float _duckGain = 1f;
+
         private uint _randomState = 0x1B873593;
 
         [Inject]
@@ -81,6 +123,7 @@ namespace PoRumble.Views
             MatchModel match,
             MatchFlowModel flow,
             FightStatsModel stats,
+            CommentaryModel commentary,
             ISubscriber<PunchLandedMessage> landedSubscriber,
             ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber,
             ISubscriber<HaymakerThrownMessage> haymakerSubscriber)
@@ -95,6 +138,22 @@ namespace PoRumble.Views
             // The wind-up, not the landing. A crowd sees a haymaker coming - that is the whole
             // reason the telegraph exists - so the noise belongs to the moment of commitment.
             haymakerSubscriber.Subscribe(OnHaymakerThrown).AddTo(_disposables);
+
+            // The cue rather than the clip. CommentarySystem publishes this the moment it
+            // decides to speak, and the crowd has no business knowing what CommentaryView is
+            // actually playing - so the duck is held for a fixed time, which is what a real
+            // ducker does anyway.
+            commentary.Cue.Subscribe(OnCommentaryCue).AddTo(_disposables);
+        }
+
+        private void OnCommentaryCue(CommentaryCue cue)
+        {
+            if (!cue.HasLine)
+            {
+                return;
+            }
+
+            _duckRemaining = _duckSeconds;
         }
 
         private void Awake()
@@ -166,7 +225,20 @@ namespace PoRumble.Views
             _excitement = Mathf.Lerp(
                 _excitement, TargetExcitement(), 1f - Mathf.Exp(-_damping * delta));
 
-            _bed.volume = Mathf.Lerp(_idleVolume, _peakVolume, _excitement);
+            if (_duckRemaining > 0f)
+            {
+                _duckRemaining -= delta;
+            }
+
+            // Asymmetric: in fast so the first word is already clear, out slowly so the room
+            // does not audibly pump back up between one line and the next.
+            bool ducking = _duckRemaining > 0f;
+            float duckTarget = ducking ? _duckLevel : 1f;
+            float duckRate = ducking ? _duckAttack : _duckRelease;
+
+            _duckGain = Mathf.Lerp(_duckGain, duckTarget, 1f - Mathf.Exp(-duckRate * delta));
+
+            _bed.volume = Mathf.Lerp(_idleVolume, _peakVolume, _excitement) * _duckGain;
             _bed.pitch = Mathf.Lerp(_idlePitch, _peakPitch, _excitement);
         }
 
@@ -208,7 +280,11 @@ namespace PoRumble.Views
                     action = Mathf.Max(action, Mathf.Abs(_stats.Stats[index].Momentum));
                 }
 
-                action = Mathf.Clamp01(action);
+                // Divided before clamping. Momentum is a running total of raw damage, not a
+                // fraction - measured live it sits around 2 and peaks near 14 - so clamping it
+                // straight to 0..1 saturated the bed within seconds of the bell and held the
+                // room at full volume for the entire match, which is no dynamic range at all.
+                action = Mathf.Clamp01(action / Mathf.Max(0.01f, _momentumForPeak));
             }
 
             return Mathf.Max(thinning, action);
@@ -259,7 +335,12 @@ namespace PoRumble.Views
             AudioClip clip = _swellClips[Mathf.Clamp(index, 0, _swellClips.Length - 1)];
 
             _swell.pitch = 1f + NextUnit() * 0.05f;
-            _swell.PlayOneShot(clip, Mathf.Clamp01(_swellVolume * (0.55f + strength * 0.45f)));
+
+            // Ducked like the bed. A roar is the loudest thing the crowd does and a knockout
+            // is exactly when the commentator has a line worth hearing, so without this the
+            // two arrive together and neither is legible.
+            _swell.PlayOneShot(
+                clip, Mathf.Clamp01(_swellVolume * (0.55f + strength * 0.45f) * _duckGain));
         }
 
         /// <summary>

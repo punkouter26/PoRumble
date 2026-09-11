@@ -66,16 +66,21 @@ namespace PoRumble.Views
         [Tooltip("Seconds between footsteps from one moving fighter. Far longer than the dust " +
                  "interval on purpose: dust is cheap and a step is a voice out of the pool.")]
         [SerializeField] private float _stepInterval = 0.34f;
+        [Tooltip("Quiet, and it has to be. This is the most frequently played sound in the " +
+                 "game by a wide margin, and it is filtered noise - at any level where an " +
+                 "individual step is noticeable, ten fighters produce a wash that buries the " +
+                 "punches and the commentator alike.")]
         [Range(0f, 1f)]
-        [SerializeField] private float _stepVolume = 0.34f;
+        [SerializeField] private float _stepVolume = 0.16f;
 
-        [Tooltip("Stamina at or below which a fighter is audibly out of breath.")]
+        [Tooltip("Stamina at or below which a fighter is audibly out of breath. Low, so this " +
+                 "marks a fighter who is genuinely spent rather than most of the ring.")]
         [Range(0f, 1f)]
-        [SerializeField] private float _breathStaminaThreshold = 0.35f;
+        [SerializeField] private float _breathStaminaThreshold = 0.28f;
         [Tooltip("Seconds between exhales from one spent fighter.")]
-        [SerializeField] private float _breathInterval = 1.5f;
+        [SerializeField] private float _breathInterval = 2.3f;
         [Range(0f, 1f)]
-        [SerializeField] private float _breathVolume = 0.5f;
+        [SerializeField] private float _breathVolume = 0.26f;
 
         [Tooltip("How close to the ropes counts as hitting them, in world units.")]
         [SerializeField] private float _ropeContactMargin = 0.22f;
@@ -91,9 +96,10 @@ namespace PoRumble.Views
         [Tooltip("Fraction of the audio max distance beyond which body sounds are not " +
                  "synthesised at all. Ten fighters shuffling would otherwise steal every voice " +
                  "in the pool from the punches, for sounds the distance rolloff has already " +
-                 "made inaudible.")]
+                 "made inaudible. Measured at 0.6 this had nine of fourteen voices live at " +
+                 "once during an ordinary exchange, which is a wash rather than a ring.")]
         [Range(0.1f, 1f)]
-        [SerializeField] private float _bodySoundEarshot = 0.6f;
+        [SerializeField] private float _bodySoundEarshot = 0.42f;
 
         [Header("Crowd")]
         [Tooltip("Optional. Press cameras firing from ringside on a knockout. Reuses the impact " +

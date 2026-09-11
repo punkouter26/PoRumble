@@ -665,7 +665,33 @@ reaction swell fired on a knockout, a heavy landed punch or a committed haymaker
 is the point — a crowd surrounds the listener, and giving it a position would seat the whole
 audience in one chair and swing the room from side to side as the spectator camera tracked.
 
-Two details are load-bearing. The bed is built through `ProceduralSfx.BuildLoop`, not `Build`:
+**It is mixed far quieter than it first shipped, and the reason is the commentator.** The bed is
+broadband noise and he is one voice; at the levels this was first tuned to, he was simply
+inaudible. Three things were wrong at once and all three had to be fixed:
+
+1. **The bed's top band was hiss.** A real crowd heard from inside it is mostly chest and vowel,
+   and an arena absorbs the air above that first. The `high - mid` term went from 0.5 to 0.08.
+2. **Excitement saturated instantly.** `FighterStats.Momentum` accumulates *raw damage* and
+   decays — measured live it sits around 2 and peaks near 14 — so clamping it straight to 0..1
+   pinned the bed at peak seconds after the bell and held it there all match. It is now divided
+   by `_momentumForPeak` first, which gives the range back.
+3. **Nothing ducked.** The crowd now steps back to `_duckLevel` while a line is playing, fast in
+   and slow out so the room does not pump between lines.
+
+**`_duckSeconds` must stay below `ASSUMED_LINE_SECONDS + COOLDOWN_SECONDS` (2.55s), and matches
+`ASSUMED_LINE_SECONDS` exactly at 1.9.** At 2.6 it was longer than the minimum gap between line
+starts, so a busy ten-way re-armed the duck before it could release and the crowd sat permanently
+ducked — a level cut wearing a ducker's clothes. The duck has to cover the line and stop, not the
+line plus the cooldown after it.
+
+**Changing a `[SerializeField]` default does not retune an object that already exists.** The
+`Crowd` and `CombatFeedback` components were authored before this pass, so they kept the old
+values and the retune silently did nothing — the bed measured 0.271 while the code said 0.086.
+The serialized values had to be written into the scene as well. This applies to every tuning
+change to an existing scene object, and it fails quietly every time.
+
+Two further details are load-bearing. The bed is built through `ProceduralSfx.BuildLoop`, not
+`Build`:
 the ordinary builder fades both ends to zero so one-shots do not click, and a bed built that way
 drops to silence on every wrap — a pulse rather than a loop. `BuildLoop` crossfades the clip's
 own tail back over its head with **equal-power** gains and discards the tail; linear gains dip
