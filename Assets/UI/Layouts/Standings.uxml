@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The league table, top three only.
+
+  Watching one match tells you who won it; the point of a standing is the run of matches
+  behind it, and three lines is as much of that as can sit beside the ring without competing
+  with the fight.
+
+  The rows are cloned from Templates/StandingsRow.uxml rather than written out here, because
+  how many places the panel shows is a serialized field on the view - hard-coding three rows
+  in the layout would make that field a lie.
+
+  Everything is picking-mode="Ignore". The panel sits over a live ring and must never eat a
+  click meant for the fight card sorted beneath it.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="standings" picking-mode="Ignore">
+        <ui:Label name="title" text="STANDINGS" class="text text--xs text--bold standings__title" picking-mode="Ignore" />
+        <ui:VisualElement name="rows" class="standings__rows" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

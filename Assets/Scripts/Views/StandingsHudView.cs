@@ -16,11 +16,21 @@ namespace PoRumble.Views
     ///
     /// A pure subscriber, like every other HUD here: it redraws when
     /// <see cref="RatingModel.Revision"/> moves and never polls.
+    ///
+    /// Structure is in Standings.uxml and style in porumble.uss, like every other panel. This
+    /// was the last view still building its own elements in C#, which meant the one panel that
+    /// could not be restyled without a recompile.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(UIDocument))]
     public sealed class StandingsHudView : MonoBehaviour
     {
+        [Tooltip("The panel structure. Without it the standings do not render at all.")]
+        [SerializeField] private VisualTreeAsset _layout;
+
+        [Tooltip("One place in the table, cloned once per shown place.")]
+        [SerializeField] private VisualTreeAsset _rowTemplate;
+
         [Tooltip("The shared HUD stylesheet. Without it the panel renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
@@ -50,7 +60,7 @@ namespace PoRumble.Views
         {
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
 
-            if (root == null || _ratings == null)
+            if (root == null || _ratings == null || _layout == null || _rowTemplate == null)
             {
                 return;
             }
@@ -65,29 +75,10 @@ namespace PoRumble.Views
             // with the root ignored, so the tiles keep working.
             root.pickingMode = PickingMode.Ignore;
 
-            _panel = new VisualElement();
-            _panel.AddToClassList("standings");
-            _panel.pickingMode = PickingMode.Ignore;
-            root.Add(_panel);
+            _layout.CloneTree(root);
+            _panel = root.Q<VisualElement>("panel");
 
-            Label title = new("STANDINGS");
-            title.AddToClassList("text");
-            title.AddToClassList("text--xs");
-            title.AddToClassList("text--bold");
-            title.AddToClassList("standings__title");
-            title.pickingMode = PickingMode.Ignore;
-            _panel.Add(title);
-
-            for (int place = 0; place < _places; place++)
-            {
-                Label row = new(string.Empty);
-                row.AddToClassList("text");
-                row.AddToClassList("text--sm");
-                row.AddToClassList("standings__row");
-                row.pickingMode = PickingMode.Ignore;
-                _panel.Add(row);
-                _rows.Add(row);
-            }
+            BuildRows(root.Q<VisualElement>("rows"));
 
             _ratings.Revision.Subscribe(_ => Refresh()).AddTo(_disposables);
             Refresh();
@@ -95,6 +86,28 @@ namespace PoRumble.Views
             if (_flow != null)
             {
                 _flow.Phase.Subscribe(OnFlowPhaseChanged).AddTo(_disposables);
+            }
+        }
+
+        /// <summary>
+        /// Clones one row per place.
+        ///
+        /// CloneTree(target) adds the template's own children straight into the target with no
+        /// TemplateContainer in between, so the freshly cloned row is the last child - a
+        /// wrapper element would sit in the middle of the column's flex layout and give every
+        /// row a second box to inherit sizing from.
+        /// </summary>
+        private void BuildRows(VisualElement container)
+        {
+            if (container == null)
+            {
+                return;
+            }
+
+            for (int place = 0; place < _places; place++)
+            {
+                _rowTemplate.CloneTree(container);
+                _rows.Add(container[container.childCount - 1] as Label);
             }
         }
 
@@ -130,6 +143,11 @@ namespace PoRumble.Views
             for (int place = 0; place < _rows.Count; place++)
             {
                 Label row = _rows[place];
+
+                if (row == null)
+                {
+                    continue;
+                }
 
                 if (place >= _top.Count)
                 {

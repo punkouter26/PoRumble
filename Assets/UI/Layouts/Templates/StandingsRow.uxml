@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One place in the league table: rank, name, rating and the change from the last match, all
+  composed into a single label by the view.
+
+  It is one Label rather than four, because the table is read down the left edge and four
+  flex children would need four width shares to stay aligned - a column layout for three
+  rows of text that never wrap.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Label name="row" class="text text--sm standings__row" picking-mode="Ignore" />
+</ui:UXML>

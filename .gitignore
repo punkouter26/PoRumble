@@ -141,3 +141,8 @@ Packages/manifest.json.bak
 # downloaded on demand by Tools/bake_commentary.sh; the baked WAVs are what the game needs
 # and those are committed (in LFS, like the rest of the art).
 Tools/piper/
+
+# ML-Agents writes a timing report per scene on every Play session. It is generated
+# output that dirtied the tree after every run; the trainer regenerates it on demand.
+/[Aa]ssets/ML-Agents/Timers/
+/[Aa]ssets/ML-Agents/Timers.meta

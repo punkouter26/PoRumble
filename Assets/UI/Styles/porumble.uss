@@ -474,6 +474,10 @@
     border-bottom-right-radius: var(--radius);
 }
 
+.standings__rows {
+    flex-direction: column;
+}
+
 .standings__title {
     color: var(--text-secondary);
     letter-spacing: 2px;
