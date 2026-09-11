@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The title screen.
+
+  MatchFlowPhase.Title already existed and the round loop already returned to it after every
+  result - what it had was a caption and a line of instruction text drawn over the live ring by
+  the match HUD. That is a prompt, not a menu: the two things a player can actually do here
+  (start a fight, change the card) were a key name to read rather than anything to press, and
+  on a phone one of them had no key at all.
+
+  The match HUD no longer writes the centre stage at Title. Two documents writing the same
+  region of screen with no shared layout between them is precisely the collision this pass
+  exists to remove, so this panel owns the phase outright.
+
+  Full-screen scrim, like the fight card and for the same reason: the menu is a modal moment.
+  Dimming the racked ring behind it is what makes the buttons read as the only live thing on
+  screen, and it puts the title over a controlled ground rather than over a bright green canvas.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="screen" class="menu-screen">
+        <ui:VisualElement name="panel" class="menu" picking-mode="Ignore">
+            <ui:Label name="title" text="PO RUMBLE" class="text text--display text--bold menu__title" picking-mode="Ignore" />
+            <ui:Label name="tagline" text="TEN FIGHTERS. ONE LEFT STANDING." class="text text--sm text--muted menu__tagline" picking-mode="Ignore" />
+
+            <ui:Button name="fight" text="FIGHT" class="text text--lg text--bold menu__button menu__button--primary" />
+            <ui:Button name="card" text="FIGHT CARD" class="text text--md text--bold menu__button" />
+
+            <ui:Label name="hint" class="text text--xs text--muted menu__hint" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

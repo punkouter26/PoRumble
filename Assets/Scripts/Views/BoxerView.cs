@@ -62,6 +62,19 @@ namespace PoRumble.Views
                  "being hit - the shader has no way to know which way round a photograph went.")]
         [SerializeField] private bool _mirrorFaceDamage;
 
+        [Header("Sweat")]
+        [Tooltip("Fatigue below which a fighter is not visibly sweating. Above zero so a fresh " +
+                 "boxer's head stays in the shared sprite batch: a property block takes a " +
+                 "renderer out of it, and a sheen that started at the bell would hold ten " +
+                 "heads out for the whole match rather than only the ones that have worked.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _sweatThreshold = 0.30f;
+
+        [Tooltip("Sheen strength at full fatigue. Deliberately modest - this is damp skin " +
+                 "catching the key light, not a wet-look varnish.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _sweatMaxAmount = 0.55f;
+
         /// <summary>Per-boxer tints so ten fighters stay distinguishable in a melee.</summary>
         private static readonly Color[] BoxerPalette =
         {
@@ -85,6 +98,7 @@ namespace PoRumble.Views
         private static readonly int SwellLeftId = Shader.PropertyToID("_SwellLeft");
         private static readonly int SwellRightId = Shader.PropertyToID("_SwellRight");
         private static readonly int CutAmountId = Shader.PropertyToID("_CutAmount");
+        private static readonly int SheenAmountId = Shader.PropertyToID("_SheenAmount");
 
         private readonly CompositeDisposable _disposables = new();
 
@@ -107,6 +121,19 @@ namespace PoRumble.Views
         private float _dissolveElapsed;
         private bool _dissolving;
         private bool _effectsActive;
+
+        /// <summary>
+        /// How wet this fighter looks, in 0..1. Derived from the same fatigue measure that
+        /// droops the guard, so the two always agree about how spent a boxer is.
+        /// </summary>
+        private float _sheen;
+
+        /// <summary>
+        /// True while the head is carrying a property block that the main effect loop is not
+        /// responsible for - a bruise, sweat, or both. Tracked so the block is cleared exactly
+        /// once when the last of them goes away, rather than every frame afterwards.
+        /// </summary>
+        private bool _headBlockSet;
 
         /// <summary>
         /// True on the seat the human is driving. Marked with a standing outline, which is the
@@ -358,6 +385,54 @@ namespace PoRumble.Views
             {
                 _rightArmView.SetFatigue(fatigue);
             }
+
+            // Sweat rides the same number. Fatigue already changes the drawn guard, but only
+            // for whoever you happen to be watching; a wet head reads across the ring, which
+            // is where a ten-way actually needs it. Presentational only, exactly like the
+            // bruise - nothing reads it back into combat, so a gleaming fighter is neither
+            // better nor worse than a dry one and the shipped policy stays calibrated.
+            _sheen = _sweatThreshold < 1f
+                ? Mathf.InverseLerp(_sweatThreshold, 1f, fatigue) * _sweatMaxAmount
+                : 0f;
+
+            PushHeadSurface();
+        }
+
+        /// <summary>
+        /// Keeps the head's bruise and sweat current while the main effect loop is idle.
+        ///
+        /// Both are states rather than events: they have no end condition inside a match, so
+        /// nothing ever wakes <see cref="Update"/> to draw them. Written from here instead,
+        /// which already runs every FixedUpdate for the guard droop.
+        ///
+        /// Skipped entirely while the effect loop is running, because that loop writes all
+        /// nine renderers including this one and the two would fight over the same block.
+        /// </summary>
+        private void PushHeadSurface()
+        {
+            if (_headRenderer == null || _effectsActive)
+            {
+                return;
+            }
+
+            if (!HeadNeedsBlock())
+            {
+                // Cleared once, on the frame the last mark goes away - a fresh fighter's head
+                // belongs back in the shared sprite batch, and clearing every frame would be
+                // a redundant write on every boxer in the ring for the whole match.
+                if (_headBlockSet)
+                {
+                    _headRenderer.SetPropertyBlock(null);
+                    _headBlockSet = false;
+                }
+
+                return;
+            }
+
+            _headRenderer.GetPropertyBlock(_propertyBlock);
+            WriteHeadSurface(_propertyBlock, true);
+            _headRenderer.SetPropertyBlock(_propertyBlock);
+            _headBlockSet = true;
         }
 
         private void OnBoxerDamaged(BoxerDamagedMessage message)
@@ -457,23 +532,29 @@ namespace PoRumble.Views
                 // sprite batch until the bell. One renderer per marked fighter is affordable;
                 // all nine would be the ninety-draw-call trap this loop exists to avoid.
                 bool isHead = _headRenderer != null && target == _headRenderer;
-                WriteDamage(_propertyBlock, isHead);
+                WriteHeadSurface(_propertyBlock, isHead);
 
                 target.SetPropertyBlock(_propertyBlock);
             }
         }
 
         /// <summary>
-        /// Writes the face's accumulated swelling and cut into a block, or zeroes them for a
-        /// renderer that is not the head.
+        /// Writes everything that belongs to the face itself - accumulated swelling, a cut and
+        /// sweat - into a block, or zeroes them all for a renderer that is not the head.
+        ///
+        /// All of it goes on the head and nowhere else. A bruise on a glove would be nonsense,
+        /// and a sheen on all nine renderers would be the ninety-draw-call trap this class's
+        /// effect loop exists to avoid: neither has an end condition inside a match, so
+        /// whatever carries them stays out of the shared sprite batch until the bell.
         /// </summary>
-        private void WriteDamage(MaterialPropertyBlock block, bool isHead)
+        private void WriteHeadSurface(MaterialPropertyBlock block, bool isHead)
         {
             if (!isHead || _model == null)
             {
                 block.SetFloat(SwellLeftId, 0f);
                 block.SetFloat(SwellRightId, 0f);
                 block.SetFloat(CutAmountId, 0f);
+                block.SetFloat(SheenAmountId, 0f);
                 return;
             }
 
@@ -483,14 +564,18 @@ namespace PoRumble.Views
             block.SetFloat(SwellLeftId, left);
             block.SetFloat(SwellRightId, right);
             block.SetFloat(CutAmountId, _model.Cut);
+            block.SetFloat(SheenAmountId, _model.IsAlive.Value ? _sheen : 0f);
         }
 
-        /// <summary>True once this fighter carries a mark worth keeping on screen.</summary>
-        private bool HasVisibleDamage()
+        /// <summary>
+        /// True once this fighter's face carries something worth keeping on screen, and so
+        /// worth the draw call of holding a property block open on the head.
+        /// </summary>
+        private bool HeadNeedsBlock()
         {
             return _model != null
                    && _model.IsAlive.Value
-                   && (_model.Swell > 0.01f || _model.Cut > 0.01f);
+                   && (_model.Swell > 0.01f || _model.Cut > 0.01f || _sheen > 0.01f);
         }
 
         private void ClearEffectProperties()
@@ -510,18 +595,23 @@ namespace PoRumble.Views
                 }
             }
 
-            // Everything else here switches itself off, and damage does not: a marked face
-            // stays marked until the bell. So the head gets its block put straight back,
-            // carrying the bruise and nothing else, while the other eight renderers go back
-            // into the shared batch where they belong.
-            if (_headRenderer == null || !HasVisibleDamage())
+            // The loop above has just cleared every renderer, the head included, so whatever
+            // the head was carrying is gone whether or not it is about to be put back.
+            _headBlockSet = false;
+
+            // Everything else here switches itself off, and the face's own state does not: a
+            // marked or sweating face stays that way until the bell. So the head gets its
+            // block put straight back carrying only that, while the other eight renderers go
+            // back into the shared batch where they belong.
+            if (_headRenderer == null || !HeadNeedsBlock())
             {
                 return;
             }
 
             _headRenderer.GetPropertyBlock(_propertyBlock);
-            WriteDamage(_propertyBlock, true);
+            WriteHeadSurface(_propertyBlock, true);
             _headRenderer.SetPropertyBlock(_propertyBlock);
+            _headBlockSet = true;
         }
 
         /// <summary>

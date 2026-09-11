@@ -105,18 +105,50 @@ half3 PoRumbleApplyBruise(
     return shaded;
 }
 
-// Applies rim light, outline, hit flash and knockout dissolve on top of a shaded sprite.
+// A wet highlight, read off the sprite's normal map.
+//
+// A directional term rather than the rim's facing term, and that is what makes it read as
+// sweat rather than as a second rim. Rim asks "has this surface turned away from me", which
+// traces a silhouette; a specular glint asks "is this surface angled to bounce the key light
+// into my eye", which picks out the few spots on a brow or a shoulder that actually catch it.
+// Take the facing term instead and a tired fighter simply glows at the edges.
+//
+// The direction is a constant rather than the real key light's. The key light moves - it
+// follows the survivors across the ring - and a highlight that slid around a fighter's head as
+// the rig drifted would read as the fighter turning rather than as the light moving. A fixed
+// up-and-left source is the convention the hand-authored sprite shading already assumes.
+half3 PoRumbleApplySheen(
+    half3 shaded,
+    half alpha,
+    half3 normalTS,
+    half amount,
+    half power,
+    half4 sheenColor)
+{
+    const half3 keyDirection = half3(-0.371, 0.557, 0.743);
+
+    half facing = saturate(dot(normalize(normalTS), keyDirection));
+    half glint = pow(facing, max(power, 1.0));
+
+    // Additive and scaled by alpha, like the rim: sweat is light coming off the fighter, and
+    // adding it into transparent pixels would give the silhouette a halo.
+    return shaded + sheenColor.rgb * (glint * amount * alpha);
+}
+
+// Applies sweat, rim light, outline, hit flash and knockout dissolve on top of a shaded sprite.
 //
 // The order is deliberate and each step depends on the one before it:
 //   bruise   - accumulated damage, which is part of the sprite by the time anything else runs
+//   sheen    - sweat sitting on that surface, so it lies over the bruise rather than under it
 //   rim      - shape, so it sits under everything that is an event
 //   outline  - a state tell (counter window, the player's own fighter), over the shape
-//   flash    - the impact itself, which should wash out both of the above
+//   flash    - the impact itself, which should wash out all of the above
 //   dissolve - last, because it eats alpha and nothing may draw into what it removed
 //
-// The bruise goes first because it is the only one of the five that is a change to the
+// The bruise goes first because it is the only one of these that is a change to the
 // fighter rather than a thing happening to them: a rim light should trace a swollen face,
-// and a hit flash should white it out, which only works in that order.
+// and a hit flash should white it out, which only works in that order. Sweat follows it for
+// the same reason in miniature - it is on the skin, and the skin is already bruised.
 //
 // normalTS is the tangent-space normal already unpacked by the caller. The unlit pass has no
 // normal map bound, so it passes a flat (0,0,1) and the rim term falls out to zero on its own.
@@ -137,12 +169,21 @@ half4 ApplySpriteFX(
     half swellLeft,
     half swellRight,
     half cutAmount,
-    half4 bruiseColor)
+    half4 bruiseColor,
+    half sheenAmount,
+    half sheenPower,
+    half4 sheenColor)
 {
     if (swellLeft > 0.0 || swellRight > 0.0 || cutAmount > 0.0)
     {
         shaded.rgb = PoRumbleApplyBruise(
             shaded.rgb, uv, swellLeft, swellRight, cutAmount, bruiseColor);
+    }
+
+    if (sheenAmount > 0.0)
+    {
+        shaded.rgb = PoRumbleApplySheen(
+            shaded.rgb, shaded.a, normalTS, sheenAmount, sheenPower, sheenColor);
     }
 
     // Rim from the normal map's z: 1 where the surface faces the viewer, 0 where it has

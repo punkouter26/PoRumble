@@ -57,6 +57,15 @@ Shader "PoRumble/SpriteLitFX"
         _SwellRight("Swell Right", Range(0,1)) = 0
         _CutAmount("Cut Amount", Range(0,1)) = 0
 
+        // Sweat. Driven per renderer by BoxerView from the same fatigue measure that droops
+        // the guard, and written onto the head alone for the reason the bruise is. Reads the
+        // sprite's normal map like the rim does, so it only says anything where there is
+        // volume for a highlight to sit on.
+        [Header(Sheen)]
+        _SheenColor("Sheen Colour", Color) = (1,0.98,0.94,1)
+        _SheenAmount("Sheen Amount", Range(0,1)) = 0
+        _SheenPower("Sheen Tightness", Range(2,64)) = 22
+
         // Legacy properties, kept so materials can fall back to the built-in sprite shader.
         [HideInInspector] _Color("Tint", Color) = (1,1,1,1)
         [HideInInspector] _RendererColor("RendererColor", Color) = (1,1,1,1)
@@ -110,6 +119,7 @@ Shader "PoRumble/SpriteLitFX"
                 half4 _RimColor;
                 half4 _OutlineColor;
                 half4 _BruiseColor;
+                half4 _SheenColor;
                 half _FlashAmount;
                 half _DissolveAmount;
                 half _RimAmount;
@@ -119,6 +129,8 @@ Shader "PoRumble/SpriteLitFX"
                 half _SwellLeft;
                 half _SwellRight;
                 half _CutAmount;
+                half _SheenAmount;
+                half _SheenPower;
             CBUFFER_END
 
             #include "SpriteFX.hlsl"
@@ -157,7 +169,8 @@ Shader "PoRumble/SpriteLitFX"
                                      _DissolveAmount, _DissolveEdgeColor,
                                      normalTS, _RimColor, _RimAmount, _RimPower,
                                      _OutlineColor, _OutlineAmount, innerEdge,
-                                     _SwellLeft, _SwellRight, _CutAmount, _BruiseColor);
+                                     _SwellLeft, _SwellRight, _CutAmount, _BruiseColor,
+                                     _SheenAmount, _SheenPower, _SheenColor);
             }
             ENDHLSL
         }
@@ -197,6 +210,7 @@ Shader "PoRumble/SpriteLitFX"
                 half4 _RimColor;
                 half4 _OutlineColor;
                 half4 _BruiseColor;
+                half4 _SheenColor;
                 half _FlashAmount;
                 half _DissolveAmount;
                 half _RimAmount;
@@ -206,6 +220,8 @@ Shader "PoRumble/SpriteLitFX"
                 half _SwellLeft;
                 half _SwellRight;
                 half _CutAmount;
+                half _SheenAmount;
+                half _SheenPower;
             CBUFFER_END
 
             Varyings NormalsRenderingVertex(Attributes input)
@@ -263,6 +279,7 @@ Shader "PoRumble/SpriteLitFX"
                 half4 _RimColor;
                 half4 _OutlineColor;
                 half4 _BruiseColor;
+                half4 _SheenColor;
                 half _FlashAmount;
                 half _DissolveAmount;
                 half _RimAmount;
@@ -272,6 +289,8 @@ Shader "PoRumble/SpriteLitFX"
                 half _SwellLeft;
                 half _SwellRight;
                 half _CutAmount;
+                half _SheenAmount;
+                half _SheenPower;
             CBUFFER_END
 
             #include "SpriteFX.hlsl"
@@ -307,7 +326,8 @@ Shader "PoRumble/SpriteLitFX"
                                      _DissolveAmount, _DissolveEdgeColor,
                                      half3(0.0, 0.0, 1.0), _RimColor, _RimAmount, _RimPower,
                                      _OutlineColor, _OutlineAmount, innerEdge,
-                                     _SwellLeft, _SwellRight, _CutAmount, _BruiseColor);
+                                     _SwellLeft, _SwellRight, _CutAmount, _BruiseColor,
+                                     _SheenAmount, _SheenPower, _SheenColor);
             }
             ENDHLSL
         }

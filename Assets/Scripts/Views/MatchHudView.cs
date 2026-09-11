@@ -228,8 +228,13 @@ namespace PoRumble.Views
             switch (phase)
             {
                 case MatchFlowPhase.Title:
-                    _captionLabel.text = "PO RUMBLE";
-                    _promptLabel.text = StartPrompt();
+                    // Deliberately blank. MainMenuView owns this phase now - it draws the
+                    // title, the tagline and the two things a player can actually press.
+                    // Writing the centre stage here as well would put two documents on the
+                    // same region of screen with no shared layout to keep them apart, which
+                    // is the collision the band system exists to remove.
+                    _captionLabel.text = string.Empty;
+                    _promptLabel.text = string.Empty;
                     _resultLabel.text = string.Empty;
                     break;
 
@@ -270,17 +275,6 @@ namespace PoRumble.Views
         private static string RestartPrompt()
         {
             return IsTouchOnly() ? "TAP TO CONTINUE" : "PRESS  R  TO CONTINUE";
-        }
-
-        /// <summary>
-        /// The menu prompt. Names the fight card as well as the fight, because the card is the
-        /// only thing here a player can change and on a phone there is no key to discover.
-        /// </summary>
-        private static string StartPrompt()
-        {
-            return IsTouchOnly()
-                ? "TAP TO FIGHT      FIGHT CARD BELOW"
-                : "PRESS  ENTER  TO FIGHT      TAB  FOR THE CARD";
         }
 
         /// <summary>

@@ -214,6 +214,168 @@ namespace PoRumble.Views
             });
         }
 
+        /// <summary>
+        /// A footstep on canvas: a soft, short thump with almost no tone to it.
+        ///
+        /// Quiet and dull on purpose. Ten fighters shuffling is the most frequent sound in the
+        /// game by a wide margin, and anything with a transient sharp enough to notice turns a
+        /// ten-way into a hailstorm. What it has to do is fill the silence under the footwork,
+        /// not announce each step.
+        /// </summary>
+        internal static AudioClip CreateFootstep(int variant = 0)
+        {
+            Seed(variant);
+            float previous = 0f;
+            float bodyHz = 92f * VariantScale(variant, 0.20f);
+
+            return Build("sfx_step_" + variant, 0.11f, (t, duration) =>
+            {
+                float envelope = Decay(t, duration, 26f);
+
+                // Heavily low-passed noise rather than a click: canvas over board absorbs
+                // almost everything above a few hundred hertz, and a bright step reads as
+                // walking on tile.
+                previous += (NextNoise() - previous) * 0.09f;
+
+                float body = Mathf.Sin(2f * Mathf.PI * bodyHz * t) * 0.5f;
+                return (previous * 2.2f + body) * envelope * 0.5f;
+            });
+        }
+
+        /// <summary>
+        /// A hard exhale. Played when a fighter is running out of breath.
+        ///
+        /// Two filtered noise bands rather than one: a single band reads as wind, and the
+        /// thing that makes an exhale sound like a person is that it has a voiced floor under
+        /// the air. Shaped to open and close rather than to decay, because a breath has a
+        /// beginning and an end and a decay envelope only has an end.
+        /// </summary>
+        internal static AudioClip CreateBreath(int variant = 0)
+        {
+            Seed(variant);
+            float air = 0f;
+            float chest = 0f;
+            float scale = VariantScale(variant, 0.18f);
+
+            return Build("sfx_breath_" + variant, 0.38f, (t, duration) =>
+            {
+                float progress = t / duration;
+
+                // Opens quickly and closes slowly, which is the shape of an exhale rather
+                // than the symmetric swell of a whoosh.
+                float envelope = Mathf.Sin(Mathf.Pow(progress, 0.6f) * Mathf.PI);
+
+                air += (NextNoise() - air) * 0.30f * scale;
+                chest += (NextNoise() - chest) * 0.035f * scale;
+
+                return (air * 0.35f + chest * 1.5f) * envelope * 0.45f;
+            });
+        }
+
+        /// <summary>
+        /// A fighter hitting the ropes: a dull thud with a slack, detuned ring after it.
+        ///
+        /// The ring is what distinguishes it from a punch. Rope is under tension and springs
+        /// back, so the tail bends in pitch; a punch's tail only falls away.
+        /// </summary>
+        internal static AudioClip CreateRopeThud(int variant = 0)
+        {
+            Seed(variant);
+            float scale = VariantScale(variant, 0.15f);
+
+            return Build("sfx_rope_" + variant, 0.34f, (t, duration) =>
+            {
+                float progress = t / duration;
+                float envelope = Decay(t, duration, 9f);
+
+                // Bends upward as the rope takes the weight and pulls back.
+                float frequency = Mathf.Lerp(74f * scale, 108f * scale, progress);
+                float body = Mathf.Sin(2f * Mathf.PI * frequency * t);
+                float creak = Mathf.Sin(2f * Mathf.PI * frequency * 3.7f * t) * 0.22f;
+                float thud = NextNoise() * Decay(t, duration, 48f) * 0.5f;
+
+                return (body * 0.7f + creak + thud) * envelope * 0.6f;
+            });
+        }
+
+        /// <summary>
+        /// The crowd bed: a seamless loop of filtered noise with a slow swell under it.
+        ///
+        /// The mixer has routed a dedicated Ambience group since it was built and nothing has
+        /// ever played into it, so the ring has been silent between punches for the whole life
+        /// of the project. A crowd is what a room full of people sounds like from inside it,
+        /// which is almost entirely broadband noise shaped by the room - so noise through a
+        /// band-pass is not an approximation here, it is the thing itself.
+        ///
+        /// Built through <see cref="BuildLoop"/> rather than <see cref="Build"/>: the ordinary
+        /// builder fades both ends to zero to stop the one-shots clicking, and a bed that
+        /// faded to silence every four seconds would pulse rather than sustain.
+        /// </summary>
+        internal static AudioClip CreateCrowdBed()
+        {
+            Seed(97);
+
+            float low = 0f;
+            float mid = 0f;
+            float high = 0f;
+
+            return BuildLoop("sfx_crowd_bed", 4.2f, 0.5f, (t, duration) =>
+            {
+                // Three bands rather than one. A single low-pass reads as rain; what makes a
+                // crowd is that the energy is spread with a hump in the middle where voices
+                // live, and that the top is present but soft.
+                float source = NextNoise();
+                low += (source - low) * 0.020f;
+                mid += (source - mid) * 0.140f;
+                high += (source - high) * 0.480f;
+
+                float band = low * 1.5f + (mid - low) * 1.9f + (high - mid) * 0.5f;
+
+                // Two slow, mutually prime swells so the bed never settles into an obvious
+                // period. Both complete a whole number of cycles over the clip, or the
+                // crossfade would splice two different points of the swell together.
+                float swell = 1f
+                    + 0.14f * Mathf.Sin(2f * Mathf.PI * 3f * t / duration)
+                    + 0.09f * Mathf.Sin(2f * Mathf.PI * 5f * t / duration);
+
+                return band * swell * 0.5f;
+            });
+        }
+
+        /// <summary>
+        /// A crowd reaction: the room coming up and settling again. Fired on a knockout or a
+        /// heavy landed punch.
+        ///
+        /// Deliberately slower to arrive than the punch that caused it. A crowd noticing a
+        /// blow takes a beat, and a roar that starts on the same sample as the impact reads as
+        /// part of the impact rather than as a reaction to it.
+        /// </summary>
+        internal static AudioClip CreateCrowdSwell(int variant = 0)
+        {
+            Seed(200 + variant);
+
+            float low = 0f;
+            float mid = 0f;
+            float peak = 0.34f * VariantScale(variant, 0.22f);
+
+            return Build("sfx_crowd_swell_" + variant, 1.9f, (t, duration) =>
+            {
+                float progress = t / duration;
+
+                float source = NextNoise();
+                low += (source - low) * 0.030f;
+                mid += (source - mid) * 0.190f;
+
+                // Rises over the first third and falls away over the rest. Raised to a power
+                // so the attack is a swell rather than a step.
+                float envelope = progress < peak
+                    ? Mathf.Pow(progress / peak, 1.7f)
+                    : Mathf.Pow(1f - (progress - peak) / (1f - peak), 1.4f);
+
+                return (low * 1.4f + (mid - low) * 2.3f) * envelope * 0.8f;
+            });
+        }
+
         /// <summary>A short countdown blip, pitched up on the final beat.</summary>
         internal static AudioClip CreateCountdownBeep(bool final)
         {
@@ -256,6 +418,67 @@ namespace PoRumble.Views
 
             AudioClip clip = AudioClip.Create(name, sampleCount, 1, SAMPLE_RATE, false);
             clip.SetData(samples, 0);
+            return clip;
+        }
+
+        /// <summary>
+        /// Builds a clip that loops without a seam, by crossfading its own tail back over its
+        /// head and then discarding the tail.
+        ///
+        /// <see cref="Build"/> cannot be used for anything looping: it fades both ends to zero
+        /// so a one-shot does not click, and a sustained bed built that way would drop to
+        /// silence on every wrap - a pulse rather than a loop. Crossfading instead means the
+        /// last <paramref name="crossfadeSeconds"/> of material is mixed into the first, so
+        /// the sample after the end is the sample the loop point already played.
+        ///
+        /// The shaping function is still evaluated over the full <paramref name="duration"/>;
+        /// the returned clip is shorter by the crossfade, which is why anything periodic in
+        /// the shape has to complete a whole number of cycles over the full duration or the
+        /// two ends will be at different points of it when they meet.
+        /// </summary>
+        private static AudioClip BuildLoop(
+            string name,
+            float duration,
+            float crossfadeSeconds,
+            System.Func<float, float, float> shape)
+        {
+            int sampleCount = Mathf.CeilToInt(SAMPLE_RATE * duration);
+            int fade = Mathf.Clamp(
+                Mathf.CeilToInt(SAMPLE_RATE * crossfadeSeconds), 1, sampleCount / 2);
+
+            float[] samples = new float[sampleCount];
+
+            for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
+            {
+                float t = sampleIndex / (float)SAMPLE_RATE;
+                samples[sampleIndex] = shape(t, duration);
+            }
+
+            int loopLength = sampleCount - fade;
+
+            for (int offset = 0; offset < fade; offset++)
+            {
+                // Equal-power rather than linear. Two uncorrelated noise signals summed with
+                // linear gains dip by about 3dB through the middle of the crossfade, which is
+                // audible on a sustained bed as a dropout once per loop.
+                float position = offset / (float)fade;
+                float incomingGain = Mathf.Sqrt(position);
+                float outgoingGain = Mathf.Sqrt(1f - position);
+
+                samples[offset] = samples[offset] * incomingGain
+                                  + samples[loopLength + offset] * outgoingGain;
+            }
+
+            float[] looped = new float[loopLength];
+            System.Array.Copy(samples, looped, loopLength);
+
+            for (int sampleIndex = 0; sampleIndex < loopLength; sampleIndex++)
+            {
+                looped[sampleIndex] = Mathf.Clamp(looped[sampleIndex], -1f, 1f);
+            }
+
+            AudioClip clip = AudioClip.Create(name, loopLength, 1, SAMPLE_RATE, false);
+            clip.SetData(looped, 0);
             return clip;
         }
     }

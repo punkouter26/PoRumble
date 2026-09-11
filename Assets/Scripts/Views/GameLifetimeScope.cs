@@ -111,6 +111,8 @@ namespace PoRumble.Views
                 InjectOptional<FightStatsHudView>(container);
                 InjectOptional<CameraDirectorView>(container);
                 InjectOptional<CommentaryView>(container);
+                InjectOptional<MainMenuView>(container);
+                InjectOptional<CrowdAmbienceView>(container);
             });
         }
 

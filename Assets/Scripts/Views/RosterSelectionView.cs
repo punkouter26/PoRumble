@@ -126,6 +126,11 @@ namespace PoRumble.Views
         /// <summary>
         /// Shows the way into the card only when the card can actually be used: between
         /// matches, and never while it is already open on top of the button.
+        ///
+        /// Hidden on the title phase specifically, even though the card can be opened there.
+        /// MainMenuView carries its own FIGHT CARD button, and with both on screen the menu
+        /// showed two of them - one in the panel and one floating at the bottom of the same
+        /// screen. The results phase still needs this one, because there is no menu up then.
         /// </summary>
         private void RefreshOpenButton()
         {
@@ -134,7 +139,10 @@ namespace PoRumble.Views
                 return;
             }
 
-            bool available = _flow.CanOpenCard && !_roster.IsOpen.Value;
+            bool available = _flow.CanOpenCard
+                             && _flow.Phase.Value != MatchFlowPhase.Title
+                             && !_roster.IsOpen.Value;
+
             _openButton.style.display = available ? DisplayStyle.Flex : DisplayStyle.None;
         }
 

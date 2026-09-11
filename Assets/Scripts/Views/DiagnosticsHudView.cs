@@ -1,5 +1,6 @@
 using System.Text;
 using PoRumble.Models;
+using Unity.MLAgents;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Profiling;
@@ -20,12 +21,26 @@ namespace PoRumble.Views
     /// Sampled once every refresh rather than every frame, and the text is built through a
     /// pooled StringBuilder, so the overlay does not itself become the allocation it exists to
     /// measure.
+    ///
+    /// Two pages, because there are two different questions to ask and the answers do not
+    /// share a column. <see cref="DiagnosticsPage.Frame"/> is the renderer and the allocator -
+    /// what the performance rules budget. <see cref="DiagnosticsPage.Combat"/> is the
+    /// simulation: how hard the policy is being driven, what is actually being thrown, and
+    /// where the director is pointing. Stacking both would make a sheet tall enough to cover
+    /// the fight it is reporting on, and a developer is only ever reading one of them.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(UIDocument))]
     public sealed class DiagnosticsHudView : MonoBehaviour
     {
         private const int HISTORY = 120;
+
+        /// <summary>Which page of the overlay is up.</summary>
+        private enum DiagnosticsPage
+        {
+            Frame = 0,
+            Combat = 1
+        }
 
         [Tooltip("Start with the overlay visible. Off by default: it is a developer tool.")]
         [SerializeField] private bool _visibleOnStart;
@@ -45,16 +60,29 @@ namespace PoRumble.Views
         private readonly StringBuilder _builder = new(512);
         private readonly float[] _frameHistory = new float[HISTORY];
 
+        // Decisions per second, on the same ring buffer shape as the frame history so the two
+        // pages can share one graph painter. This is the number that moves when inference
+        // stalls, and unlike frame time it says whether the *policy* is keeping up rather than
+        // whether the renderer is.
+        private readonly float[] _decisionHistory = new float[HISTORY];
+
         // Scratch for the percentile sort. Pre-allocated because this overlay exists to report
         // allocation rate and would be lying if it allocated an array to do it.
         private readonly float[] _sortedFrames = new float[HISTORY];
 
         private MatchModel _match;
         private MatchFlowModel _flow;
+        private FightStatsModel _stats;
+        private DirectorModel _director;
+        private RosterModel _roster;
 
         private VisualElement _panel;
         private Label _readout;
         private VisualElement _graph;
+        private Button _frameTab;
+        private Button _combatTab;
+
+        private DiagnosticsPage _page = DiagnosticsPage.Frame;
 
         private ProfilerRecorder _srpBatcherDraws;
         private ProfilerRecorder _standardDraws;
@@ -85,11 +113,32 @@ namespace PoRumble.Views
         private long _lastGcBytes;
         private float _gcPerSecond;
 
+        /// <summary>How many <see cref="BoxerAgentView"/> seats exist. Counted once at Start.</summary>
+        private int _agentCount;
+
+        private int _lastAcademyStep;
+        private float _decisionsPerSecond;
+
+        /// <summary>
+        /// Write head for <see cref="_decisionHistory"/>, kept apart from
+        /// <see cref="_historyHead"/> because that one advances every frame and this series is
+        /// only sampled once per refresh.
+        /// </summary>
+        private int _decisionHead;
+
         [Inject]
-        public void Construct(MatchModel match, MatchFlowModel flow)
+        public void Construct(
+            MatchModel match,
+            MatchFlowModel flow,
+            FightStatsModel stats,
+            DirectorModel director,
+            RosterModel roster)
         {
             _match = match;
             _flow = flow;
+            _stats = stats;
+            _director = director;
+            _roster = roster;
         }
 
         private void Awake()
@@ -130,6 +179,16 @@ namespace PoRumble.Views
             // The combat voice pool builds its sources in Awake, so by Start they all exist.
             _audioSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
 
+            // Counted once for the same reason the lights are: the ring always seats ten and
+            // re-dealing the card reconfigures those seats rather than creating new ones, so
+            // this is a constant for the session.
+            //
+            // Inactive objects are excluded, unlike everywhere else in this project that
+            // searches the scene. The boxers are clones of Boxer_Template, which stays in the
+            // hierarchy switched off - counting it reported eleven agents in a ten-boxer ring.
+            _agentCount = FindObjectsByType<BoxerAgentView>(
+                FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length;
+
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
 
             if (root == null)
@@ -155,16 +214,54 @@ namespace PoRumble.Views
             _panel = root.Q<VisualElement>("panel");
             _graph = root.Q<VisualElement>("graph");
             _readout = root.Q<Label>("readout");
+            _frameTab = root.Q<Button>("tab-frame");
+            _combatTab = root.Q<Button>("tab-combat");
 
             if (_panel == null || _graph == null || _readout == null)
             {
                 return;
             }
 
+            // Tabs are optional so an older layout asset still renders the frame page rather
+            // than throwing. The overlay is a developer tool and must not be the thing that
+            // stops the game running.
+            if (_frameTab != null)
+            {
+                _frameTab.clicked += () => SelectPage(DiagnosticsPage.Frame);
+            }
+
+            if (_combatTab != null)
+            {
+                _combatTab.clicked += () => SelectPage(DiagnosticsPage.Combat);
+            }
+
             // The graph has no children: it is painted directly with Painter2D, so the
             // callback is what gives the element its contents.
             _graph.generateVisualContent += DrawGraph;
             _panel.style.display = _visibleOnStart ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>
+        /// Switches page and refreshes immediately rather than waiting for the next tick. At
+        /// the default quarter-second refresh a tab that stayed on the old page for up to 250ms
+        /// reads as a click that did not register.
+        /// </summary>
+        private void SelectPage(DiagnosticsPage page)
+        {
+            _page = page;
+
+            if (_frameTab != null)
+            {
+                _frameTab.EnableInClassList("diag__tab--on", page == DiagnosticsPage.Frame);
+            }
+
+            if (_combatTab != null)
+            {
+                _combatTab.EnableInClassList("diag__tab--on", page == DiagnosticsPage.Combat);
+            }
+
+            Refresh();
+            _refreshTimer = 0f;
         }
 
         private void Update()
@@ -218,7 +315,41 @@ namespace PoRumble.Views
                 _gcPerSecond = delta / Mathf.Max(0.001f, _refreshTimer);
             }
 
+            // Sampled on both pages, not only the combat one. The history is a ring buffer, and
+            // one that only advanced while its own tab was up would show a flat line for
+            // however long the developer had been reading the other page - which looks exactly
+            // like a stalled policy.
+            SampleDecisionRate();
+
             _builder.Clear();
+
+            if (_page == DiagnosticsPage.Combat)
+            {
+                AppendCombatPage();
+            }
+            else
+            {
+                AppendFramePage(fps, averageMs, gcNow);
+            }
+
+            _readout.text = _builder.ToString();
+            _readout.EnableInClassList("diag__readout--over", averageMs > _frameBudgetMs);
+
+            // Reset regardless of page. These accumulate every frame, so leaving them running
+            // while the combat page was up would make the frame page's first sample after a
+            // tab switch an average over however long the other tab had been open.
+            _accumulatedMs = 0f;
+            _accumulatedFrames = 0;
+            _worstMs = 0f;
+
+            _graph.MarkDirtyRepaint();
+        }
+
+        /// <summary>
+        /// The renderer and the allocator: what the performance rules actually set budgets for.
+        /// </summary>
+        private void AppendFramePage(float fps, float averageMs, long gcNow)
+        {
             _builder.Append("fps      ").Append(fps.ToString("F0"))
                     .Append("   avg ").Append(averageMs.ToString("F2")).Append("ms")
                     .Append("   p95 ").Append(Percentile(0.95f).ToString("F2")).Append("ms")
@@ -265,15 +396,165 @@ namespace PoRumble.Views
                 _builder.Append("   ").Append(_flow.Phase.Value)
                         .Append("   #").Append(_flow.MatchNumber.Value);
             }
+        }
 
-            _readout.text = _builder.ToString();
-            _readout.EnableInClassList("diag__readout--over", averageMs > _frameBudgetMs);
+        /// <summary>
+        /// The simulation rather than the renderer: how hard the policy is being driven, what
+        /// the field is actually throwing, and where the director has pointed the camera.
+        ///
+        /// Totals across the whole ring rather than the director's pair. The telemetry board
+        /// already reports the pair, and it reports it as a broadcast graphic; what is missing
+        /// from the game entirely is a number for the field as a whole, which is the one that
+        /// says whether a policy has stopped punching.
+        /// </summary>
+        private void AppendCombatPage()
+        {
+            _builder.Append("policy   ").Append(_agentCount).Append(" agents");
 
-            _accumulatedMs = 0f;
-            _accumulatedFrames = 0;
-            _worstMs = 0f;
+            if (Academy.IsInitialized)
+            {
+                _builder.Append("   academy ").Append(Academy.Instance.StepCount).Append(" steps")
+                        .Append("   ").Append(_decisionsPerSecond.ToString("F1")).Append(" steps/s");
+            }
+            else
+            {
+                // Not an error: a scene with no agents never initialises the Academy, and
+                // touching Academy.Instance would construct one as a side effect of looking.
+                _builder.Append("   academy not initialised");
+            }
 
-            _graph.MarkDirtyRepaint();
+            _builder.Append('\n');
+
+            AppendCombatTotals();
+            AppendDirectorLine();
+
+            if (_match != null)
+            {
+                _builder.Append("match    ").Append(_match.CountAlive())
+                        .Append('/').Append(_match.Boxers.Count).Append(" alive");
+            }
+
+            if (_flow != null)
+            {
+                _builder.Append("   ").Append(_flow.Phase.Value)
+                        .Append("   #").Append(_flow.MatchNumber.Value);
+            }
+        }
+
+        /// <summary>
+        /// Sums the per-fighter tallies the telemetry board already keeps.
+        ///
+        /// Connect rate is landed over thrown, never over the punches that reached somebody -
+        /// the same reason PunchThrownMessage exists at all. Computed over blocked, evaded and
+        /// landed it would count only punches that hit something and report close to 100%.
+        /// </summary>
+        private void AppendCombatTotals()
+        {
+            if (_stats == null || _stats.Stats.Count == 0)
+            {
+                return;
+            }
+
+            int thrown = 0;
+            int landed = 0;
+            int blocked = 0;
+            int evaded = 0;
+            int slips = 0;
+            int counters = 0;
+            int haymakers = 0;
+            int damage = 0;
+
+            for (int index = 0; index < _stats.Stats.Count; index++)
+            {
+                FighterStats fighter = _stats.Stats[index];
+                thrown += fighter.Thrown;
+                landed += fighter.Landed;
+                blocked += fighter.Blocked;
+                evaded += fighter.Evaded;
+                slips += fighter.Slips;
+                counters += fighter.Counters;
+                haymakers += fighter.Haymakers;
+                damage += fighter.DamageDealt;
+            }
+
+            float connect = thrown > 0 ? landed / (float)thrown * 100f : 0f;
+
+            _builder.Append("punches  ").Append(thrown).Append(" thrown")
+                    .Append("   ").Append(landed).Append(" landed")
+                    .Append("   ").Append(connect.ToString("F1")).Append("% connect\n");
+
+            _builder.Append("stopped  ").Append(blocked).Append(" blocked")
+                    .Append("   ").Append(evaded).Append(" evaded")
+                    .Append("   ").Append(slips).Append(" slips\n");
+
+            _builder.Append("heavy    ").Append(counters).Append(" counters")
+                    .Append("   ").Append(haymakers).Append(" haymakers")
+                    .Append("   ").Append(damage).Append(" damage\n");
+        }
+
+        /// <summary>Which pair the camera director picked, how tight, and how hard it scored.</summary>
+        private void AppendDirectorLine()
+        {
+            if (_director == null)
+            {
+                return;
+            }
+
+            _builder.Append("director ").Append(_director.Shot.Value);
+
+            if (_director.HasPair)
+            {
+                _builder.Append("   ").Append(NameOf(_director.FocusId))
+                        .Append(" vs ").Append(NameOf(_director.RivalId))
+                        .Append("   tension ").Append(_director.Tension.ToString("F2"));
+            }
+            else
+            {
+                _builder.Append("   no pair");
+            }
+
+            _builder.Append('\n');
+        }
+
+        /// <summary>The seated contestant's name, or the slot number when there is no card.</summary>
+        private string NameOf(int boxerId)
+        {
+            FighterProfile profile = _roster == null ? null : _roster.SeatOf(boxerId);
+            return profile != null ? profile.DisplayName : $"#{boxerId:00}";
+        }
+
+        /// <summary>
+        /// Academy steps per second, pushed onto the ring buffer the combat graph paints.
+        ///
+        /// A rate rather than the raw counter, because the counter only ever climbs and a graph
+        /// of it is a straight line. The rate is what falls when inference starts costing more
+        /// than the frame can afford, which is the failure this page exists to catch.
+        /// </summary>
+        private void SampleDecisionRate()
+        {
+            if (!Academy.IsInitialized)
+            {
+                _decisionsPerSecond = 0f;
+                _decisionHistory[_decisionHead] = 0f;
+                _decisionHead = (_decisionHead + 1) % HISTORY;
+                return;
+            }
+
+            int step = Academy.Instance.StepCount;
+            int stepped = step - _lastAcademyStep;
+            _lastAcademyStep = step;
+
+            // A new episode resets the academy's counter, which would otherwise read as a
+            // large negative rate for one sample and drag the graph's scale with it.
+            if (stepped < 0)
+            {
+                stepped = 0;
+            }
+
+            _decisionsPerSecond = stepped / Mathf.Max(0.001f, _refreshTimer);
+
+            _decisionHistory[_decisionHead] = _decisionsPerSecond;
+            _decisionHead = (_decisionHead + 1) % HISTORY;
         }
 
         /// <summary>
@@ -390,8 +671,13 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// Paints the frame-time history as a filled graph, with the budget drawn across it so
-        /// a spike is legible as "over budget" rather than merely "tall".
+        /// Paints whichever series belongs to the page that is up, with a reference line drawn
+        /// across it so a reading is legible as "over budget" rather than merely "tall".
+        ///
+        /// One painter for both series rather than two callbacks on two elements. The shapes
+        /// are identical - a fixed-length ring buffer of floats against a scale - and the only
+        /// thing that actually differs is what the mid-line means, so forking it would be two
+        /// copies of the same walk kept in step by hand.
         /// </summary>
         private void DrawGraph(MeshGenerationContext context)
         {
@@ -402,20 +688,54 @@ namespace PoRumble.Views
                 return;
             }
 
-            Painter2D painter = context.painter2D;
+            bool combat = _page == DiagnosticsPage.Combat;
+            float[] series = combat ? _decisionHistory : _frameHistory;
 
-            // Scaled to twice the budget, so a frame at exactly 60fps sits at half height and
-            // there is headroom above it to see how bad a spike really is.
-            float scale = _frameBudgetMs * 2f;
+            // Frame time scales to twice the budget, so a frame at exactly 60fps sits at half
+            // height and there is headroom above it to see how bad a spike really is. The
+            // decision rate scales to twice the physics rate for the same reason: a policy
+            // keeping up sits on the mid-line and a stall falls visibly off it.
+            float reference = combat ? 1f / Mathf.Max(0.0001f, Time.fixedDeltaTime) : _frameBudgetMs;
+            float scale = reference * 2f;
             float step = bounds.width / (HISTORY - 1);
 
-            painter.strokeColor = new Color(0.45f, 0.85f, 0.55f, 0.9f);
+            // Each series has its own head: the frame history is written every frame, the
+            // decision history once per refresh, so a shared head would leave the slower of
+            // the two mostly holding stale samples from whenever it last happened to line up.
+            int head = combat ? _decisionHead : _historyHead;
+
+            StrokeSeries(context.painter2D, series, head, bounds, scale, step, combat);
+
+            context.painter2D.strokeColor = new Color(0.95f, 0.45f, 0.35f, 0.55f);
+            context.painter2D.lineWidth = 1f;
+            context.painter2D.BeginPath();
+            context.painter2D.MoveTo(new Vector2(0f, bounds.height * 0.5f));
+            context.painter2D.LineTo(new Vector2(bounds.width, bounds.height * 0.5f));
+            context.painter2D.Stroke();
+        }
+
+        /// <summary>Walks one ring-buffer series across the graph's box.</summary>
+        private static void StrokeSeries(
+            Painter2D painter,
+            float[] series,
+            int head,
+            Rect bounds,
+            float scale,
+            float step,
+            bool combat)
+        {
+            // Blue for the policy, green for the renderer: the two pages report different
+            // things and the graph should not look identical on both.
+            painter.strokeColor = combat
+                ? new Color(0.45f, 0.72f, 0.95f, 0.9f)
+                : new Color(0.45f, 0.85f, 0.55f, 0.9f);
+
             painter.lineWidth = 1.5f;
             painter.BeginPath();
 
             for (int index = 0; index < HISTORY; index++)
             {
-                float value = _frameHistory[(_historyHead + index) % HISTORY];
+                float value = series[(head + index) % HISTORY];
                 float y = bounds.height * (1f - Mathf.Clamp01(value / scale));
                 Vector2 point = new(index * step, y);
 
@@ -429,13 +749,6 @@ namespace PoRumble.Views
                 }
             }
 
-            painter.Stroke();
-
-            painter.strokeColor = new Color(0.95f, 0.45f, 0.35f, 0.55f);
-            painter.lineWidth = 1f;
-            painter.BeginPath();
-            painter.MoveTo(new Vector2(0f, bounds.height * 0.5f));
-            painter.LineTo(new Vector2(bounds.width, bounds.height * 0.5f));
             painter.Stroke();
         }
     }

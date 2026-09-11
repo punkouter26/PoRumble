@@ -102,6 +102,9 @@ punch messages that were already being published.
 ```
 MatchFlowSystem ─► MatchFlowModel.Phase ─┬─► MatchDirector   (gates BoxerSystem.Tick)
                                          ├─► MatchHudView    (countdown, result, restart prompt)
+                                         ├─► MainMenuView    (the Title phase, and only it)
+                                         ├─► RingAtmosphereView (the knockout blackout)
+                                         ├─► CrowdAmbienceView  (the room goes quiet at Title)
                                          └─► CombatFeedbackView (bell, countdown beeps)
 
 PunchThrown / PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
@@ -109,6 +112,7 @@ PunchThrown / PunchLanded / PunchBlocked / PunchEvaded / HaymakerThrown
         ├─► CombatFeedbackView  (hitstop, impulse shake, particles, audio)
         ├─► PlayerStatusHudView (damage vignette, counter flash)
         ├─► FightStatsSystem    (the telemetry board's tallies)
+        ├─► CrowdAmbienceView   (reaction swells, and the bed's level)
         └─► DirectorSystem      (cuts the camera on a knockout or a landed haymaker)
 ```
 
@@ -338,6 +342,25 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
 - **Every Light2D must target every sorting layer.** A 2D light carries an explicit list of
   layers it affects. Add a sorting layer without adding it to each light's
   `m_ApplyToSortingLayers` and the fighters go unlit — silently, with no warning.
+- **The follow spot tracks the director's focus, and the key light deliberately does not.**
+  `RingAtmosphereView` drifts the key light toward the centre of whoever is still standing, which
+  is right for a ten-way and says nothing about where the fight *is*. `DirectorSystem` has
+  already decided which exchange is worth watching and the camera has already cut to it, so a
+  single extra `Light2D` follows that instead. It fades out rather than switching off when there
+  is no pair — a spot that vanished between focuses would strobe the ring every time the director
+  changed its mind. One light rather than a rim per fighter: ten more lights is ten more sets of
+  2D light work for a result the spectator camera only ever shows two of.
+- **The knockout hold drops the room.** The house light falls to `_knockoutGlobalIntensity`, the
+  corner rims go out entirely, and the key light *drives harder* and tightens as they go.
+  Dropping everything together reads as the power failing; lifting the key while the house goes
+  is what reads as a deliberate cue. The blackout is applied on top of the tension blend rather
+  than replacing it, so a knockout at the opening bell and one in the final both darken from
+  wherever that match had actually got to.
+- **A new `Light2D` must be told about every sorting layer, and about normal maps.** A light
+  carries an explicit layer list and silently fails to light anything missing from it; `FollowSpot`
+  copies the rim lights' `[1000, 1001, 0, 1003, 1004, 1005, 1006]` exactly. `NormalMapQuality` is
+  declared `Disabled = 2, Fast = 0, Accurate = 1`, so a SerializedProperty's `enumValueIndex` is
+  **not** the enum's value — set `intValue`.
 - **Shadows are the most expensive thing in the scene.** Measured live: disabling the key
   light's shadows dropped SetPass calls from 69 to 37. Only the key light casts (the renderer
   budgets a single shadow render texture) and only the fighters have `ShadowCaster2D` — the
@@ -359,6 +382,15 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
   there flattens the contrast the key light exists to create. Note that
   `NormalMapQuality` is declared `Disabled = 2, Fast = 0, Accurate = 1`, so a
   SerializedProperty's `enumValueIndex` is **not** the enum's value — set `intValue`.
+- **`BloodSpray` fires only on heavy landed punches, and `BloodParticleMat` was copied from
+  `DustParticleMat` rather than authored.** Dust is the one particle material here that is
+  alpha-blended rather than additive, which is what blood needs — it occludes rather than glows —
+  and copying it carries the blend factors, the `_SURFACE_TYPE_TRANSPARENT` keyword and the
+  render queue across *together*, which is the trap below. It is gated on damage because blood is
+  the strongest signal the feedback layer has, and a signal that fires on every landed punch is
+  not a signal, it is the background. **Rope-contact dust deliberately reuses `FootDust`** rather
+  than adding a system: it is the same canvas being disturbed, and a second particle system for it
+  would be a second draw for no visible difference.
 - **Never point a particle material at a sprite atlas page.** `ImpactParticleMat._BaseMap` held a
   direct reference to a page of `BoxerAtlas`. A `ParticleSystemRenderer` maps UV 0..1 across the
   whole bound texture and knows nothing about sprite rects, so every spark was drawing a shrunken
@@ -401,12 +433,30 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
 
 ### Custom shader
 
-`PoRumble/SpriteLitFX` is a variant of URP's Sprite-Lit-Default adding five effects the stock
+`PoRumble/SpriteLitFX` is a variant of URP's Sprite-Lit-Default adding six effects the stock
 one cannot express: `_FlashAmount` (white hit flash), `_DissolveAmount` (knockout burn-away,
 procedural noise, no extra texture), `_RimAmount` (rim light read from the sprite's normal map),
-`_OutlineAmount` (an inner outline) and the damage block — `_SwellLeft` / `_SwellRight` /
-`_CutAmount` / `_BruiseColor`. Built as a variant rather than from scratch so the fighters keep
-responding to 2D lights and keep writing normals.
+`_OutlineAmount` (an inner outline), the damage block — `_SwellLeft` / `_SwellRight` /
+`_CutAmount` / `_BruiseColor` — and `_SheenAmount` / `_SheenColor` / `_SheenPower` (sweat). Built
+as a variant rather than from scratch so the fighters keep responding to 2D lights and keep
+writing normals.
+
+**The sheen is a directional term, and that is what makes it sweat rather than a second rim.**
+Rim asks "has this surface turned away from me", which traces a silhouette; the sheen asks "is
+this surface angled to bounce the key light into my eye", which picks out the few spots on a brow
+that actually catch it. Take the facing term instead and a tired fighter simply glows at the
+edges. Its direction is a **constant**, not the real key light's: that light follows the
+survivors across the ring, and a highlight sliding around a head as the rig drifted would read as
+the fighter turning rather than as the light moving.
+
+`BoxerView` drives it from the same fatigue measure that droops the guard, so the two always
+agree about how spent a boxer is, and writes it **onto the head alone** — like the bruise, and
+for the same cost reason. Neither has an end condition inside a match, so whatever carries them
+stays out of the shared sprite batch until the bell; `_sweatThreshold` is above zero precisely so
+a fresh fighter's head stays batched rather than all ten leaving the batch at the opening bell.
+Both are pushed from `PushFatigue` (which already runs every FixedUpdate) rather than from the
+effect loop, because that loop only runs while something is *animating* and neither of these ever
+wakes it.
 
 **The bruise is drawn in the sprite's own UV space, and that is why it is in the shader at
 all.** The head is a child of the torso and turns with the fighter, so a mark placed at
@@ -471,6 +521,8 @@ every one of them.
 | `FightStats` | `FightStatsHudView` | The telemetry board — thrown/landed/connect/blocked/slips/damage for the pair the director is watching, plus a momentum bar and sparkline |
 | `CameraRig` | `CameraDirectorView` | Owns `ImpactCam` and hands it the frame on a knockout or a landed haymaker |
 | `Commentary` | `CommentaryView` | Speaks the baked commentary and prints the subtitle |
+| `MainMenu` | `MainMenuView` | The title screen — owns the `Title` phase outright |
+| `Crowd` | `CrowdAmbienceView` | The crowd bed and its reaction swells |
 
 ## The Camera Director
 
@@ -605,6 +657,38 @@ observation — it mutates no boxer and publishes nothing.
 - **`Tools/piper/` is gitignored.** An 85MB build dependency does not belong in a game repo's
   history; the bake script fetches it on demand.
 
+**The `Ambience` group was routed from the day the mixer was built and nothing ever played into
+it**, so between punches the ring was silent for the life of the project — which is most of what
+made the synthesised one-shots sound synthesised. `CrowdAmbienceView` fills it with two
+non-positional voices: a seamless bed whose level and pitch track how heated the fight is, and a
+reaction swell fired on a knockout, a heavy landed punch or a committed haymaker. Non-positional
+is the point — a crowd surrounds the listener, and giving it a position would seat the whole
+audience in one chair and swing the room from side to side as the spectator camera tracked.
+
+Two details are load-bearing. The bed is built through `ProceduralSfx.BuildLoop`, not `Build`:
+the ordinary builder fades both ends to zero so one-shots do not click, and a bed built that way
+drops to silence on every wrap — a pulse rather than a loop. `BuildLoop` crossfades the clip's
+own tail back over its head with **equal-power** gains and discards the tail; linear gains dip
+two uncorrelated noise signals by about 3dB through the middle, which is an audible dropout once
+per loop. Anything periodic in the shape must therefore complete a whole number of cycles over
+the full duration, or the two ends meet at different points of it. And excitement is the *max* of
+two independent measures rather than their average: the field thinning is a slow build that holds
+when nothing is happening this second, and momentum alone would drop the room to nothing between
+exchanges in a final that should never go quiet.
+
+**Footsteps, breath and rope contact go through the same spatial pool as the punches.** Only
+punches were positioned before, which left footwork — the thing a fighter does constantly —
+completely silent. Three things keep it affordable. Steps run on a much slower cadence than the
+foot dust (a puff costs a particle; a step costs one of fourteen voices shared with every punch
+in the ring). All three are gated on distance to the **listener**, so ten fighters shuffling
+cannot steal the pool for sounds the distance rolloff has already faded out. And the rope thud
+carries a per-fighter cooldown that is not polish: `BoxerSystem` clamps positions to the ring, so
+a fighter held in a corner is *at* the boundary every single frame and without it the sound
+machine-guns for as long as they lean. Contact is judged from the model's position against
+`MatchModel.ArenaHalfExtent` and the sign of the velocity — moving *into* the ropes, not merely
+near them — because that is where the containment actually happens; the wall colliders hold
+nobody, so a physics callback would miss the clamp entirely.
+
 **Audio is otherwise synthesised at runtime** in `ProceduralSfx` — the rest of the project has no audio assets, and
 a boxing game where landing, blocking and whiffing all sound identical loses most of what
 tells the player what happened. Swap in recorded one-shots whenever they exist; nothing but
@@ -638,6 +722,41 @@ a 1080-wide phone. They were first authored against a landscape canvas and toppe
 everything but the result banner, roughly 3% of a phone's screen width: legible on a monitor and
 not on the thing this ships to. The whole match panel measured 222x447 of a 1080x1920 screen
 before the rescale and 496x596 after.
+
+**Every panel is its own `UIDocument`, so USS declares the grid and each panel opts into a
+slot.** They cannot be flex siblings — there is no shared parent to lay them out in — so each is
+absolutely positioned against its own root, and for a long time nothing stopped two of them
+claiming the same rectangle. On the 1080-wide portrait reference several did: the diagnostics
+sheet overlapped the match panel by about 94px, and the player's own panel overlapped the
+standings by about 74. Only `_humanBoxerId: -1` hid the second one in the shipping build, since
+`PlayerStatusHudView` then builds nothing at all.
+
+The `--band-*` and `--col` tokens in `:root` are the fix. Two columns of `--col` with
+`--band-gap` between them come to exactly 100%, so no pair of panels sharing a band can overlap
+however long their content gets; `--band-top-max` caps how far the top band may grow, which is
+what keeps the middle of the screen clear for the ring. The bottom stack is three tokens read
+bottom-up: the card button on the floor, the player's panel above it, the commentary caption
+above that. `.commentary-band` used to be a bare `bottom: 430px` measured against the panel
+heights of the day and silently wrong the moment any of them moved.
+
+Two consequences worth knowing. **Panel-internal widths had to become flexible with it** — a
+fixed 190px name beside a fixed 300px bar can exceed a panel that is now a percentage of the
+screen, and a `Label` overflows rather than shrinking, so `.match-hud__name` and
+`.player-hud__bar` are `flex-basis` shares. And **the standings moved from bottom-right to the
+right column's second row**, which is what actually removed the bottom-band conflict rather than
+papering over it.
+
+**The fight card's grid fits three tiles per row, not two.** At `max-width: 700px` only two fit,
+which turned eight contestants into four rows about 1530px tall — with the title and footer on
+top, the card ran off the bottom of a phone. It survived at exactly eight and would have
+overflowed silently at nine.
+
+**`MainMenuView` owns `MatchFlowPhase.Title` outright.** The phase and the loop that returns to
+it already existed; what it had was a caption and a line of instruction text drawn onto the match
+HUD's centre stage, naming a key that does not exist on a phone. `MatchHudView`'s `Title` branch
+is now deliberately blank, and `RosterSelectionView` hides its floating `#open-card` button on
+that phase specifically — the menu carries its own, and with both live the screen showed two
+FIGHT CARD buttons. The results phase still needs the floating one, because no menu is up then.
 
 **`SafeAreaView` insets every panel, and nothing did before.** The survivor count sat 20px from
 the top of a 1920-tall screen, underneath the status bar on any phone that has one. It writes
@@ -696,6 +815,26 @@ than erroring. `Shadow Casters Count` counts only 3D casters, and `Video Memory 
 adapter total — both were tried and dropped as confidently-wrong numbers. The **Audio** category
 turns out to publish timing markers only and no counter for playing voices at all, so the voice
 line counts `isPlaying` over an `AudioSource` array cached once at `Start`.
+
+**The overlay is a full-width sheet with two tabs, not a corner box.** At a 620px minimum
+anchored top-right it overlapped the match panel, on the one screen where a diagnostics readout
+most needs to be legible, and its rows are wide runs of tabular figures a corner box wrapped
+anyway. It is also the one panel that is *fully* opaque: a developer reading frame times is not
+also watching the fight, and at 0.92 the match panel's labels still read through and the two sets
+of text interleaved.
+
+The two tabs answer different questions and do not share a column. **FRAME** is the renderer and
+the allocator — what the performance rules budget. **COMBAT** is the simulation: agent count,
+Academy steps and steps/sec, whole-field punch tallies from `FightStatsModel`, and the director's
+current pair, shot and tension. Three things there are easy to get wrong. The decision rate is
+sampled on **both** tabs, because a ring buffer that only advanced while its own tab was up shows
+a flat line for however long you were reading the other one — which looks exactly like a stalled
+policy. It has its **own write head**, since the frame history is written every frame and this
+once per refresh. And the agent count excludes inactive objects, unlike every other scene search
+in this project: the boxers are clones of `Boxer_Template`, which stays in the hierarchy switched
+off, and counting it reported eleven agents in a ten-boxer ring. `Academy.IsInitialized` is
+checked before `Academy.Instance`, because touching the instance *constructs* an Academy as a side
+effect of looking for one.
 
 The overlay reports **p95 frame time alongside the mean and the peak**, because the three answer
 different questions: a single 90ms frame in a 120-frame window moves a 16ms average by under a

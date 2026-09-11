@@ -2,13 +2,33 @@
 <!--
   The F3 telemetry overlay.
 
+  A full-width sheet rather than the top-right box it used to be. At a 620px minimum in the
+  corner it drew straight through the match panel on a 1080-wide portrait screen, which is the
+  one screen where a diagnostics overlay most needs to be readable; and the numbers it reports
+  are wide rows of tabular figures, which a corner box was always going to wrap.
+
+  Two tabs, because the overlay now answers two different questions. FRAME is the renderer and
+  the allocator - what the performance rules set budgets for. COMBAT is the simulation: how
+  often the policy is being asked for a decision, how much is being thrown, what the director
+  is looking at. Neither belongs in the other's column, and stacking both would make a sheet
+  tall enough to cover the fight it is reporting on.
+
   The graph element is empty by design: its contents are painted through
   generateVisualContent with Painter2D, so there is nothing here for UXML to declare beyond
   the box it draws into and the class that gives that box its size and ground.
+
+  The tabs are Buttons and are deliberately NOT picking-mode="Ignore" - they are the only
+  thing on this sheet anyone clicks. Everything else is, because the overlay sits over a live
+  ring and must never eat a click meant for the fight card below it.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <ui:VisualElement name="panel" class="diag" picking-mode="Ignore">
-        <ui:Label name="title" text="DIAGNOSTICS   F3" class="diag__title" picking-mode="Ignore" />
+    <ui:VisualElement name="panel" class="diag">
+        <ui:VisualElement name="tabs" class="diag__tabs">
+            <ui:Label name="title" text="DIAGNOSTICS   F3" class="diag__title" picking-mode="Ignore" />
+            <ui:Button name="tab-frame" text="FRAME" class="diag__tab diag__tab--on" />
+            <ui:Button name="tab-combat" text="COMBAT" class="diag__tab" />
+        </ui:VisualElement>
+
         <ui:VisualElement name="graph" class="diag__graph" picking-mode="Ignore" />
         <ui:Label name="readout" class="diag__readout" picking-mode="Ignore" />
     </ui:VisualElement>

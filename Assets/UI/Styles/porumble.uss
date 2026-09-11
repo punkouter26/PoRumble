@@ -72,6 +72,42 @@
 
     --radius: 8px;
 
+    /* Layout bands.
+
+       Every HUD panel is its own UIDocument, so they cannot be flex siblings of one another -
+       there is no shared parent to lay them out in. They are absolutely positioned against
+       their own root instead, which means nothing stops two of them claiming the same
+       rectangle, and on the 1080-wide portrait reference several of them did: the diagnostics
+       sheet overlapped the match panel by about 94px and the player's own panel overlapped the
+       standings by about 74. It never showed in the shipped build only because _humanBoxerId
+       is -1 there, so the player panel is never built at all.
+
+       The fix is to declare the grid once, here, and have every panel opt into a slot rather
+       than pick its own corner. Two columns of --col with --band-gap between them is 100%
+       exactly, so no pair of panels sharing a band can ever overlap however long their content
+       gets; --band-top-max then caps how far down the top band may grow, which is what keeps
+       the middle of the screen - the ring - clear.
+
+       Percentages rather than pixels throughout, so the same grid holds on a tablet and in
+       landscape. The edge inset is deliberately small because SafeAreaView has already padded
+       each document's root by the notch plus its own 12px, and these stack on top of that. */
+    --band-edge: 16px;
+    --band-gap: 8%;
+    --col: 46%;
+    --band-top-max: 36%;
+
+    /* Where the stacked right-hand column's second panel starts. Just below --band-top-max,
+       so the standings sit under the telemetry board rather than beside the match panel. */
+    --band-second-row: 38%;
+
+    /* The bottom stack, measured from the bottom edge upward. Ordered so that reading down
+       the list walks up the screen: the card button sits on the floor, the player's panel
+       above it, the commentary caption above that. Each gap is wide enough for the panel
+       below it at its tallest. */
+    --band-bottom-card: 0;
+    --band-bottom-player: 12%;
+    --band-bottom-commentary: 30%;
+
     /* Touch controls. Sized generously: a thumb is far less precise than a cursor. */
     --touch-surface: rgba(244, 246, 250, 0.14);
     --touch-surface-strong: rgba(244, 246, 250, 0.26);
@@ -211,11 +247,16 @@
     margin-bottom: var(--space-4);
 }
 
+/* Wide enough for three tiles per row on the 1080 portrait reference: a tile is --tile-width
+   plus two --space-2 margins, so three come to 996px and a fourth cannot fit.
+   At 700px only two fit, which turned eight contestants into four rows roughly 1530px tall -
+   and with the title and footer on top of that, the card ran off the bottom of a phone. It
+   was survivable at exactly eight and would have overflowed silently at nine. */
 .roster__grid {
     flex-direction: row;
     flex-wrap: wrap;
     justify-content: center;
-    max-width: 700px;
+    max-width: 1000px;
 }
 
 .roster__footer {
@@ -298,7 +339,7 @@
    only between matches - during a fight there is nothing it could usefully do. */
 .card-button {
     position: absolute;
-    bottom: var(--space-5);
+    bottom: var(--band-bottom-card);
     left: 50%;
     translate: -50% 0;
     min-width: 380px;
@@ -325,12 +366,94 @@
 .card-button:hover { background-color: var(--tile-in); }
 .card-button:active { scale: 0.96; }
 
+/* ----------------------------------------------------------------- title menu */
+/* Full-screen and modal, like the fight card. The scrim is what lets the display face sit on
+   a controlled ground instead of over a bright green canvas, and it makes the two buttons the
+   only live things on screen at a moment when the ring behind them is racked and still. */
+.menu-screen {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(6, 7, 11, 0.82);
+}
+
+.menu {
+    align-items: center;
+    max-width: 900px;
+}
+
+/* The one place --text-display is used. Anton at 150px is roughly 14% of a 1080-wide phone,
+   which is the size a fight poster's name wants to be; the ramp tops out here precisely so
+   this element has somewhere to go. */
+.menu__title {
+    -unity-text-align: middle-center;
+    letter-spacing: 4px;
+    white-space: normal;
+}
+
+.menu__tagline {
+    letter-spacing: 4px;
+    margin-bottom: var(--space-5);
+    -unity-text-align: middle-center;
+}
+
+/* Sized off the touch-button token rather than the type ramp: these are the two elements in
+   the game a thumb has to find, and a button sized to its label is a button sized for a
+   mouse. Full width of the panel so neither can be missed. */
+.menu__button {
+    width: 100%;
+    min-height: 132px;
+    margin-bottom: var(--space-3);
+    color: var(--text-primary);
+    background-color: var(--surface-panel);
+    letter-spacing: 4px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-color: rgba(244, 246, 250, 0.22);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: scale, background-color, border-color;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: ease-out;
+}
+
+/* One primary action, marked by colour rather than by size. Two buttons of equal weight make
+   a player read both before choosing; the fight is what they came for. */
+.menu__button--primary {
+    border-color: var(--state-charge);
+    background-color: rgba(250, 199, 64, 0.14);
+}
+
+.menu__button:hover { background-color: var(--tile-in); }
+.menu__button:active { scale: 0.97; }
+
+.menu__hint {
+    margin-top: var(--space-2);
+    letter-spacing: 2px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
 /* ----------------------------------------------------------------- standings */
+/* Right column, second row - directly under the telemetry board rather than bottom-right.
+   It sat at bottom-right against a 470px minimum while the player's own panel sat at
+   bottom-left against a 620px one, which is 1090px of panel across a 1080px screen: the two
+   drew through each other on any phone with a human in the seat. Moving it up into the
+   column it already shares a width with is what removes the conflict rather than papering
+   over it, and it puts the league table beside the fight it is rating. */
 .standings {
     position: absolute;
-    right: var(--space-4);
-    bottom: var(--space-4);
-    min-width: 470px;
+    right: var(--band-edge);
+    top: var(--band-second-row);
+    width: var(--col);
     background-color: var(--surface-panel);
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
@@ -359,10 +482,15 @@
 .standings__row--loss { color: var(--state-hurt); }
 
 /* ----------------------------------------------------------------- match HUD */
+/* Top band, left column. Capped in height as well as width: ten health rows is the tallest
+   this panel ever gets, and without the cap a larger roster would grow it down over the ring
+   with nothing to stop it. */
 .match-hud {
     position: absolute;
-    top: var(--space-4);
-    left: var(--space-4);
+    top: var(--band-edge);
+    left: var(--band-edge);
+    width: var(--col);
+    max-height: var(--band-top-max);
 }
 
 .match-hud__roster { margin-top: var(--space-2); }
@@ -373,10 +501,18 @@
     margin-bottom: var(--space-1);
 }
 
+/* A share of the row rather than 190 fixed pixels. The panel is now a percentage of the
+   screen, so a fixed name column plus a fixed bar could add up to more than the panel is
+   wide - which overflows rather than shrinking, because a Label does not shrink below its
+   text by default. flex-shrink with a zero basis is what lets the two divide whatever
+   width the band actually gave them. */
 .match-hud__name {
-    /* Wide enough for a contestant's name. It used to hold "#00" and nothing else, and a
-       card of named fighters overflowed it silently. */
-    width: 190px;
+    flex-grow: 0;
+    flex-shrink: 1;
+    flex-basis: 38%;
+    width: 38%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--text-secondary);
     -unity-font-definition: var(--font-body);
     font-size: var(--text-xs);
@@ -384,7 +520,10 @@
 }
 
 .match-hud__bar {
-    width: 300px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    width: auto;
     height: 20px;
 }
 
@@ -427,11 +566,15 @@
 }
 
 /* ----------------------------------------------------------------- player HUD */
+/* Bottom band, full width. It was bottom-left against a 620px minimum, which on a 1080-wide
+   phone left 460px for the standings panel that wanted 470 - so the two overlapped whenever a
+   human was seated. Spanning the whole band instead means it no longer has a neighbour to
+   collide with, and the bars get more room than they had. */
 .player-hud {
     position: absolute;
-    left: var(--space-4);
-    bottom: var(--space-4);
-    min-width: 620px;
+    left: var(--band-edge);
+    right: var(--band-edge);
+    bottom: var(--band-bottom-player);
 }
 
 .player-hud {
@@ -453,7 +596,16 @@
     margin-top: var(--space-1);
 }
 
-.player-hud__bar { width: 420px; }
+/* Flexible for the same reason the match panel's bars are: the panel is now a share of the
+   screen rather than a fixed 620px, so a fixed 420px bar beside a 62px caption would overflow
+   a narrow one instead of shrinking to fit. */
+.player-hud__bar {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    width: auto;
+}
+
 .player-hud__bar--health { height: 32px; }
 .player-hud__bar--minor { height: 20px; }
 
@@ -482,25 +634,79 @@
 }
 
 /* ----------------------------------------------------------------- diagnostics */
+/* A full-width sheet across the top rather than a corner box. At a 620px minimum anchored
+   top-right it overlapped the match panel by about 94px on the 1080 portrait reference, and
+   its rows are wide runs of tabular figures that a corner box wrapped anyway. Spanning the
+   band gives the columns the width they were always written for.
+
+   It is fully opaque, unlike every other panel: this one deliberately covers what is behind
+   it. A developer reading frame times is not also watching the fight, and these are dense rows
+   of tabular figures that have to stay legible. At 0.92 the match panel's own labels still
+   read through it and the two sets of text interleaved. */
 .diag {
     position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
-    background-color: var(--surface-panel);
+    top: var(--band-edge);
+    left: var(--band-edge);
+    right: var(--band-edge);
+    background-color: rgb(6, 7, 11);
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
     padding-left: var(--space-3);
     padding-right: var(--space-3);
-    min-width: 620px;
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
 }
 
+.diag__tabs {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+/* The title takes the slack so the tabs sit hard right, away from the readout's first
+   column - a tab directly above a number reads as a header for it. */
 .diag__title {
+    flex-grow: 1;
     color: var(--text-secondary);
     -unity-font-definition: var(--font-mono);
     font-size: var(--text-xs);
     -unity-font-style: normal;
     letter-spacing: 2px;
-    margin-bottom: var(--space-2);
+}
+
+.diag__tab {
+    -unity-font-definition: var(--font-mono);
+    font-size: var(--text-xs);
+    -unity-font-style: normal;
+    letter-spacing: 2px;
+    color: var(--text-secondary);
+    background-color: var(--surface-track);
+    margin-left: var(--space-1);
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    border-top-width: 0;
+    border-bottom-width: 2px;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    transition-property: color, border-bottom-color;
+    transition-duration: var(--motion-fast);
+}
+
+/* An underline rather than a fill: the sheet is already the darkest surface in the HUD, so a
+   lit background on the selected tab would be the brightest thing on a screen whose point is
+   the figures below it. */
+.diag__tab--on {
+    color: var(--text-primary);
+    border-bottom-color: var(--state-stamina);
 }
 
 .diag__graph {
@@ -608,15 +814,16 @@
 }
 
 /* ----------------------------------------------------------------- telemetry board */
-/* Top-right, which is the one corner the HUD had left: the match panel owns the top-left,
-   the player's own status the bottom-left and the standings the bottom-right. Sized so that
-   it and the match panel both fit across a 1080-wide portrait screen with the standard
-   gutters, which is the binding case - in landscape there is room to spare. */
+/* Top band, right column - the match panel holds the left. It used to be 480 fixed pixels
+   beside a match panel of about 490, which cleared a 1080-wide screen by roughly 36px and
+   would have overlapped the moment either grew. Both are now --col, so the two columns plus
+   --band-gap come to exactly 100% and the clearance is structural rather than measured. */
 .stats {
     position: absolute;
-    top: var(--space-4);
-    right: var(--space-4);
-    width: 480px;
+    top: var(--band-edge);
+    right: var(--band-edge);
+    width: var(--col);
+    max-height: var(--band-top-max);
     background-color: var(--surface-panel);
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
@@ -737,15 +944,16 @@
 }
 
 /* ----------------------------------------------------------------- commentary subtitle */
-/* Anchored high enough to clear everything that shares the lower half of the screen: the
-   standings panel reaches about 190px up from the bottom, the fight-card button about 160,
-   and a match-ending line is on screen at the same instant as both. Measured rather than
-   guessed - at 260px the caption sat directly on the standings' top-left corner. */
+/* Top of the bottom stack, above the player's panel and the fight-card button - a
+   match-ending line is on screen at the same instant as both.
+   It used to be a bare `bottom: 430px`, a number measured against the panel heights of the
+   day and silently wrong the moment any of them moved. It is now the same token scale as the
+   two panels it has to clear, so the three move together. */
 .commentary-band {
     position: absolute;
-    left: var(--space-4);
-    right: var(--space-4);
-    bottom: 430px;
+    left: var(--band-edge);
+    right: var(--band-edge);
+    bottom: var(--band-bottom-commentary);
     align-items: center;
 }
 
