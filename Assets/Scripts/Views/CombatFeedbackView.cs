@@ -7,6 +7,7 @@ using PoRumble.Models;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Audio;
+using UnityEngine.Rendering.Universal;
 using VContainer;
 
 namespace PoRumble.Views
@@ -113,7 +114,12 @@ namespace PoRumble.Views
         [SerializeField] private int _sfxVariants = 4;
 
         [Header("Impact light")]
-        [Tooltip("How many punches can be lighting the ring at once before the oldest is reused.")]
+        [Tooltip("Lights authored in the scene. When set, these are used instead of creating " +
+                 "them at Start, so the rig can be selected and retuned without entering Play " +
+                 "mode - and the array length, not the count below, sizes the pool.")]
+        [SerializeField] private Light2D[] _preplacedImpactLights;
+        [Tooltip("How many punches can be lighting the ring at once before the oldest is " +
+                 "reused. Ignored when lights are authored in the scene above.")]
         [SerializeField] private int _impactLightCount = 8;
         [SerializeField] private Color _impactLightColor = new(1f, 0.88f, 0.62f);
         [SerializeField] private float _impactLightIntensity = 2.2f;
@@ -136,7 +142,11 @@ namespace PoRumble.Views
         [SerializeField] private AudioMixerGroup _sfxMixerGroup;
         [Tooltip("Optional mixer group for match-wide cues.")]
         [SerializeField] private AudioMixerGroup _uiMixerGroup;
-        [Tooltip("Simultaneous positioned sounds before the oldest voice is reused.")]
+        [Tooltip("Voices authored in the scene. When set, these are used instead of creating " +
+                 "them at Start, and the array length, not the count below, sizes the pool.")]
+        [SerializeField] private AudioSource[] _preplacedVoices;
+        [Tooltip("Simultaneous positioned sounds before the oldest voice is reused. Ignored " +
+                 "when voices are authored in the scene above.")]
         [SerializeField] private int _spatialVoiceCount = 14;
         [Tooltip("Distance at which a punch is still at full volume.")]
         [SerializeField] private float _audioMinDistance = 4f;
@@ -249,9 +259,10 @@ namespace PoRumble.Views
             _beepFinalClip = ProceduralSfx.CreateCountdownBeep(true);
 
             _voices = new SpatialVoicePool(
-                transform, _spatialVoiceCount, _sfxMixerGroup, _audioMinDistance, _audioMaxDistance);
+                transform, _spatialVoiceCount, _sfxMixerGroup, _audioMinDistance, _audioMaxDistance,
+                _preplacedVoices);
 
-            _lights = new ImpactLightPool(transform, _impactLightCount, 0.6f);
+            _lights = new ImpactLightPool(transform, _impactLightCount, 0.6f, _preplacedImpactLights);
 
             if (_audioSource != null && _uiMixerGroup != null)
             {

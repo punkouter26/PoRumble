@@ -78,7 +78,9 @@ installs, launches and dumps the Unity log in one step.
   `BoxerAgentView.Heuristic` reads in the same place it reads the keyboard - so a phone and a
   desk drive the boxer down one identical path. To switch a human back on: set
   `_humanBoxerId` to 0 and add a `TouchControls` GameObject with a `UIDocument`
-  (HudPanelSettings, sorting order 5) and a `TouchControlsView` pointed at `porumble.uss`.
+  (HudPanelSettings, sorting order 5) and a `TouchControlsView` with `_layout` pointed at
+  `Assets/UI/Layouts/TouchControls.uxml` and `_styleSheet` at `porumble.uss`. Both are
+  required: the view returns without building anything if either is unassigned.
   The stick feeds move and aim together; there is no second stick, and a boxer that walks one
   way while facing another cannot land anything through the face arc anyway.
 - **`MatchHudView` picks its prompts from the devices present,** not from a platform define, so

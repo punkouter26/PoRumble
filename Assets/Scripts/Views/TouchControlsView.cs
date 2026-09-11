@@ -22,6 +22,9 @@ namespace PoRumble.Views
     [RequireComponent(typeof(UIDocument))]
     public sealed class TouchControlsView : MonoBehaviour
     {
+        [Tooltip("The control structure. Without it the controls do not render at all.")]
+        [SerializeField] private VisualTreeAsset _layout;
+
         [Tooltip("The shared HUD stylesheet. Without it the controls render unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
@@ -64,7 +67,7 @@ namespace PoRumble.Views
         {
             _root = GetComponent<UIDocument>().rootVisualElement;
 
-            if (_root == null || _touch == null)
+            if (_root == null || _touch == null || _layout == null)
             {
                 return;
             }
@@ -85,31 +88,30 @@ namespace PoRumble.Views
                 _root.styleSheets.Add(_styleSheet);
             }
 
+            _layout.CloneTree(_root);
             _touch.IsActive = true;
 
-            BuildStick();
-            BuildButtons();
+            BindStick();
+            BindButtons();
         }
 
-        private void BuildStick()
+        /// <summary>
+        /// Finds the stick in the cloned layout and wires the pointer callbacks to it.
+        ///
+        /// The whole left half is the stick's catchment; the drawn circle only appears where
+        /// the thumb actually lands, which is why the base and knob start hidden in the layout
+        /// and are positioned from code on pointer-down.
+        /// </summary>
+        private void BindStick()
         {
-            // The whole left half is the stick's catchment; the drawn circle only appears where
-            // the thumb actually lands.
-            _stickZone = new VisualElement();
-            _stickZone.AddToClassList("touch-stick-zone");
-            _root.Add(_stickZone);
+            _stickZone = _root.Q<VisualElement>("stick-zone");
+            _stickBase = _root.Q<VisualElement>("stick-base");
+            _stickKnob = _root.Q<VisualElement>("stick-knob");
 
-            _stickBase = new VisualElement();
-            _stickBase.AddToClassList("touch-stick__base");
-            _stickBase.pickingMode = PickingMode.Ignore;
-            _stickBase.style.display = DisplayStyle.None;
-            _stickZone.Add(_stickBase);
-
-            _stickKnob = new VisualElement();
-            _stickKnob.AddToClassList("touch-stick__knob");
-            _stickKnob.pickingMode = PickingMode.Ignore;
-            _stickKnob.style.display = DisplayStyle.None;
-            _stickZone.Add(_stickKnob);
+            if (_stickZone == null || _stickBase == null || _stickKnob == null)
+            {
+                return;
+            }
 
             _stickZone.RegisterCallback<PointerDownEvent>(OnStickDown);
             _stickZone.RegisterCallback<PointerMoveEvent>(OnStickMove);
@@ -117,22 +119,15 @@ namespace PoRumble.Views
             _stickZone.RegisterCallback<PointerCancelEvent>(OnStickUp);
         }
 
-        private void BuildButtons()
+        private void BindButtons()
         {
-            VisualElement cluster = new();
-            cluster.AddToClassList("touch-buttons");
-            _root.Add(cluster);
-
-            // One punch button, not two. BoxerSystem already falls through to whichever arm is
-            // free, so a held button alternates left and right on its own - and with only one
-            // fist allowed out at a time, a second button would have nothing to do.
-            AddHoldButton(cluster, "PUNCH", "touch-button--punch", held => _touch.PunchHeld = held);
-            AddHoldButton(cluster, "POWER", "touch-button--charge", held => _touch.ChargeHeld = held);
+            BindHoldButton("punch", held => _touch.PunchHeld = held);
+            BindHoldButton("charge", held => _touch.ChargeHeld = held);
 
             // The slip is an edge, not a hold: it has its own window and cooldown, so a held
             // thumb must not queue a stream of them. Raised on press and left for the agent
             // to consume on the next frame.
-            AddHoldButton(cluster, "SLIP", "touch-button--dodge", held =>
+            BindHoldButton("dodge", held =>
             {
                 if (held)
                 {
@@ -142,19 +137,17 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// A button that reports press and release rather than a click, because both punching
-        /// and charging are held actions.
+        /// Wires one button from the layout to report press and release rather than a click,
+        /// because both punching and charging are held actions.
         /// </summary>
-        private void AddHoldButton(VisualElement parent, string caption, string modifier, System.Action<bool> setHeld)
+        private void BindHoldButton(string elementName, System.Action<bool> setHeld)
         {
-            VisualElement button = new();
-            button.AddToClassList("touch-button");
-            button.AddToClassList(modifier);
+            VisualElement button = _root.Q<VisualElement>(elementName);
 
-            Label label = new(caption);
-            label.AddToClassList("touch-button__label");
-            label.pickingMode = PickingMode.Ignore;
-            button.Add(label);
+            if (button == null)
+            {
+                return;
+            }
 
             button.RegisterCallback<PointerDownEvent>(evt =>
             {
@@ -179,8 +172,6 @@ namespace PoRumble.Views
 
             button.RegisterCallback<PointerUpEvent>(evt => { Release(evt); evt.StopPropagation(); });
             button.RegisterCallback<PointerCancelEvent>(evt => { Release(evt); evt.StopPropagation(); });
-
-            parent.Add(button);
         }
 
         private void OnStickDown(PointerDownEvent evt)

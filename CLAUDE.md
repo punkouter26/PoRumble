@@ -136,6 +136,17 @@ unity command eval_file --file "Temp/evals/script.cs"
 - `eval` bodies take **no `using` directives**; fully qualify types.
 - For anything long, write to a file and use `eval_file` — PowerShell quoting mangles
   multi-line C#.
+- **`recompile` can report success while compilation is actually failing.** It answered
+  `failed: false, errors: []` and then `up_to_date` through four attempts while
+  `PoRumble.Views` was failing on a real `CS0246`. Its error list is not trustworthy: check
+  `get_console_logs --severity error`, and compare `Library/ScriptAssemblies/<Assembly>.dll`'s
+  mtime against the source file's. An assembly older than the source did not build. The
+  downstream symptom is misleading - the Editor keeps running the last good assembly, so a newly
+  added `[SerializeField]` comes back null from `SerializedObject.FindProperty` and is absent
+  from `typeof(T).GetFields()`, which reads as a serialization bug rather than a failed compile.
+  Editing with a shell tool while the Editor is unfocused can also mean Unity never notices the
+  change; `coplay-unity refresh_unity --mode force --compile request` triggered the build when
+  `recompile` would not, and `AssetDatabase.Refresh(ForceUpdate)` alone did not.
 - Editing any `.cs` under `Assets/` triggers a domain reload, which **exits Play mode and
   kills a running training session**. Batch code changes before starting a run.
 

@@ -28,14 +28,23 @@ namespace PoRumble.Views
         private uint _randomState = 0x2545F491;
         private int _next;
 
+        /// <summary>
+        /// Builds the pool, adopting voices already authored in the scene when there are any.
+        ///
+        /// As with the impact lights, the authored array is the single source of truth for the
+        /// size when one is present, so the serialized voice count cannot drift away from the
+        /// number of objects actually in the rig.
+        /// </summary>
         internal SpatialVoicePool(
             Transform parent,
             int voiceCount,
             AudioMixerGroup mixerGroup,
             float minDistance,
-            float maxDistance)
+            float maxDistance,
+            AudioSource[] preplaced)
         {
-            _voices = new AudioSource[Mathf.Max(1, voiceCount)];
+            bool adopt = preplaced != null && preplaced.Length > 0;
+            _voices = new AudioSource[adopt ? preplaced.Length : Mathf.Max(1, voiceCount)];
 
             // Air absorbs high frequencies faster than low ones, so a hit across a 40-unit ring
             // should arrive dull as well as quiet. Volume rolloff alone reads as someone turning
@@ -47,10 +56,24 @@ namespace PoRumble.Views
 
             for (int index = 0; index < _voices.Length; index++)
             {
-                GameObject host = new($"Voice_{index:00}");
-                host.transform.SetParent(parent, false);
+                AudioSource source;
 
-                AudioSource source = host.AddComponent<AudioSource>();
+                if (adopt)
+                {
+                    source = preplaced[index];
+
+                    if (source == null)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    GameObject host = new($"Voice_{index:00}");
+                    host.transform.SetParent(parent, false);
+                    source = host.AddComponent<AudioSource>();
+                }
+
                 source.playOnAwake = false;
                 source.spatialBlend = 1f;
                 source.rolloffMode = AudioRolloffMode.Logarithmic;
@@ -62,7 +85,11 @@ namespace PoRumble.Views
                 // Unity evaluates this curve against the source's own distance to the listener,
                 // normalised over min..max. That is why the filter needs no per-frame update
                 // from us and why nothing here has to know where the camera is.
-                AudioLowPassFilter filter = host.AddComponent<AudioLowPassFilter>();
+                if (!source.TryGetComponent(out AudioLowPassFilter filter))
+                {
+                    filter = source.gameObject.AddComponent<AudioLowPassFilter>();
+                }
+
                 filter.customCutoffCurve = cutoffByDistance;
                 filter.lowpassResonanceQ = 1f;
 

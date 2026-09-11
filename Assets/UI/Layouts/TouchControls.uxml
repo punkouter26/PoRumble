@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  On-screen controls for phones: a floating stick on the left, a button cluster on the right.
+
+  The stick zone is the whole left half and is the thing that catches the touch; the base and
+  knob inside it are the drawn circle, which only appears where the thumb actually lands, so
+  both start hidden and the view positions and shows them on pointer-down.
+
+  One punch button, not two. BoxerSystem already falls through to whichever arm is free, so a
+  held button alternates left and right on its own, and with only one fist allowed out at a
+  time a second button would have nothing to do.
+
+  Each button's label is picking-mode="Ignore" so the press always lands on the button rather
+  than on the text sitting inside it.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="stick-zone" class="touch-stick-zone">
+        <ui:VisualElement name="stick-base" class="touch-stick__base" picking-mode="Ignore" style="display: none;" />
+        <ui:VisualElement name="stick-knob" class="touch-stick__knob" picking-mode="Ignore" style="display: none;" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="buttons" class="touch-buttons">
+        <ui:VisualElement name="punch" class="touch-button touch-button--punch">
+            <ui:Label text="PUNCH" class="touch-button__label" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="charge" class="touch-button touch-button--charge">
+            <ui:Label text="POWER" class="touch-button__label" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="dodge" class="touch-button touch-button--dodge">
+            <ui:Label text="SLIP" class="touch-button__label" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

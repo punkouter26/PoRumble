@@ -23,9 +23,22 @@ namespace PoRumble.Views
 
         private int _next;
 
-        internal ImpactLightPool(Transform parent, int count, float falloff)
+        /// <summary>
+        /// Builds the pool, adopting lights already authored in the scene when there are any.
+        ///
+        /// Adoption is the preferred path: a light that exists in the scene can be selected,
+        /// re-coloured and re-ranged without entering Play mode, and its sorting-layer list is
+        /// visible rather than whatever AddComponent happened to default to - which matters,
+        /// because a Light2D silently fails to light any sorting layer missing from that list.
+        ///
+        /// When lights are adopted the pool size comes from the array rather than from the
+        /// count field, so the two cannot disagree. A count of twelve against eight authored
+        /// lights would otherwise leave four null entries that only fail on the ninth punch.
+        /// </summary>
+        internal ImpactLightPool(Transform parent, int count, float falloff, Light2D[] preplaced)
         {
-            int size = Mathf.Max(1, count);
+            bool adopt = preplaced != null && preplaced.Length > 0;
+            int size = adopt ? preplaced.Length : Mathf.Max(1, count);
             _lights = new Light2D[size];
             _remaining = new float[size];
             _duration = new float[size];
@@ -33,19 +46,34 @@ namespace PoRumble.Views
 
             for (int index = 0; index < size; index++)
             {
-                GameObject host = new($"ImpactLight_{index:00}");
-                host.transform.SetParent(parent, false);
+                Light2D light;
 
-                Light2D light = host.AddComponent<Light2D>();
-                light.lightType = Light2D.LightType.Point;
-                light.pointLightInnerRadius = 0.1f;
-                light.pointLightOuterRadius = 3f;
-                light.falloffIntensity = falloff;
+                if (adopt)
+                {
+                    light = preplaced[index];
+
+                    if (light == null)
+                    {
+                        continue;
+                    }
+                }
+                else
+                {
+                    GameObject host = new($"ImpactLight_{index:00}");
+                    host.transform.SetParent(parent, false);
+
+                    light = host.AddComponent<Light2D>();
+                    light.lightType = Light2D.LightType.Point;
+                    light.pointLightInnerRadius = 0.1f;
+                    light.pointLightOuterRadius = 3f;
+                    light.falloffIntensity = falloff;
+                }
+
                 light.intensity = 0f;
                 light.shadowsEnabled = false;
 
                 _lights[index] = light;
-                host.SetActive(false);
+                light.gameObject.SetActive(false);
             }
         }
 
