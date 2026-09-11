@@ -24593,11 +24593,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.CommentaryView
   _bank: {fileID: 11400000, guid: 8df282070eeba764b80421548a947427, type: 2}
-  _mixerGroup: {fileID: -6338393130735749339, guid: f43644ff48ea481439491a3cd8980f38, type: 2}
+  _mixerGroup: {fileID: 1186579928549755329, guid: f43644ff48ea481439491a3cd8980f38, type: 2}
   _subtitleDocument: {fileID: 1180244206}
   _subtitleLayout: {fileID: 9197481963319205126, guid: aeb149b8e034e244ebdd16d366c8483d, type: 3}
   _styleSheet: {fileID: 7433441132597879392, guid: 0c2fc0d606bf1874993baa49ab2b4588, type: 3}
-  _volume: 0.9
+  _volume: 1
   _joinGap: 0.04
   _subtitleHold: 1.1
 --- !u!114 &1180244206
@@ -38242,7 +38242,7 @@ MonoBehaviour:
   _momentumForPeak: 8
   _reactionDamage: 4
   _reactionCooldown: 2.4
-  _duckLevel: 0.3
+  _duckLevel: 0.15
   _duckSeconds: 1.9
   _duckAttack: 9
   _duckRelease: 2.2

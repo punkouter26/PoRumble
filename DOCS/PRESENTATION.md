@@ -87,13 +87,22 @@ of its own. `TensionMath.ScorePair` is the rule, and it is pure and static for t
   behind the model reporting it.
 
 ## Audio
-
-`Assets/Audio/PoRumbleMixer.mixer` routes **Master → SFX / UI / Ambience**, and now actually
+`Assets/Audio/PoRumbleMixer.mixer` routes **Master → SFX / UI / Ambience / Commentary**, and now actually
 processes rather than merely routing. SFX carries a pre-fader compressor (punches are short,
 loud and constantly overlapping, and without it a flurry just clips against itself) and a
 post-fader `SFX Reverb` tuned as a hall rather than a cathedral. Master carries a glue
 compressor and a `Lowpass` that sits wide open — it exists only so the `Knockout` snapshot has
 something to close, and that muffled drop is the clearest audio cue that a match just ended.
+
+**The commentator has his own group, and it carries +10dB.** He was routed to `UI` alongside
+the bell and the countdown beeps, with his source already at 0.9 of a maximum of 1.0 - so there
+was no headroom left at the source and the only remaining lever was the mixer. Boosting `UI`
+would have dragged the bell up with him. `Master -> Commentary` exists so the gain lands on the
+voice alone, and it is the one number to turn if he still needs to be louder: the group volume,
+written into **both** snapshots because a snapshot stores an absolute value per parameter and
+inherits nothing. The crowd also ducks harder while he speaks (`_duckLevel` 0.15, from 0.30),
+which buys more separation than raw level does - he is one voice against a broadband bed, and
+level alone just makes both louder.
 
 **Effect parameters live in snapshots, not on the effect.** Each is keyed by a GUID the effect
 allocates, and a snapshot stores an *absolute* value per parameter — it inherits nothing from
