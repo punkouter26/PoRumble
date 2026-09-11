@@ -226,6 +226,34 @@ machine-guns for as long as they lean. Contact is judged from the model's positi
 near them — because that is where the containment actually happens; the wall colliders hold
 nobody, so a physics callback would miss the clamp entirely.
 
+
+## The sound palette is deliberately two sounds
+
+**Footsteps and landed punches. That is the whole of it**, plus the commentator. Everything
+else that used to make a noise has been cut: the crowd bed and its reaction swells, blocks,
+evades, the slip whoosh, the haymaker wind-up, the knockout, breath, the rope thud, the bell
+and the countdown beeps.
+
+The bed was the reason. It is three filtered bands of noise by construction, playing
+continuously under everything, and it is what a listener hears as white noise - no amount of
+mixing makes a broadband bed disappear behind one voice, because it occupies the same spectrum
+the voice does. The `Crowd` object is **deactivated rather than deleted**: `GameLifetimeScope`
+finds optional views with `FindObjectsInactive.Include`, so injection still succeeds, and the
+room comes back with one checkbox.
+
+The rest went with it because a two-sound palette only reads as deliberate if it is actually
+two sounds. A block, an evade and a whiff firing several times a second across ten fighters is
+another wash, and it was competing with the two events that carry information: where the feet
+are and whether a punch connected.
+
+**What was cut is audio only.** Blocks still burst particles and flash a light, the haymaker
+still draws its speed lines, a knockout still flares and shakes the camera, and the ropes still
+throw dust. The visual feedback layer is untouched - only the calls into the voice pool are
+gone, along with the clip banks that fed them.
+
+**The bell is the one most likely to be missed**, and it is the first thing to restore if the
+match start needs marking: it was a `PlayFlat` on a non-positional source routed to the `UI`
+group, and both went with it.
 **Audio is otherwise synthesised at runtime** in `ProceduralSfx` — the rest of the project has no audio assets, and
 a boxing game where landing, blocking and whiffing all sound identical loses most of what
 tells the player what happened. Swap in recorded one-shots whenever they exist; nothing but

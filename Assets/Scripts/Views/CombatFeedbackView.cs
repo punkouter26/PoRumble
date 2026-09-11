@@ -74,25 +74,14 @@ namespace PoRumble.Views
         [Range(0f, 1f)]
         [SerializeField] private float _stepVolume = 0.16f;
 
-        [Tooltip("Stamina at or below which a fighter is audibly out of breath. Low, so this " +
-                 "marks a fighter who is genuinely spent rather than most of the ring.")]
-        [Range(0f, 1f)]
-        [SerializeField] private float _breathStaminaThreshold = 0.28f;
-        [Tooltip("Seconds between exhales from one spent fighter.")]
-        [SerializeField] private float _breathInterval = 2.3f;
-        [Range(0f, 1f)]
-        [SerializeField] private float _breathVolume = 0.26f;
-
         [Tooltip("How close to the ropes counts as hitting them, in world units.")]
         [SerializeField] private float _ropeContactMargin = 0.22f;
-        [Tooltip("Speed into the ropes below which the contact is a lean rather than a thud.")]
+        [Tooltip("Speed into the ropes below which the contact is a lean rather than a jolt.")]
         [SerializeField] private float _ropeSpeedThreshold = 2.2f;
-        [Tooltip("Seconds before the same fighter can thud into the ropes again. Without it a " +
-                 "boxer pinned in a corner machine-guns the sound for as long as they hold " +
-                 "into it, because the position clamp keeps them touching every frame.")]
+        [Tooltip("Seconds before the same fighter can jolt the ropes again. Without it a " +
+                 "boxer pinned in a corner throws dust on every frame they hold into it, " +
+                 "because the position clamp keeps them touching the boundary.")]
         [SerializeField] private float _ropeInterval = 0.6f;
-        [Range(0f, 1f)]
-        [SerializeField] private float _ropeVolume = 0.66f;
 
         [Tooltip("Fraction of the audio max distance beyond which body sounds are not " +
                  "synthesised at all. Ten fighters shuffling would otherwise steal every voice " +
@@ -136,12 +125,8 @@ namespace PoRumble.Views
         [SerializeField] private float _hitstopTimeScale = 0.05f;
 
         [Header("Audio")]
-        [Tooltip("Non-positional source for the bell, countdown and other match-wide cues.")]
-        [SerializeField] private AudioSource _audioSource;
         [Tooltip("Optional mixer group for positioned combat sounds.")]
         [SerializeField] private AudioMixerGroup _sfxMixerGroup;
-        [Tooltip("Optional mixer group for match-wide cues.")]
-        [SerializeField] private AudioMixerGroup _uiMixerGroup;
         [Tooltip("Voices authored in the scene. When set, these are used instead of creating " +
                  "them at Start, and the array length, not the count below, sizes the pool.")]
         [SerializeField] private AudioSource[] _preplacedVoices;
@@ -168,19 +153,7 @@ namespace PoRumble.Views
         private AudioClip[] _jabClips;
         private AudioClip[] _hookClips;
         private AudioClip[] _haymakerClips;
-        private AudioClip[] _whooshClips;
-        private AudioClip[] _blockClips;
-        private AudioClip[] _evadeClips;
         private AudioClip[] _stepClips;
-        private AudioClip[] _breathClips;
-        private AudioClip[] _ropeClips;
-
-        // One-offs. A knockout, the bell and the countdown each happen at a moment the player
-        // is already attending to, so repetition is not what stands out about them.
-        private AudioClip _knockoutClip;
-        private AudioClip _bellClip;
-        private AudioClip _beepClip;
-        private AudioClip _beepFinalClip;
 
         /// <summary>Locomotion feedback - dust, steps, breath, ropes. See BoxerBodyFeedback.</summary>
         private BoxerBodyFeedback _bodyFeedback;
@@ -227,34 +200,19 @@ namespace PoRumble.Views
             _jabClips = new AudioClip[variants];
             _hookClips = new AudioClip[variants];
             _haymakerClips = new AudioClip[variants];
-            _whooshClips = new AudioClip[variants];
-            _blockClips = new AudioClip[variants];
-            _evadeClips = new AudioClip[variants];
             _stepClips = new AudioClip[variants];
-            _breathClips = new AudioClip[variants];
-            _ropeClips = new AudioClip[variants];
 
             for (int variant = 0; variant < variants; variant++)
             {
                 _jabClips[variant] = ProceduralSfx.CreateJab(variant);
                 _hookClips[variant] = ProceduralSfx.CreateHook(variant);
                 _haymakerClips[variant] = ProceduralSfx.CreateHaymakerImpact(variant);
-                _whooshClips[variant] = ProceduralSfx.CreateWhoosh(variant);
-                _blockClips[variant] = ProceduralSfx.CreateBlock(variant);
-                _evadeClips[variant] = ProceduralSfx.CreateEvade(variant);
-
                 // Footsteps and breath repeat far more often than any punch does, so the
                 // variant bank matters more here than anywhere else in the game: the ear locks
                 // onto an identical waveform fastest when it hears it every third of a second.
                 _stepClips[variant] = ProceduralSfx.CreateFootstep(variant);
-                _breathClips[variant] = ProceduralSfx.CreateBreath(variant);
-                _ropeClips[variant] = ProceduralSfx.CreateRopeThud(variant);
             }
 
-            _knockoutClip = ProceduralSfx.CreateKnockout();
-            _bellClip = ProceduralSfx.CreateBell();
-            _beepClip = ProceduralSfx.CreateCountdownBeep(false);
-            _beepFinalClip = ProceduralSfx.CreateCountdownBeep(true);
 
             _voices = new SpatialVoicePool(
                 transform, _spatialVoiceCount, _sfxMixerGroup, _audioMinDistance, _audioMaxDistance,
@@ -262,10 +220,6 @@ namespace PoRumble.Views
 
             _lights = new ImpactLightPool(transform, _impactLightCount, 0.6f, _preplacedImpactLights);
 
-            if (_audioSource != null && _uiMixerGroup != null)
-            {
-                _audioSource.outputAudioMixerGroup = _uiMixerGroup;
-            }
         }
 
         private void Start()
@@ -290,31 +244,17 @@ namespace PoRumble.Views
                 _voices,
                 _footDust,
                 _stepClips,
-                _breathClips,
-                _ropeClips,
                 new BoxerBodyFeedback.Tuning(
                     _dustSpeedThreshold,
                     _dustInterval,
                     _stepInterval,
                     _stepVolume,
-                    _breathStaminaThreshold,
-                    _breathInterval,
-                    _breathVolume,
                     _ropeContactMargin,
                     _ropeSpeedThreshold,
                     _ropeInterval,
-                    _ropeVolume,
                     _audioMaxDistance * _bodySoundEarshot));
 
             _bodyFeedback.SetListener(_listener);
-
-            if (_flow == null)
-            {
-                return;
-            }
-
-            _flow.Phase.Subscribe(OnFlowPhaseChanged).AddTo(_disposables);
-            _flow.CountdownSeconds.Subscribe(OnCountdownTick).AddTo(_disposables);
         }
 
         /// <summary>
@@ -413,7 +353,6 @@ namespace PoRumble.Views
 
         private void OnPunchBlocked(PunchBlockedMessage message)
         {
-            PlayAt(PickFrom(_blockClips), message.Position, 1f);
             Burst(_blockBurst, message.Position, _blockParticles);
             _lights.Flash(message.Position, new Color(0.72f, 0.85f, 1f), 1.1f, 2.2f, 0.14f);
             Shake(_jabImpulse * 0.5f);
@@ -421,7 +360,6 @@ namespace PoRumble.Views
 
         private void OnPunchEvaded(PunchEvadedMessage message)
         {
-            PlayAt(PickFrom(_evadeClips), message.Position, 1f);
         }
 
         /// <summary>
@@ -431,16 +369,12 @@ namespace PoRumble.Views
         /// </summary>
         private void OnBoxerDodged(BoxerDodgedMessage message)
         {
-            PlayAt(PickFrom(_whooshClips), message.Position, 1.5f);
         }
 
         private void OnHaymakerThrown(HaymakerThrownMessage message)
         {
             // Heard at the moment of commitment, before anyone knows whether it lands. That
             // warning is the counterplay to a punch this heavy.
-            PlayAt(PickFrom(_whooshClips), message.Position,
-                Mathf.Lerp(1.15f, 0.85f, message.ChargeLevel));
-
             // Seen at the same moment, and for the same reason. The haymaker's telegraph is
             // the entire counterplay to it, so it needs to be legible from across the ring,
             // where a wind-up on a small sprite is not.
@@ -452,7 +386,6 @@ namespace PoRumble.Views
             BoxerModel boxer = FindBoxer(message.BoxerId);
             Vector2 position = boxer != null ? boxer.Position : Vector2.zero;
 
-            PlayAt(_knockoutClip, position, 1f);
             _lights.Flash(position, new Color(1f, 0.45f, 0.35f), 4f, 6f, 0.55f);
             Shake(_knockoutImpulse);
             CrowdFlashes();
@@ -501,24 +434,6 @@ namespace PoRumble.Views
             return null;
         }
 
-        private void OnFlowPhaseChanged(MatchFlowPhase phase)
-        {
-            if (phase == MatchFlowPhase.Fighting)
-            {
-                PlayFlat(_bellClip, 1f);
-            }
-        }
-
-        private void OnCountdownTick(int seconds)
-        {
-            if (seconds <= 0)
-            {
-                return;
-            }
-
-            PlayFlat(seconds == 1 ? _beepFinalClip : _beepClip, 1f);
-        }
-
         /// <summary>
         /// Draws a clip from a variant bank.
         ///
@@ -554,18 +469,6 @@ namespace PoRumble.Views
         private void PlayAt(AudioClip clip, Vector2 position, float pitch)
         {
             _voices?.PlayAt(clip, position, pitch, _sfxVolume);
-        }
-
-        /// <summary>A match-wide cue: the bell, the countdown. These belong to nowhere.</summary>
-        private void PlayFlat(AudioClip clip, float pitch)
-        {
-            if (_audioSource == null || clip == null)
-            {
-                return;
-            }
-
-            _audioSource.pitch = pitch;
-            _audioSource.PlayOneShot(clip, _sfxVolume);
         }
 
         private void Burst(ParticleSystem system, Vector2 position, int count)
