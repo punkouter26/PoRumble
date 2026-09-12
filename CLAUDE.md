@@ -185,8 +185,10 @@ They override defaults; where one clashes with something above, this section win
 
 ### Git & branches
 
-- **Work only on the default branch** — `main` here. Use another branch only when explicitly
-  asked. (The user says "master"; this repo's default is `main`, and that is the branch meant.)
+- **Work only on the default branch** — `master` here. Use another branch only when explicitly
+  asked. Renamed from `main` on 2026-09-12, so "master" is now both what the user says and what
+  the branch is called; the note that used to translate between the two is gone because there is
+  nothing left to translate.
 - **A git sync commits everything first.** Never sync, pull or push with uncommitted changes
   sitting in the tree — commit them as part of the sync.
 
