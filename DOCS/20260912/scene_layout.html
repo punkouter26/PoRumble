@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoRumble — Level &amp; Arena Setup</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --canvas:#f2f1ed; --canvas-line:#c3c2b7; --dressing:#898781;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+      --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+      --canvas:#232322; --canvas-line:#383835; --dressing:#898781;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+    --canvas:#232322; --canvas-line:#383835; --dressing:#898781;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--text-primary);
+         font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .wrap { max-width:1120px; margin:0 auto; padding-block:24px 64px; padding-left:16px; padding-right:16px; }
+  h1 { font-size:22px; margin:0 0 4px; letter-spacing:-0.01em; }
+  .sub { color:var(--text-secondary); font-size:13px; margin:0 0 20px; }
+  .tier { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 18px 22px; margin-bottom:20px; }
+  .tier-label { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+  h2 { font-size:17px; margin:0 0 6px; }
+  h3 { font-size:14px; margin:24px 0 8px; }
+  h3:first-of-type { margin-top:8px; }
+  p { margin:0 0 10px; color:var(--text-secondary); max-width:78ch; }
+  p.lead { color:var(--text-primary); }
+  strong.hl { color:var(--text-primary); }
+  figure { margin:16px 0 6px; }
+  figcaption { font-size:12px; color:var(--text-muted); margin-top:8px; max-width:78ch; }
+  .figbox { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; overflow-x:auto; }
+  svg { display:block; width:100%; height:auto; max-width:100%; }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin:8px 0 6px; }
+  .scroll { overflow-x:auto; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--grid); vertical-align:top; }
+  th { font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); font-weight:600; white-space:nowrap; }
+  td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:0; }
+  code { font-family:ui-monospace,"Cascadia Code",Consolas,monospace; font-size:12px; background:var(--surface-2); padding:1px 5px; border-radius:4px; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; font-size:12px; color:var(--text-secondary); margin:12px 0 0; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .key { width:11px; height:11px; border-radius:3px; display:inline-block; flex:none; }
+  .key.ring { border:2px solid var(--canvas-line); background:transparent; border-radius:2px; }
+  .callout { border-left:3px solid var(--serious); background:var(--surface-2); padding:11px 14px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .callout p { margin:0; color:var(--text-primary); }
+  .callout.crit { border-left-color:var(--critical); }
+  .callout.ok { border-left-color:var(--good); }
+  footer { color:var(--text-muted); font-size:12px; border-top:1px solid var(--grid); padding-top:14px; margin-top:26px; }
+  text { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>PoRumble — Level &amp; Arena Setup</h1>
+  <p class="sub">Where everything sits in the ring, in real world units, read from the scene files on 2026-09-12.</p>
+
+  <!-- ============ TIER 1 ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 1 — Quick Look</span>
+    <h2>A square ring, ten chairs around the edge, four walls and no obstacles</h2>
+    <p class="lead">
+      The playfield is one square room. Ten fighters start evenly spaced around a circle, each roughly facing the
+      middle, and walk inward until somebody is in reach. There is <strong class="hl">nothing in the middle</strong> —
+      no cover, no hazards, no pickups. Everything you can see other than the fighters and the four walls is
+      decoration: posts, stools, the ring logo, the crowd.
+    </p>
+    <p>
+      The ring is sized against a real one. A professional ring is 20 feet inside the ropes, and this one is
+      <strong class="hl">19.9 feet</strong>. It was nearly 47 feet across for a long time — most of a tennis court —
+      which is why ten fighters used to read as specks who spent the first half of every match walking toward
+      each other.
+    </p>
+    <div class="legend">
+      <span><span class="key ring"></span> Ring interior 17 × 17 units = 6.07 × 6.07 m</span>
+      <span><span class="key" style="background:var(--series-1)"></span> 10 spawn points on a circle of radius 6.375</span>
+      <span><span class="key" style="background:var(--dressing)"></span> Decoration, no collision</span>
+    </div>
+  </section>
+
+  <!-- ============ TIER 2 ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 2 — Core Mechanics</span>
+    <h2>SampleScene — the game arena, seen from above</h2>
+
+    <figure>
+      <div class="figbox">
+        <svg viewBox="-11.5 -11.5 23 23" role="img" aria-label="Top-down plan of the PoRumble ring showing walls, spawn points, corner posts and stools">
+          <!-- backdrop -->
+          <rect x="-11.5" y="-11.5" width="23" height="23" fill="var(--canvas)"/>
+
+          <!-- floor 17x17 -->
+          <rect x="-8.5" y="-8.5" width="17" height="17" fill="var(--surface)" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+
+          <!-- ring logo -->
+          <circle cx="0" cy="0" r="3.4" fill="none" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+          <text x="0" y="0.16" text-anchor="middle" font-size="0.42" fill="var(--text-muted)">RingLogo 6.8</text>
+
+          <!-- walls (drawn at their real centres +/-8.60625, thickness 0.2125) -->
+          <g fill="var(--canvas-line)">
+            <rect x="-8.7125" y="-8.7125" width="17.425" height="0.2125"/>
+            <rect x="-8.7125" y="8.5" width="17.425" height="0.2125"/>
+            <rect x="-8.7125" y="-8.7125" width="0.2125" height="17.425"/>
+            <rect x="8.5" y="-8.7125" width="0.2125" height="17.425"/>
+          </g>
+
+          <!-- clamp boundary (the line that actually holds fighters in) -->
+          <rect x="-8.5" y="-8.5" width="17" height="17" fill="none" stroke="var(--series-2)" stroke-width="1.5"
+                stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+
+          <!-- corner posts -->
+          <g fill="var(--dressing)">
+            <rect x="-8.92" y="-8.92" width="0.62" height="0.62" rx="0.1"/>
+            <rect x="8.3" y="-8.92" width="0.62" height="0.62" rx="0.1"/>
+            <rect x="-8.92" y="8.3" width="0.62" height="0.62" rx="0.1"/>
+            <rect x="8.3" y="8.3" width="0.62" height="0.62" rx="0.1"/>
+          </g>
+
+          <!-- stools NE and SW (world y flipped) -->
+          <circle cx="9.5625" cy="-9.5625" r="0.47" fill="none" stroke="var(--dressing)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+          <circle cx="-9.5625" cy="9.5625" r="0.47" fill="none" stroke="var(--dressing)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+          <text x="9.5625" y="-10.35" text-anchor="middle" font-size="0.4" fill="var(--text-muted)">Stool NE</text>
+          <text x="-9.5625" y="10.7" text-anchor="middle" font-size="0.4" fill="var(--text-muted)">Stool SW</text>
+
+          <!-- spawn circle -->
+          <circle cx="0" cy="0" r="6.375" fill="none" stroke="var(--series-1)" stroke-width="1"
+                  stroke-dasharray="2 3" opacity="0.6" vector-effect="non-scaling-stroke"/>
+
+          <!-- spawn points: world (x,y) -> svg (x,-y) -->
+          <g fill="var(--series-1)">
+            <circle cx="6.375" cy="0" r="0.42"/>
+            <circle cx="5.1574" cy="-3.7472" r="0.42"/>
+            <circle cx="1.9699" cy="-6.0631" r="0.42"/>
+            <circle cx="-1.9699" cy="-6.0631" r="0.42"/>
+            <circle cx="-5.1574" cy="-3.7472" r="0.42"/>
+            <circle cx="-6.375" cy="0" r="0.42"/>
+            <circle cx="-5.1574" cy="3.7472" r="0.42"/>
+            <circle cx="-1.9699" cy="6.0631" r="0.42"/>
+            <circle cx="1.9699" cy="6.0631" r="0.42"/>
+            <circle cx="5.1574" cy="3.7472" r="0.42"/>
+          </g>
+          <g fill="var(--surface)" font-size="0.4" text-anchor="middle">
+            <text x="6.375" y="0.14">00</text>
+            <text x="5.1574" y="-3.61">01</text>
+            <text x="1.9699" y="-5.92">02</text>
+            <text x="-1.9699" y="-5.92">03</text>
+            <text x="-5.1574" y="-3.61">04</text>
+            <text x="-6.375" y="0.14">05</text>
+            <text x="-5.1574" y="3.89">06</text>
+            <text x="-1.9699" y="6.2">07</text>
+            <text x="1.9699" y="6.2">08</text>
+            <text x="5.1574" y="3.89">09</text>
+          </g>
+
+          <!-- facing arrows: each spawn looks inward -->
+          <g stroke="var(--series-1)" stroke-width="1.2" opacity="0.55" vector-effect="non-scaling-stroke">
+            <line x1="5.6" y1="0" x2="4.3" y2="0"/>
+            <line x1="4.53" y1="-3.29" x2="3.48" y2="-2.53"/>
+            <line x1="1.73" y1="-5.32" x2="1.33" y2="-4.09"/>
+            <line x1="-1.73" y1="-5.32" x2="-1.33" y2="-4.09"/>
+            <line x1="-4.53" y1="-3.29" x2="-3.48" y2="-2.53"/>
+            <line x1="-5.6" y1="0" x2="-4.3" y2="0"/>
+            <line x1="-4.53" y1="3.29" x2="-3.48" y2="2.53"/>
+            <line x1="-1.73" y1="5.32" x2="-1.33" y2="4.09"/>
+            <line x1="1.73" y1="5.32" x2="1.33" y2="4.09"/>
+            <line x1="4.53" y1="3.29" x2="3.48" y2="2.53"/>
+          </g>
+
+          <!-- axis labels -->
+          <text x="0" y="-8.95" text-anchor="middle" font-size="0.45" fill="var(--text-secondary)">Wall_N  y = +8.61</text>
+          <text x="0" y="9.35" text-anchor="middle" font-size="0.45" fill="var(--text-secondary)">Wall_S  y = −8.61</text>
+          <text x="-9.6" y="0" text-anchor="middle" font-size="0.45" fill="var(--text-secondary)" transform="rotate(-90,-9.6,0)">Wall_W  x = −8.61</text>
+          <text x="9.6" y="0" text-anchor="middle" font-size="0.45" fill="var(--text-secondary)" transform="rotate(90,9.6,0)">Wall_E  x = +8.61</text>
+
+          <!-- origin -->
+          <g stroke="var(--text-muted)" stroke-width="1" vector-effect="non-scaling-stroke">
+            <line x1="-0.5" y1="0" x2="0.5" y2="0"/>
+            <line x1="0" y1="-0.5" x2="0" y2="0.5"/>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        Drawn to scale from <code>SampleScene.unity</code>. Grey bars are the wall colliders; the dashed orange
+        square at ±8.5 is the boundary that actually holds fighters in. Blue dots are the ten spawn transforms with
+        their opening facing.
+      </figcaption>
+    </figure>
+
+    <div class="callout">
+      <p>
+        <strong>The walls do not contain anybody.</strong> Fighter positions are written from the model every tick,
+        so a wall collider never gets a chance to stop one — <code>BoxerSystem.ClampToArena</code> is what actually
+        holds them in, using <code>_arenaHalfExtent</code> (8.5). If the drawn ring and that number ever disagree,
+        fighters stop short of the ropes or walk straight through them, and nothing is logged either way.
+      </p>
+    </div>
+
+    <h3>How the ten chairs are filled</h3>
+    <p>
+      The spawn transforms above are the <em>slots</em>, not the final positions. Every episode the whole ring is
+      rotated by a random amount and each fighter is jittered off its slot, so no two matches open identically —
+      replaying one fixed opening for millions of steps teaches a policy that opening rather than the game.
+    </p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Randomisation</th><th class="num">Range</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Whole-ring rotation</td><td class="num">0–360°</td><td>Applied once per episode to every slot at once</td></tr>
+        <tr><td>Slot jitter</td><td class="num">±12°</td><td>Slots are evenly spaced <em>before</em> jitter, which is what guarantees the separation</td></tr>
+        <tr><td>Radius jitter</td><td class="num">±18%</td><td>In or out of the spawn circle</td></tr>
+        <tr><td>Facing jitter</td><td class="num">±35°</td><td>Without it the opponent is always dead ahead on step one and the policy never learns to <em>find</em> one</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      The generator is a seeded xorshift owned by the spawn system, not <code>UnityEngine.Random</code> — a global
+      generator would make every training episode depend on whatever else happened to draw a number that frame.
+    </p>
+
+    <h3>Trigger zones and hit volumes — around a single fighter</h3>
+    <figure>
+      <div class="figbox" style="max-width:520px">
+        <svg viewBox="-3.4 -3.6 6.8 6.6" role="img" aria-label="Diagram of the collision and trigger volumes around one fighter">
+          <rect x="-3.4" y="-3.6" width="6.8" height="6.6" fill="var(--canvas)"/>
+
+          <!-- close-range threshold -->
+          <circle cx="0" cy="0" r="2.5" fill="none" stroke="var(--series-2)" stroke-width="1.2"
+                  stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>
+          <text x="0" y="2.78" text-anchor="middle" font-size="0.26" fill="var(--series-2)">close range 2.50</text>
+
+          <!-- face arc wedge, +/-60 degrees from facing (up) -->
+          <path d="M 0,-0.89 L 1.559,-1.79 A 1.8 1.8 0 0 0 -1.559,-1.79 Z"
+                fill="var(--series-3)" opacity="0.16"/>
+          <path d="M 0,-0.89 L 1.559,-1.79 A 1.8 1.8 0 0 0 -1.559,-1.79 Z"
+                fill="none" stroke="var(--series-3)" stroke-width="1.2" vector-effect="non-scaling-stroke"/>
+
+          <!-- body separation circle -->
+          <circle cx="0" cy="0" r="0.98" fill="none" stroke="var(--series-1)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>
+          <!-- torso collider -->
+          <circle cx="0" cy="0" r="0.64" fill="var(--series-1)" opacity="0.18"/>
+          <!-- face probe trigger -->
+          <circle cx="0" cy="-0.89" r="0.8" fill="var(--series-3)" opacity="0.14" stroke="var(--series-3)"
+                  stroke-width="1.2" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/>
+          <!-- drawn head -->
+          <circle cx="0" cy="-0.89" r="0.3" fill="var(--text-muted)" opacity="0.5"/>
+          <!-- gloves at full extension -->
+          <circle cx="0.53" cy="-1.6" r="0.125" fill="var(--series-2)"/>
+          <circle cx="-0.53" cy="-1.6" r="0.125" fill="var(--series-2)"/>
+          <line x1="0" y1="0" x2="0.53" y2="-1.6" stroke="var(--series-2)" stroke-width="1" opacity="0.5" vector-effect="non-scaling-stroke"/>
+          <line x1="0" y1="0" x2="-0.53" y2="-1.6" stroke="var(--series-2)" stroke-width="1" opacity="0.5" vector-effect="non-scaling-stroke"/>
+
+          <!-- facing arrow -->
+          <line x1="0" y1="-0.2" x2="0" y2="-2.9" stroke="var(--text-secondary)" stroke-width="1" stroke-dasharray="3 2" vector-effect="non-scaling-stroke"/>
+          <text x="0.12" y="-3.05" font-size="0.28" fill="var(--text-secondary)">facing</text>
+
+          <!-- labels -->
+          <text x="1.05" y="0.08" font-size="0.26" fill="var(--series-1)">body radius 0.98</text>
+          <text x="-3.3" y="-0.95" font-size="0.26" fill="var(--series-3)">FaceProbe trigger 0.80</text>
+          <text x="0.72" y="-1.72" font-size="0.26" fill="var(--series-2)">glove at reach 1.60</text>
+          <text x="-1.72" y="-2.15" font-size="0.26" fill="var(--series-3)">face arc ±60°</text>
+        </svg>
+      </div>
+      <figcaption>
+        The only trigger in the project is <code>FaceProbe</code>. Everything else is either a solid collider or
+        pure arithmetic — hits are resolved by <code>CombatMath.ResolveHit</code> over positions, not by physics
+        contacts, which is what keeps the fight identical on every machine.
+      </figcaption>
+    </figure>
+    <div class="callout">
+      <p>
+        <strong>FaceProbe must stay a trigger.</strong> It is much larger than the drawn head — 0.80 against 0.30 —
+        because it is the perception volume as well as the hit volume. Make it solid and it stops being a sensor and
+        starts shoving fighters around at nearly a metre of reach.
+      </p>
+    </div>
+
+    <h3>The three arenas, at one scale</h3>
+    <figure>
+      <div class="figbox">
+        <svg viewBox="-21.5 -22.5 43 46" role="img" aria-label="The three arenas drawn at the same scale for comparison">
+          <rect x="-21.5" y="-22.5" width="43" height="46" fill="var(--canvas)"/>
+
+          <!-- 10-way training ring 40x40 (half 20) -->
+          <rect x="-20" y="-20" width="40" height="40" fill="none" stroke="var(--series-2)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          <circle cx="0" cy="0" r="15" fill="none" stroke="var(--series-2)" stroke-width="1.2"
+                  stroke-dasharray="3 3" opacity="0.7" vector-effect="non-scaling-stroke"/>
+          <text x="-19.4" y="-20.6" font-size="1.1" fill="var(--series-2)">Training10Way — 40 × 40, spawn radius 15</text>
+
+          <!-- game ring 17x17 -->
+          <rect x="-8.5" y="-8.5" width="17" height="17" fill="var(--surface)" fill-opacity="0.55"
+                stroke="var(--series-1)" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          <circle cx="0" cy="0" r="6.375" fill="none" stroke="var(--series-1)" stroke-width="1.2"
+                  stroke-dasharray="3 3" opacity="0.8" vector-effect="non-scaling-stroke"/>
+          <text x="-8.5" y="-9.1" font-size="1.1" fill="var(--series-1)">SampleScene — 17 × 17, spawn radius 6.375</text>
+
+          <!-- 1v1 training ring 20x14 -->
+          <rect x="-10" y="-7" width="20" height="14" fill="none" stroke="var(--series-3)" stroke-width="2"
+                stroke-dasharray="5 3" vector-effect="non-scaling-stroke"/>
+          <text x="-10" y="8.4" font-size="1.1" fill="var(--series-3)">Training1v1 — 20 × 14, spawn radius 4.5</text>
+
+          <g stroke="var(--text-muted)" stroke-width="1" vector-effect="non-scaling-stroke">
+            <line x1="-1" y1="0" x2="1" y2="0"/><line x1="0" y1="-1" x2="0" y2="1"/>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        All three drawn at the same scale, sharing an origin. The ten-way training ring is more than twice the
+        width of the ring the finished brain now fights in.
+      </figcaption>
+    </figure>
+    <div class="callout crit">
+      <p>
+        <strong>Flagged 2026-09-12.</strong> The game ring was rescaled from 40×40 to 17×17 and
+        <code>Training10Way</code> was not rescaled with it. The shipped brain learned its distances — when to
+        close, when to hold range, how long a wall is — on a field with more than four times the area. This is the
+        most likely source of odd spacing on screen, and rescaling means moving the drawn ring <em>and</em>
+        <code>BoxerSpawnPoints._arenaHalfExtent</code> together.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ TIER 3 ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 3 — Setup Guide</span>
+    <h2>Coordinates, tags, layers and the collision matrix</h2>
+
+    <h3>Arena dimensions per scene</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Scene</th><th class="num">Fighters</th><th class="num">Half extent</th><th class="num">Interior</th><th class="num">Spawn radius</th><th>Auto-restart</th><th>Role colours</th></tr></thead>
+      <tbody>
+        <tr><td><code>SampleScene</code></td><td class="num">10</td><td class="num">8.5 × 8.5</td><td class="num">17 × 17 (6.07 m)</td><td class="num">6.375</td><td>off</td><td>off — the card supplies tints</td></tr>
+        <tr><td><code>Training1v1</code></td><td class="num">2</td><td class="num">10 × 7</td><td class="num">20 × 14</td><td class="num">4.5</td><td>on</td><td>on</td></tr>
+        <tr><td><code>Training10Way</code></td><td class="num">10</td><td class="num">20 × 20</td><td class="num">40 × 40</td><td class="num">15</td><td>on</td><td>—</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      <code>Training1v1</code> spawns at 4.5 on purpose: fighters that start further apart than their own sensors
+      reach open every episode blind, wandering until something enters range.
+    </p>
+
+    <h3>Spawn point coordinates — SampleScene</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Slot</th><th class="num">X</th><th class="num">Y</th><th>Slot</th><th class="num">X</th><th class="num">Y</th></tr></thead>
+      <tbody>
+        <tr><td>Spawn_00</td><td class="num">+6.375</td><td class="num">0</td><td>Spawn_05</td><td class="num">−6.375</td><td class="num">0</td></tr>
+        <tr><td>Spawn_01</td><td class="num">+5.157</td><td class="num">+3.747</td><td>Spawn_06</td><td class="num">−5.157</td><td class="num">−3.747</td></tr>
+        <tr><td>Spawn_02</td><td class="num">+1.970</td><td class="num">+6.063</td><td>Spawn_07</td><td class="num">−1.970</td><td class="num">−6.063</td></tr>
+        <tr><td>Spawn_03</td><td class="num">−1.970</td><td class="num">+6.063</td><td>Spawn_08</td><td class="num">+1.970</td><td class="num">−6.063</td></tr>
+        <tr><td>Spawn_04</td><td class="num">−5.157</td><td class="num">+3.747</td><td>Spawn_09</td><td class="num">+5.157</td><td class="num">−3.747</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Scene objects and what carries collision</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Object</th><th class="num">Position / size</th><th>Collider</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>Wall_N / S</code></td><td class="num">y = ±8.606, 17.425 × 0.213</td><td>BoxCollider2D</td><td>Visual ropes. Does <em>not</em> contain fighters</td></tr>
+        <tr><td><code>Wall_E / W</code></td><td class="num">x = ±8.606, 0.213 × 17.425</td><td>BoxCollider2D</td><td>As above</td></tr>
+        <tr><td><code>Floor</code></td><td class="num">17 × 17 at origin</td><td>none</td><td>The canvas. Tiled material, deliberately outside the sprite atlas</td></tr>
+        <tr><td><code>RingLogo</code></td><td class="num">6.8 at origin</td><td>none</td><td>Decoration</td></tr>
+        <tr><td><code>Post_NE/NW/SE/SW</code></td><td class="num">±8.606, 0.595</td><td>none</td><td>Corner posts</td></tr>
+        <tr><td><code>Turnbuckle_Post_*</code></td><td class="num">±8.606, 0.638</td><td>none</td><td>Decoration</td></tr>
+        <tr><td><code>Stool_NE / SW</code></td><td class="num">±9.563, 0.935</td><td>none</td><td>Decoration, outside the ropes</td></tr>
+        <tr><td><code>ArenaSurround</code></td><td class="num">68 × 68</td><td>none</td><td>The dark room the ring sits in</td></tr>
+        <tr><td><code>Spawn_00…09</code></td><td class="num">radius 6.375</td><td>none</td><td>Empty transforms — slot markers only</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><strong class="hl">Four box colliders in the entire game scene.</strong> There are no other solids, no
+    hazards and no triggers outside the fighters themselves.</p>
+
+    <h3>Tags — and a gap</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Tag</th><th>On</th><th>Read by</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><code>Boxer</code></td><td>Fighter body</td><td>Ray sensor, slot 2</td><td>✅ set</td></tr>
+        <tr><td><code>BoxerFace</code></td><td>FaceProbe</td><td>Ray sensor, slot 1</td><td>✅ set — how a fighter tells an attackable face from someone's back</td></tr>
+        <tr><td><code>Wall</code></td><td>The four walls</td><td>Ray sensor, slot 3</td><td>⚠️ set in <code>Training1v1</code> only</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout">
+      <p>
+        <strong>Flagged 2026-09-12 — the walls are untagged in two of the three scenes.</strong>
+        <code>SampleScene</code> and <code>Training10Way</code> leave all four walls <code>Untagged</code>, while
+        the ray sensor lists <code>Wall</code> as its third detectable tag. The rays still <em>stop</em> on a wall,
+        so a fighter senses an obstruction — it just cannot tell that the obstruction is a rope rather than an
+        unknown. What partly covers for this is the position-in-ring observation, which was added precisely because
+        rays cannot say "you are in a corner". Tagging the walls in those two scenes is a one-field fix; note that
+        it changes what the sensor reports, so the brain should be re-checked against it.
+      </p>
+    </div>
+
+    <h3>Layers and the collision matrix</h3>
+    <p>
+      Ten layers, <code>BoxerBody0</code> through <code>BoxerBody9</code>, one per roster slot. At spawn,
+      <code>BoxerSpawnPoints.IsolatePerception</code> moves every collider belonging to fighter <em>n</em> onto
+      <code>BoxerBody{n}</code> and subtracts that layer from that fighter's own ray mask.
+    </p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Pairing</th><th>Collides?</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>BoxerBody{n}</code> ↔ itself</td><td><strong>No</strong></td><td>A fighter's own parts never collide with each other. A glove tucked to the face sits inside the torso collider, and the servo would fight a contact it can never win</td></tr>
+        <tr><td><code>BoxerBody{n}</code> ↔ <code>BoxerBody{m}</code></td><td>Yes — all 45 pairs</td><td>Fighters collide with each other normally</td></tr>
+        <tr><td>Any boxer layer ↔ <code>Default</code></td><td>Yes</td><td>The walls live on Default</td></tr>
+        <tr><td>Ray mask, fighter <em>n</em></td><td>Everything <em>except</em> <code>BoxerBody{n}</code></td><td>So a fighter can never perceive itself</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout crit">
+      <p>
+        <strong>The single nastiest failure in the project.</strong> A 2D ray cannot skip the collider it started
+        inside. Two things keep the sensor honest and <em>both</em> are load-bearing: project-wide
+        <code>Physics2D &gt; Queries Start In Colliders</code> must be <strong>off</strong>, and
+        <code>IsolatePerception</code> must run. Turn off either and every forward ray — the ones pointing exactly
+        where the fighter is about to punch — reports that fighter's own face at half a metre, permanently, with no
+        error anywhere. <code>PerceptionSettingsTests</code> pins the first half.
+      </p>
+    </div>
+
+    <h3>Lighting and cameras</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Object</th><th class="num">Position</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td><code>Global Light 2D</code></td><td class="num">origin</td><td>Base ambient for the whole scene</td></tr>
+        <tr><td><code>KeyLight</code></td><td class="num">origin</td><td>The overhead ring light</td></tr>
+        <tr><td><code>RimLight_NE/NW/SE/SW</code></td><td class="num">±19, ±19</td><td>Four corner rims, outside the ring</td></tr>
+        <tr><td><code>FollowSpot</code></td><td class="num">moves</td><td>Fades in when the director holds a pair</td></tr>
+        <tr><td><code>ImpactLight_00…07</code></td><td class="num">pooled</td><td>Flash on a landed punch. Pooled, never instantiated mid-match</td></tr>
+        <tr><td><code>Main Camera</code></td><td class="num">origin, orthographic 20</td><td>Static fallback framing</td></tr>
+        <tr><td><code>SpectatorCam</code></td><td class="num">follows</td><td>Picks a focus fighter and frames that exchange, not the whole field</td></tr>
+        <tr><td><code>ImpactCam</code></td><td class="num">cut to</td><td>Hard cut on a knockout or a landed haymaker</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      <strong>Every Light2D must list every sorting layer</strong>, and must be told about normal maps —
+      <code>NormalMapQuality</code> is declared <code>Disabled = 2, Fast = 0, Accurate = 1</code>, so a
+      SerializedProperty's <code>enumValueIndex</code> is <em>not</em> the enum's value. Set <code>intValue</code>.
+    </p>
+
+    <h3>Engine setup tips</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Task</th><th>Unity, here</th><th>Unreal equivalent</th></tr></thead>
+      <tbody>
+        <tr><td>Mark what a sensor can recognise</td><td>Tags: <code>Boxer</code>, <code>BoxerFace</code>, <code>Wall</code></td><td>Actor Tags, matched in the trace filter</td></tr>
+        <tr><td>Stop an agent sensing itself</td><td>Per-agent layer + ray mask, and Queries Start In Colliders off</td><td>Add the owning actor to the trace's ignore list</td></tr>
+        <tr><td>Decide who collides with whom</td><td>Layer Collision Matrix</td><td>Collision channels and object responses</td></tr>
+        <tr><td>Hold agents inside the arena</td><td>Clamp in code, not colliders</td><td>Same — clamp in the pawn's movement code</td></tr>
+        <tr><td>Draw order</td><td>Sorting Layers: Floor, Shadow, Default, Boxer, Glove, FX</td><td>Translucency sort order / sort priority</td></tr>
+        <tr><td>Spawn markers</td><td>Empty transforms in the scene</td><td>Player Start or Target Point actors</td></tr>
+        <tr><td>Navigation</td><td><strong>None.</strong> No NavMesh — the arena is empty and movement is direct</td><td>No Nav Mesh Bounds Volume needed for the same reason</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout ok">
+      <p>
+        <strong>Build scene objects through the editor, not from code.</strong> Anything static — positions, props,
+        rig objects — should exist in the scene as an asset that can be dragged. Code that spawns static scenery at
+        runtime takes away the ability to adjust it. Everything in the tables above is authored in the scene.
+      </p>
+    </div>
+
+    <h3>Before you touch the ring</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>If you change…</th><th>You must also change…</th><th>Or else</th></tr></thead>
+      <tbody>
+        <tr><td>The drawn ring size</td><td><code>BoxerSpawnPoints._arenaHalfExtent</code></td><td>Fighters stop short of the ropes or walk through them, silently</td></tr>
+        <tr><td>The spawn radius</td><td>Check it against the ray reach (24)</td><td>Fighters open every episode blind</td></tr>
+        <tr><td>A sprite's pixels-per-unit</td><td>Nothing — don't</td><td>PPU equals the sprite's pixel width so one sprite is one world unit. Changing it moves the drawn fists away from the hitboxes</td></tr>
+        <tr><td>Anything in the ring at all</td><td>Run the EditMode tests</td><td><code>ArenaContainmentTests</code> and <code>SpawnRandomisationTests</code> exist for this</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    Every coordinate above was parsed from the scene files on 2026-09-12. PoRumble ·
+    <code>DOCS/20260912/scene_layout.html</code>
+  </footer>
+
+</div>
+</body>
+</html>

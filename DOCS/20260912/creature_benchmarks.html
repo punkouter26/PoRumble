@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoRumble — Multi-Agent Performance Comparison</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:#f9f9f7; --surface:#fcfcfb; --surface-2:#f2f1ed;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --series-1:#2a78d6; --series-2:#eb6834; --series-3:#1baf7a;
+    --ramp-1:#86b6ef; --track:#e1e0d9;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+      --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+      --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+      --ramp-1:#5598e7; --track:#2c2c2a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#232322;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10);
+    --series-1:#3987e5; --series-2:#d95926; --series-3:#199e70;
+    --ramp-1:#5598e7; --track:#2c2c2a;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--text-primary);
+         font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .wrap { max-width:1120px; margin:0 auto; padding-block:24px 64px; padding-left:16px; padding-right:16px; }
+  h1 { font-size:22px; margin:0 0 4px; letter-spacing:-0.01em; }
+  .sub { color:var(--text-secondary); font-size:13px; margin:0 0 20px; }
+  .tier { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 18px 22px; margin-bottom:20px; }
+  .tier-label { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+  h2 { font-size:17px; margin:0 0 6px; }
+  h3 { font-size:14px; margin:26px 0 8px; }
+  h3:first-of-type { margin-top:8px; }
+  p { margin:0 0 10px; color:var(--text-secondary); max-width:78ch; }
+  p.lead { color:var(--text-primary); }
+  strong.hl { color:var(--text-primary); }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:14px 0 6px; }
+  .tile { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+  .tile .val { font-size:25px; font-weight:650; letter-spacing:-0.02em; line-height:1.15; }
+  .tile .cap { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+  .tile .note { font-size:11px; color:var(--text-muted); margin-top:6px; }
+  .bars { margin:12px 0 4px; }
+  .bar-row { display:grid; grid-template-columns:minmax(130px,230px) 1fr auto; gap:12px; align-items:center; padding:7px 0; }
+  .bar-label { font-size:13px; color:var(--text-secondary); }
+  .bar-track { background:var(--track); border-radius:4px; height:12px; position:relative; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:0 4px 4px 0; background:var(--series-1); }
+  .bar-fill.alt { background:var(--ramp-1); }
+  .bar-fill.warn { background:var(--serious); }
+  .bar-val { font-size:13px; font-weight:650; font-variant-numeric:tabular-nums; min-width:64px; text-align:right; }
+  figure { margin:14px 0 6px; }
+  figcaption { font-size:12px; color:var(--text-muted); margin-top:8px; max-width:78ch; }
+  .figbox { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:14px 12px; overflow-x:auto; }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  svg.chart { display:block; width:100%; height:auto; min-width:260px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin:8px 0 6px; }
+  .scroll { overflow-x:auto; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--grid); vertical-align:top; }
+  th { font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--text-muted); font-weight:600; white-space:nowrap; }
+  td.num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+  tbody tr:last-child td { border-bottom:0; }
+  code { font-family:ui-monospace,"Cascadia Code",Consolas,monospace; font-size:12px; background:var(--surface-2); padding:1px 5px; border-radius:4px; }
+  .src { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+         padding:2px 6px; border-radius:4px; border:1px solid var(--border); color:var(--text-secondary); background:var(--surface-2); white-space:nowrap; }
+  .rating { font-weight:650; }
+  .r-healthy { color:var(--good); } .r-high { color:var(--series-1); }
+  .r-med { color:var(--text-secondary); } .r-low { color:var(--serious); } .r-bad { color:var(--critical); }
+  .callout { border-left:3px solid var(--serious); background:var(--surface-2); padding:11px 14px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .callout p { margin:0; color:var(--text-primary); }
+  .callout.crit { border-left-color:var(--critical); }
+  .callout.ok { border-left-color:var(--good); }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; font-size:12px; color:var(--text-secondary); margin:10px 0 0; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .key { width:11px; height:11px; border-radius:3px; display:inline-block; flex:none; }
+  footer { color:var(--text-muted); font-size:12px; border-top:1px solid var(--grid); padding-top:14px; margin-top:26px; }
+  text { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  @media (max-width:560px) {
+    .bar-row { grid-template-columns:1fr auto; }
+    .bar-row .bar-track { grid-column:1 / -1; order:3; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>PoRumble — Multi-Agent Performance Comparison</h1>
+  <p class="sub">How the fighters learned, how hard they move, and what they cost to run. Captured 2026-09-12.</p>
+
+  <!-- ============ TIER 1 ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 1 — Quick Look</span>
+    <h2>One brain got trained, and choosing which save to keep was the whole game</h2>
+    <p class="lead">
+      This project has exactly <strong class="hl">one trained brain</strong>, so there is no field of rival AIs to
+      race against each other. What there <em>is</em> — and it is more useful — is a clear record of how that brain
+      developed, and of the decision that nearly went the wrong way: two candidate saves from the same run, one
+      that scored better and one that actually fought better.
+    </p>
+    <div class="tiles">
+      <div class="tile"><div class="val">76%</div><div class="cap">Matches finished — the save that shipped</div><div class="note"><span class="src">From record</span></div></div>
+      <div class="tile"><div class="val">21%</div><div class="cap">Matches finished — the best-scoring save</div><div class="note"><span class="src">From record</span></div></div>
+      <div class="tile"><div class="val">0.73 ms</div><div class="cap">GPU frame with 10 fighters live</div><div class="note"><span class="src">Measured</span></div></div>
+      <div class="tile"><div class="val">6.4–7.7 ms</div><div class="cap">CPU frame, Editor</div><div class="note"><span class="src">Measured</span></div></div>
+    </div>
+    <div class="callout ok">
+      <p>
+        <strong>The headline for a producer:</strong> the fighters are cheap. Ten of them, each running a neural
+        network ten times a second, leave the GPU essentially idle and the CPU frame under half of a 60 fps budget.
+        Performance is not what limits this game.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ TIER 2 ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 2 — Success vs Time</span>
+    <h2>How quickly each fighter learned its job</h2>
+
+    <h3>The choice that mattered</h3>
+    <p>
+      Same training run, two saved checkpoints. In a ten-way free-for-all every fighter's win rate is 10% by
+      construction, so the useful measure is whether a match reaches a real finish or just runs out of clock.
+    </p>
+    <div class="bars">
+      <div class="bar-row">
+        <span class="bar-label">Picked on <strong class="hl">finishes</strong> — shipped as <code>ffa_v5</code></span>
+        <span class="bar-track"><span class="bar-fill" style="width:76%"></span></span>
+        <span class="bar-val">76%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Picked on <strong class="hl">score</strong> — rejected</span>
+        <span class="bar-track"><span class="bar-fill warn" style="width:21%"></span></span>
+        <span class="bar-val">21%</span>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      Finishing a match early truncates the episode, capping how much damage-reward can accumulate — so the reward
+      function mildly <em>punishes</em> winning quickly. Score and the objective point in opposite directions here.
+    </p>
+
+    <h3>Learning curve — the ten-way stage, run <code>ffa_v3</code></h3>
+    <p>
+      Two charts, not one with two scales. They cover the same window of the same run, and the point is how
+      differently they move.
+    </p>
+    <div class="two">
+      <figure>
+        <div class="figbox">
+          <svg class="chart" viewBox="0 0 340 210" role="img" aria-label="Bar chart: summaries in which a match finished before the bell, 0 of 80 at 1.6 million steps rising to 28 of 80 at 4 million steps">
+            <text x="8" y="16" font-size="12" font-weight="650" fill="var(--text-primary)">Matches finishing before the bell</text>
+            <text x="8" y="31" font-size="10.5" fill="var(--text-muted)">out of 80 reporting windows</text>
+            <!-- gridlines -->
+            <g stroke="var(--grid)" stroke-width="1">
+              <line x1="44" y1="170" x2="330" y2="170"/>
+              <line x1="44" y1="130" x2="330" y2="130"/>
+              <line x1="44" y1="90"  x2="330" y2="90"/>
+              <line x1="44" y1="50"  x2="330" y2="50"/>
+            </g>
+            <g font-size="10" fill="var(--text-muted)" text-anchor="end">
+              <text x="38" y="174">0</text><text x="38" y="134">15</text>
+              <text x="38" y="94">30</text><text x="38" y="54">45</text>
+            </g>
+            <!-- bars: 0 and 28 of 80; scale 40px per 15 -->
+            <rect x="80" y="168" width="72" height="2" rx="1" fill="var(--series-1)" opacity="0.45">
+              <title>1.6M steps — 0 of 80</title>
+            </rect>
+            <rect x="218" y="95.3" width="72" height="74.7" rx="4" fill="var(--series-1)">
+              <title>4.0M steps — 28 of 80</title>
+            </rect>
+            <text x="116" y="162" font-size="12" font-weight="650" text-anchor="middle" fill="var(--text-primary)">0</text>
+            <text x="254" y="88" font-size="12" font-weight="650" text-anchor="middle" fill="var(--text-primary)">28</text>
+            <line x1="44" y1="170" x2="330" y2="170" stroke="var(--baseline)" stroke-width="1.5"/>
+            <g font-size="10.5" fill="var(--text-secondary)" text-anchor="middle">
+              <text x="116" y="188">1.6M steps</text>
+              <text x="254" y="188">4.0M steps</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>Went from never finishing a match to finishing one in three. <span class="src">From record</span></figcaption>
+      </figure>
+
+      <figure>
+        <div class="figbox">
+          <svg class="chart" viewBox="0 0 340 210" role="img" aria-label="Bar chart: average score barely moved, 5.68 at 1.6 million steps to 6.12 at 4 million steps">
+            <text x="8" y="16" font-size="12" font-weight="650" fill="var(--text-primary)">Average score over the same window</text>
+            <text x="8" y="31" font-size="10.5" fill="var(--text-muted)">cumulative reward per match</text>
+            <g stroke="var(--grid)" stroke-width="1">
+              <line x1="44" y1="170" x2="330" y2="170"/>
+              <line x1="44" y1="130" x2="330" y2="130"/>
+              <line x1="44" y1="90"  x2="330" y2="90"/>
+              <line x1="44" y1="50"  x2="330" y2="50"/>
+            </g>
+            <g font-size="10" fill="var(--text-muted)" text-anchor="end">
+              <text x="38" y="174">0</text><text x="38" y="134">2</text>
+              <text x="38" y="94">4</text><text x="38" y="54">6</text>
+            </g>
+            <!-- 20px per unit: 5.68 -> 113.6 tall, 6.12 -> 122.4 -->
+            <rect x="80" y="56.4" width="72" height="113.6" rx="4" fill="var(--ramp-1)">
+              <title>1.6M steps — 5.68</title>
+            </rect>
+            <rect x="218" y="47.6" width="72" height="122.4" rx="4" fill="var(--ramp-1)">
+              <title>4.0M steps — 6.12</title>
+            </rect>
+            <text x="116" y="49" font-size="12" font-weight="650" text-anchor="middle" fill="var(--text-primary)">5.68</text>
+            <text x="254" y="40" font-size="12" font-weight="650" text-anchor="middle" fill="var(--text-primary)">6.12</text>
+            <line x1="44" y1="170" x2="330" y2="170" stroke="var(--baseline)" stroke-width="1.5"/>
+            <g font-size="10.5" fill="var(--text-secondary)" text-anchor="middle">
+              <text x="116" y="188">1.6M steps</text>
+              <text x="254" y="188">4.0M steps</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption>
+          The same improvement, seen through the scoreboard: almost nothing. <span class="src">From record</span>
+        </figcaption>
+      </figure>
+    </div>
+    <div class="callout">
+      <p>
+        <strong>This pair is the single most important thing on the page.</strong> A fighter that went from never
+        closing out a match to closing out one in three moved its score by 8%. Anyone watching the scoreboard would
+        have concluded the run had flatlined and killed it.
+      </p>
+    </div>
+
+    <h3>Why nothing under 2 million steps is a trend</h3>
+    <figure>
+      <div class="figbox">
+        <svg class="chart" viewBox="0 0 700 230" role="img" aria-label="Line chart: finish rate oscillating from 50 percent at 1 million steps down to 34 percent at 3 million and back to 50 percent at 4 million">
+          <text x="10" y="18" font-size="12.5" font-weight="650" fill="var(--text-primary)">Share of matches finishing before the bell — ten-way run</text>
+          <text x="10" y="34" font-size="10.5" fill="var(--text-muted)">oscillates on roughly a 2-million-step period while the score sits flat at ~6.05 throughout</text>
+          <g stroke="var(--grid)" stroke-width="1">
+            <line x1="52" y1="180" x2="680" y2="180"/>
+            <line x1="52" y1="140" x2="680" y2="140"/>
+            <line x1="52" y1="100" x2="680" y2="100"/>
+            <line x1="52" y1="60"  x2="680" y2="60"/>
+          </g>
+          <g font-size="10" fill="var(--text-muted)" text-anchor="end">
+            <text x="46" y="184">0%</text><text x="46" y="144">20%</text>
+            <text x="46" y="104">40%</text><text x="46" y="64">60%</text>
+          </g>
+          <!-- x: 1M=140, 3M=430, 4M=600 ; y: 50%=80, 34%=112, 50%=80 -->
+          <polyline points="140,80 430,112 600,80" fill="none" stroke="var(--series-1)" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+          <g fill="var(--series-1)">
+            <circle cx="140" cy="80" r="5"><title>1M steps — 50%</title></circle>
+            <circle cx="430" cy="112" r="5"><title>3M steps — 34%</title></circle>
+            <circle cx="600" cy="80" r="5"><title>4M steps — 50%</title></circle>
+          </g>
+          <g font-size="11.5" font-weight="650" fill="var(--text-primary)" text-anchor="middle">
+            <text x="140" y="68">50%</text><text x="430" y="130">34%</text><text x="600" y="68">50%</text>
+          </g>
+          <!-- the misleading window -->
+          <rect x="140" y="46" width="290" height="134" fill="var(--serious)" opacity="0.10"/>
+          <text x="285" y="203" font-size="10.5" fill="var(--serious)" text-anchor="middle">this window alone reads as a regression — it is not one</text>
+          <line x1="52" y1="180" x2="680" y2="180" stroke="var(--baseline)" stroke-width="1.5"/>
+          <g font-size="10.5" fill="var(--text-secondary)" text-anchor="middle">
+            <text x="140" y="196">1M</text><text x="430" y="196">3M</text><text x="600" y="196">4M</text>
+          </g>
+          <text x="680" y="196" font-size="10" fill="var(--text-muted)" text-anchor="end">training steps</text>
+        </svg>
+      </div>
+      <figcaption>
+        This is why <code>keep_checkpoints</code> is set to 15 rather than the default 5: at 5, the good save had
+        already been rotated away by the time anyone could see it was the good one. <span class="src">From record</span>
+      </figcaption>
+    </figure>
+
+    <h3>Every brain this project has trained</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Brain</th><th class="num">Steps</th><th>Learned to…</th><th>Finish rate</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Legacy, pre-perception fix</td><td class="num">—</td>
+          <td>Nothing. Its ray sensor reported its own torso, so it never saw an opponent</td>
+          <td class="rating r-bad">~none</td>
+          <td class="rating r-bad">Broken — and no longer loadable, it was built against an 11-wide observation vector</td>
+        </tr>
+        <tr>
+          <td><code>spar</code> — 1v1 vs the scripted partner</td><td class="num">—</td>
+          <td>Find, close, aim, land. Knockouts in ~280 steps against a 2500 cap</td>
+          <td class="rating r-healthy">n/a — 1v1 always finishes</td>
+          <td class="rating r-healthy">Good stage-1 base</td>
+        </tr>
+        <tr>
+          <td><code>ffa_v3</code> — ten-way</td><td class="num">~4M</td>
+          <td>Hold its own against nine. Sat in a trough at 1–1.6M that looked exactly like convergence, then climbed out</td>
+          <td class="rating r-med">0% → 35%</td>
+          <td class="rating r-med">Improving, not ready</td>
+        </tr>
+        <tr>
+          <td><strong><code>ffa_v5</code> — SHIPPED</strong></td><td class="num">~21M</td>
+          <td>Everything above, at nine-opponent scale. This is <code>PoRumbleBoxer.onnx</code></td>
+          <td class="rating r-high">76%</td>
+          <td class="rating r-healthy">Ready for game</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      Only the last row exists in this working tree. There is no <code>results/</code> directory, so none of the
+      earlier runs can be re-opened, re-measured or rolled back to.
+    </p>
+  </section>
+
+  <!-- ============ ENERGY ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 2 — Energy &amp; Smoothness</span>
+    <h2>Which fighters move naturally, and which burn themselves out</h2>
+
+    <h3>Stamina — measured</h3>
+    <p>
+      A fighter spends breath on punching and moving and gets it back over time. Under <em>constant</em> punching
+      the system settles at an equilibrium, and that number is the honest measure of how hard the fighters are
+      allowed to work.
+    </p>
+    <div class="bars">
+      <div class="bar-row">
+        <span class="bar-label">Equilibrium under constant punching</span>
+        <span class="bar-track"><span class="bar-fill" style="width:20%"></span></span>
+        <span class="bar-val">0.20</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Equilibrium before the alternating-arm rule</span>
+        <span class="bar-track"><span class="bar-fill alt" style="width:24%"></span></span>
+        <span class="bar-val">~0.24</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Punch throughput, measured</span>
+        <span class="bar-track"><span class="bar-fill" style="width:44%"></span></span>
+        <span class="bar-val">2.2 / s</span>
+      </div>
+    </div>
+    <div class="callout">
+      <p>
+        <strong>A rule change quietly broke this once.</strong> Restricting fighters to one fist out at a time
+        halved punch throughput to about 2.2/sec — which meant that at the old stamina cost of 0.035, the drain
+        (0.077/s) fell <em>below</em> the recovery (0.09/s). Spamming punches literally gained you breath. The cost
+        was doubled to 0.07 to put the pressure back.
+      </p>
+    </div>
+
+    <h3>Energy per fighter — derived from the roster</h3>
+    <p>
+      How hard each style makes its fighter work, from the punch gate it applies and the recovery attribute it
+      carries. <span class="src">Derived from config</span> — these are the configured inputs, not a measured
+      output. Nobody has profiled per-fighter energy in this tree.
+    </p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Fighter</th><th class="num">Punch gate</th><th class="num">Recovery</th><th class="num">Opportunist punches</th><th>Reads as</th></tr></thead>
+      <tbody>
+        <tr><td>BRENDAN</td><td class="num">1.00</td><td class="num">1.50</td><td class="num">0.40</td><td>Throws everything and pays for none of it — the engine</td></tr>
+        <tr><td>BLIPPI</td><td class="num">1.00</td><td class="num">1.20</td><td class="num">0.55</td><td>Highest volume in the ring, and the thinnest chin behind it</td></tr>
+        <tr><td>STANDARD RL</td><td class="num">1.00</td><td class="num">1.00</td><td class="num">0.00</td><td>Whatever the network asked for, unmodified — the baseline</td></tr>
+        <tr><td>BIGGIE</td><td class="num">0.70</td><td class="num">0.85</td><td class="num">0.15</td><td>Picks his moments. Tires fastest, hits hardest</td></tr>
+        <tr><td>EPSTEIN</td><td class="num">0.60</td><td class="num">1.15</td><td class="num">0.05</td><td>Spends it on slipping instead — 0.90 dodge chance, the highest</td></tr>
+        <tr><td>ALAN</td><td class="num">0.55</td><td class="num">1.05</td><td class="num">0.05</td><td>Waits. Half the punches, more damage in each</td></tr>
+        <tr><td>DUPEE</td><td class="num">0.45</td><td class="num">1.00</td><td class="num">0.10</td><td>Lowest volume of anyone. Fights off the back foot</td></tr>
+        <tr><td>HEURISTIC</td><td class="num">n/a</td><td class="num">1.00</td><td class="num">n/a</td><td>Scripted — volume comes from its tier's aggression instead</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Smoothness — what actually caused jitter here</h3>
+    <p>
+      There is <span class="src">Not measured</span> no jitter metric in this project — nobody has logged joint
+      velocity or torque variance. What exists instead is a record of the two things that made the arms visibly
+      shake, both now designed out:
+    </p>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Cause</th><th>What it looked like</th><th>Resolution</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Colliders on the arm segments</td>
+          <td><strong>Limbs came off and scattered across the ring.</strong> The dynamic arm chain hangs off a kinematic torso, which is infinitely massive to the solver — an arm pinched between two closing bodies has nowhere to go</td>
+          <td>Upper arms and forearms carry bodies but <strong>no colliders</strong>, permanently. Only the gloves have presence</td>
+        </tr>
+        <tr>
+          <td>Capsule colliders, second attempt</td>
+          <td>Arms visibly oscillated. Every cross-fighter touch pushed a limb while the servo drove back against it, so the drawn pose became a product of contact forces rather than of the model</td>
+          <td>Reverted. Blocking needs no physical presence — it is judged against the line from shoulder to glove</td>
+        </tr>
+        <tr>
+          <td>Servo gain too low for the folded guard</td>
+          <td>Fists visibly fell short — measured 1.53 against a 1.60 reach</td>
+          <td>Folding the guard made the arm slew 117° instead of 37° in the same window, so servo gain went from 25 to 60</td>
+        </tr>
+        <tr>
+          <td>Nested arm rigidbodies</td>
+          <td>Jointed limbs drift — a nested body is moved twice, once by physics and once by the hierarchy</td>
+          <td>Arm segments are <strong>siblings</strong> of the torso, never children</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout ok">
+      <p>
+        <strong>On realism:</strong> joint limits are anatomical — the elbow cannot hyperextend, the wrist is held
+        to ±25°, the shoulder to a human range. Gravity scale is 0 because this is a top-down view and Earth gravity
+        points into the screen; there is no in-plane fall to simulate, and no floaty scaling is being hidden by it.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ GAME PERFORMANCE ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 2 — Game Performance</span>
+    <h2>What ten thinking fighters cost to run</h2>
+    <p>
+      Sampled mid-fight with all ten alive, in the Editor on desktop. <span class="src">Measured</span>
+    </p>
+    <div class="tiles">
+      <div class="tile"><div class="val">0.73 ms</div><div class="cap">GPU frame</div><div class="note">Essentially idle</div></div>
+      <div class="tile"><div class="val">6.4–7.7 ms</div><div class="cap">CPU frame</div><div class="note">Editor overhead included</div></div>
+      <div class="tile"><div class="val">98–158</div><div class="cap">Draw calls</div><div class="note">Moves with particles on screen</div></div>
+      <div class="tile"><div class="val">2</div><div class="cap">Batches</div><div class="note">The sprite atlas doing its job</div></div>
+    </div>
+
+    <h3>Against the budgets</h3>
+    <div class="bars">
+      <div class="bar-row">
+        <span class="bar-label">CPU frame vs a 60 fps budget (16.7 ms)</span>
+        <span class="bar-track"><span class="bar-fill" style="width:46%"></span></span>
+        <span class="bar-val">46%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">CPU frame vs a 30 fps budget (33.3 ms)</span>
+        <span class="bar-track"><span class="bar-fill" style="width:23%"></span></span>
+        <span class="bar-val">23%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Draw calls vs the project's own 200 ceiling</span>
+        <span class="bar-track"><span class="bar-fill" style="width:79%"></span></span>
+        <span class="bar-val">79%</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">SetPass calls vs the 80 ceiling</span>
+        <span class="bar-track"><span class="bar-fill" style="width:78%"></span></span>
+        <span class="bar-val">78%</span>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      Percentages use the worst measured sample (7.7 ms CPU, 158 draw calls, 62 SetPass). The ceilings are the
+      project's own diagnostic thresholds from <code>DiagnosticsVerdict</code>, not platform limits.
+    </p>
+
+    <h3>Scene composition at that sample</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Item</th><th class="num">Count</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>ML-Agents agents, active</td><td class="num">10</td><td>Each running inference at 10 Hz</td></tr>
+        <tr><td><code>Light2D</code></td><td class="num">15</td><td>Includes the eight-strong impact light pool</td></tr>
+        <tr><td><code>AudioSource</code></td><td class="num">19</td><td>Crowd bed, commentary, spatial voice pool</td></tr>
+        <tr><td><code>UIDocument</code></td><td class="num">8</td><td>HUD split by update frequency</td></tr>
+        <tr><td>Triangles / vertices</td><td class="num">4,431 / 8,221</td><td>Trivial for any GPU of the last decade</td></tr>
+        <tr><td>EditMode tests</td><td class="num">179 / 179</td><td>6.2 s</td></tr>
+        <tr><td>Console errors / warnings</td><td class="num">0 / 0</td><td>A full match produces two informational ML-Agents lines and nothing else</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="callout">
+      <p>
+        <strong>What is not measured:</strong> nobody has profiled the cost of a <em>single</em> agent. The CPU
+        frame above is everything — physics, rendering, HUD, audio, commentary and inference together — so dividing
+        it by ten would be a made-up number, and this page will not print one. If per-agent cost matters, capture it
+        with the profiler against a scene with the agents disabled and compare.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ TIER 3 ============ -->
+  <section class="tier">
+    <span class="tier-label">Tier 3 — Setup Guide</span>
+    <h2>Reproducing and extending these benchmarks</h2>
+
+    <h3>Comparison grid — everything in the ring today</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Entry</th><th>Type</th><th>Learned fast?</th><th>Energy</th><th>Smoothness</th><th>Runtime cost</th><th>Ready for the game?</th></tr></thead>
+      <tbody>
+        <tr><td><code>ffa_v5</code> / STANDARD RL</td><td>Trained</td><td class="rating r-med">Medium — ~21M steps</td><td class="rating r-healthy">Healthy</td><td class="rating r-healthy">Healthy</td><td class="rating r-healthy">Low</td><td class="rating r-healthy">Yes — shipped</td></tr>
+        <tr><td>ALAN · BIGGIE · BLIPPI · BRENDAN · DUPEE · EPSTEIN</td><td>Trained + style</td><td class="rating r-med">Inherited — no separate training</td><td class="rating r-med">Varies by style</td><td class="rating r-healthy">Healthy — same rig</td><td class="rating r-healthy">Low — same weights</td><td class="rating r-healthy">Yes</td></tr>
+        <tr><td>HEURISTIC (4 tiers)</td><td>Hand-written</td><td class="rating r-healthy">Instant — no training</td><td class="rating r-healthy">Healthy</td><td class="rating r-healthy">Healthy</td><td class="rating r-healthy">Lowest</td><td class="rating r-healthy">Yes — and deterministic, which training depends on</td></tr>
+        <tr><td>Human player</td><td>Keyboard / touch</td><td class="rating r-med">—</td><td class="rating r-med">—</td><td class="rating r-healthy">Same rig</td><td class="rating r-healthy">Lowest</td><td class="rating r-healthy">Yes</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted)">
+      Scale: <span class="rating r-healthy">Healthy</span> · <span class="rating r-high">High</span> ·
+      <span class="rating r-med">Medium</span> · <span class="rating r-low">Low</span> ·
+      <span class="rating r-bad">Failing</span>. Six of the eight roster entries share one set of weights, so their
+      runtime cost and smoothness are identical by construction — only their behaviour differs.
+    </p>
+
+    <h3>How each figure on this page was obtained</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Figure</th><th>Source</th><th>Reproduce with</th></tr></thead>
+      <tbody>
+        <tr><td>Finish rates, learning curves, run history</td><td><span class="src">From record</span> <code>DOCS/ML_AGENTS.md</code></td><td>Not reproducible in this tree — no <code>results/</code> directory survives</td></tr>
+        <tr><td>Frame time, draw calls, scene counts</td><td><span class="src">Measured</span> <code>DOCS/RUNTIME_REPORT.md</code>, 2026-09-11</td><td>Play <code>SampleScene</code>, open the Profiler and the Rendering stats</td></tr>
+        <tr><td>Stamina equilibrium, punch throughput</td><td><span class="src">Measured</span> recorded in <code>DOCS/ARCHITECTURE.md</code></td><td><code>BoxerConfigTuningTests</code>, and a match with the F3 diagnostics overlay</td></tr>
+        <tr><td>Per-fighter style and attribute values</td><td><span class="src">Measured</span> read from the asset files today</td><td><code>Assets/Config/Fighters/*.asset</code></td></tr>
+        <tr><td>Draw-call and SetPass ceilings</td><td><span class="src">Measured</span> <code>DiagnosticsVerdict</code> constants</td><td>F3 in play mode shows the live verdict</td></tr>
+        <tr><td>Per-agent CPU cost</td><td><span class="src">Not measured</span></td><td>Profile with agents enabled and disabled, and difference the two</td></tr>
+        <tr><td>Joint jitter / motion smoothness</td><td><span class="src">Not measured</span></td><td>Log hinge joint angular velocity over a match</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>If you run a new benchmark, do these first</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Step</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Start TensorBoard <strong>before</strong> the trainer, and verify the port answers</td><td>Project rule. <code>Start-Process</code> reports success even when the process dies a second later, so its exit status proves nothing</td></tr>
+        <tr><td>Prune stale runs from <code>results/</code>, keeping <code>results/_preserved/</code></td><td>Stale directories make the scalar view unreadable</td></tr>
+        <tr><td>Preserve checkpoints across the whole run</td><td>The good save is only identifiable at the end, and this project has already lost one to rotation</td></tr>
+        <tr><td>Close the Editor for runs over 30 minutes</td><td>Give the run the machine</td></tr>
+        <tr><td>Batch any <code>.cs</code> edits before starting</td><td>Editing a script under <code>Assets/</code> triggers a domain reload, which exits Play mode and kills the run</td></tr>
+        <tr><td>Record the finish rate, not just the reward</td><td>Everything on this page argues that reward alone would have shipped the wrong brain</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Unreal equivalents, if this is rebuilt there</h3>
+    <div class="scroll">
+    <table>
+      <thead><tr><th>Measurement</th><th>Unity, here</th><th>Unreal</th></tr></thead>
+      <tbody>
+        <tr><td>Frame time</td><td>Profiler, CPU/GPU modules</td><td><code>stat unit</code>, Unreal Insights</td></tr>
+        <tr><td>Draw calls / batches</td><td>Rendering statistics window</td><td><code>stat rhi</code>, <code>stat scenerendering</code></td></tr>
+        <tr><td>Training scalars</td><td>TensorBoard over <code>results/</code></td><td>TensorBoard over the Learning Agents intermediate directory</td></tr>
+        <tr><td>Per-agent cost</td><td>Profiler with agents toggled</td><td>Unreal Insights, filtered to the agent manager's tick</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <footer>
+    <strong>Sources.</strong> <span class="src">Measured</span> read from a project file or a recorded profiling
+    session. <span class="src">From record</span> taken from <code>DOCS/ML_AGENTS.md</code> — this working tree has
+    no <code>results/</code> directory, so no training log can be re-opened to confirm it.
+    <span class="src">Derived from config</span> computed from configured values, not observed.
+    <span class="src">Not measured</span> stated as absent rather than guessed. No number on this page is estimated.
+    <br>PoRumble · <code>DOCS/20260912/creature_benchmarks.html</code> · captured 2026-09-12
+  </footer>
+
+</div>
+</body>
+</html>
