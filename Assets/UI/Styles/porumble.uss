@@ -759,6 +759,26 @@
     border-bottom-color: var(--state-stamina);
 }
 
+/* The verdict. Proportional rather than monospace, and a size up from the rows below it -
+   it is prose, not a column, and the whole point of it is that it reads differently from the
+   figures. Left-bordered so the ranked lines stay visibly one block when there are four of
+   them and each wraps. */
+.diag__verdict {
+    -unity-font-definition: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--text-primary);
+    white-space: normal;
+    margin-bottom: var(--space-2);
+    padding-left: var(--space-2);
+    border-left-width: 4px;
+    border-left-color: var(--text-secondary);
+}
+
+/* Amber, not red. Red is the health bar's colour in this HUD and a red block at the top of
+   the diagnostics sheet reads as a fighter in trouble rather than a build in trouble. */
+.diag__verdict--bad { border-left-color: var(--state-hurt); }
+.diag__verdict--ok { border-left-color: var(--state-stamina); color: var(--text-secondary); }
+
 .diag__graph {
     height: 92px;
     background-color: var(--surface-scrim);

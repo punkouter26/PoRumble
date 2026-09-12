@@ -73,6 +73,12 @@ namespace PoRumble.Views
 
         private readonly CompositeDisposable _disposables = new();
 
+        // The ranked verdict and the builder that writes it. Separate from _builder because
+        // the verdict sits in its own label above the graph and the readout below it is built
+        // in the same refresh; sharing one builder would mean one of them got the other's text.
+        private readonly DiagnosticsFinding[] _findings = new DiagnosticsFinding[16];
+        private readonly StringBuilder _verdictBuilder = new(512);
+
         private MatchModel _match;
         private MatchFlowModel _flow;
         private FightStatsModel _stats;
@@ -82,6 +88,7 @@ namespace PoRumble.Views
         private DiagnosticsSystem _diagnosticsSystem;
 
         private VisualElement _panel;
+        private Label _verdict;
         private Label _readout;
         private VisualElement _graph;
         private Button _frameTab;
@@ -123,6 +130,13 @@ namespace PoRumble.Views
 
         private int _lastAcademyStep;
         private float _decisionsPerSecond;
+
+        /// <summary>
+        /// Unscaled seconds the current fight has been live, reset the moment it is not. The
+        /// verdict needs it to tell "nobody has thrown a punch" from "the bell has not rung",
+        /// and no model keeps it: MatchFlowModel carries the phase, not how long it has held.
+        /// </summary>
+        private float _fightSeconds;
 
         /// <summary>
         /// Write head for <see cref="_decisionHistory"/>, kept apart from
@@ -222,6 +236,7 @@ namespace PoRumble.Views
 
             _panel = root.Q<VisualElement>("panel");
             _graph = root.Q<VisualElement>("graph");
+            _verdict = root.Q<Label>("verdict");
             _readout = root.Q<Label>("readout");
             _frameTab = root.Q<Button>("tab-frame");
             _combatTab = root.Q<Button>("tab-combat");
@@ -306,6 +321,21 @@ namespace PoRumble.Views
             _frameHistory[_historyHead] = frameMs;
             _historyHead = (_historyHead + 1) % HISTORY;
 
+            // Counted whether or not the sheet is up. A clock that only ran while somebody was
+            // watching would read zero seconds the instant the overlay opened, which is exactly
+            // when the "nobody has thrown a punch in N seconds" line needs to be right.
+            if (_flow != null && _flow.IsFightLive)
+            {
+                _fightSeconds += Time.unscaledDeltaTime;
+            }
+            else if (_flow != null && _flow.Phase.Value != MatchFlowPhase.KnockoutHold)
+            {
+                // The knockout hold is excluded from the reset so the duration survives into
+                // the replay: a fight that ended at 0-0 punches is still the fault worth
+                // naming while the slow-motion hold is on screen.
+                _fightSeconds = 0f;
+            }
+
             if (_panel == null || _panel.style.display == DisplayStyle.None)
             {
                 return;
@@ -358,6 +388,10 @@ namespace PoRumble.Views
             _readout.text = _builder.ToString();
             _readout.EnableInClassList("diag__readout--over", averageMs > _frameBudgetMs);
 
+            // Built after the pages, and from the same sample they were built from, so the
+            // sentence at the top and the figures underneath it can never disagree.
+            RefreshVerdict(averageMs);
+
             // Reset regardless of page. These accumulate every frame, so leaving them running
             // while the combat page was up would make the frame page's first sample after a
             // tab switch an average over however long the other tab had been open.
@@ -366,6 +400,90 @@ namespace PoRumble.Views
             _worstMs = 0f;
 
             _graph.MarkDirtyRepaint();
+        }
+
+        /// <summary>
+        /// The plain-English line above the graph: what is wrong, worst first, and where to go
+        /// and look for it.
+        ///
+        /// This is the only part of the sheet written for somebody who is not already holding
+        /// the project in their head. Everything below is twenty true numbers with no ranking
+        /// between them, which is the right tool at a desk with a profiler open and the wrong
+        /// one on a phone at arm's length, where the question is only ever "is this build
+        /// broken, and by what".
+        /// </summary>
+        private void RefreshVerdict(float averageMs)
+        {
+            if (_verdict == null)
+            {
+                return;
+            }
+
+            var sample = new DiagnosticsSample(
+                averageMs,
+                _worstMs,
+                _frameBudgetMs,
+                _gcPerSecond,
+                Read(_srpBatcherDraws) + Read(_standardDraws) + Read(_dynamicDraws),
+                Read(_setPassRecorder),
+                Read(_textureMemoryRecorder) / 1048576f,
+                _agentCount,
+                Academy.IsInitialized,
+                _decisionsPerSecond,
+                TotalPunchesThrown(),
+                _fightSeconds,
+                _flow != null && _flow.IsFightLive,
+                Time.timeScale);
+
+            int found = DiagnosticsVerdict.Rank(sample, _findings);
+
+            _verdictBuilder.Clear();
+
+            if (found == 0)
+            {
+                DiagnosticsVerdict.AppendAllClear(_verdictBuilder);
+            }
+            else
+            {
+                for (int index = 0; index < found; index++)
+                {
+                    if (index > 0)
+                    {
+                        _verdictBuilder.Append('\n');
+                    }
+
+                    DiagnosticsVerdict.Append(_verdictBuilder, _findings[index]);
+                }
+            }
+
+            _verdict.text = _verdictBuilder.ToString();
+
+            // Coloured off the worst finding rather than off frame time, because the worst
+            // finding is frequently not a frame-time one - a stalled policy runs at a perfect
+            // 60fps and is the most broken the build can be.
+            _verdict.EnableInClassList("diag__verdict--bad", found > 0);
+            _verdict.EnableInClassList("diag__verdict--ok", found == 0);
+        }
+
+        /// <summary>
+        /// Punches thrown by the whole field this match. Zero well into a live fight is the
+        /// signature of blind perception, which is why the verdict asks for it.
+        /// </summary>
+        private int TotalPunchesThrown()
+        {
+            if (_stats == null)
+            {
+                return 0;
+            }
+
+            int thrown = 0;
+
+            for (int index = 0; index < _stats.Stats.Count; index++)
+            {
+                thrown += _stats.Stats[index].Thrown;
+            }
+
+            return thrown;
         }
 
         /// <summary>

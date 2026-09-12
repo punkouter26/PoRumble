@@ -7,6 +7,12 @@
   one screen where a diagnostics overlay most needs to be readable; and the numbers it reports
   are wide rows of tabular figures, which a corner box was always going to wrap.
 
+  The verdict label sits above the graph and is the only part of the sheet written in
+  sentences. The rows below it are twenty true numbers with no ranking between them, which is
+  the right tool at a desk with a profiler open and the wrong one on a phone at arm's length,
+  where the question is only ever "is this build broken, and by what". It is above the graph
+  rather than below the readout because it is the line to read first.
+
   Two tabs, because the overlay now answers two different questions. FRAME is the renderer and
   the allocator - what the performance rules set budgets for. COMBAT is the simulation: how
   often the policy is being asked for a decision, how much is being thrown, what the director
@@ -29,6 +35,7 @@
             <ui:Button name="tab-combat" text="COMBAT" class="diag__tab" />
         </ui:VisualElement>
 
+        <ui:Label name="verdict" class="diag__verdict" picking-mode="Ignore" />
         <ui:VisualElement name="graph" class="diag__graph" picking-mode="Ignore" />
         <ui:Label name="readout" class="diag__readout" picking-mode="Ignore" />
     </ui:VisualElement>
