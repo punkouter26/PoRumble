@@ -146,3 +146,8 @@ Tools/piper/
 # output that dirtied the tree after every run; the trainer regenerates it on demand.
 /[Aa]ssets/ML-Agents/Timers/
 /[Aa]ssets/ML-Agents/Timers.meta
+
+# Unity Performance Testing writes these into Resources during a build and does not always
+# clean them up. Test-harness litter, not game content.
+/[Aa]ssets/Resources/PerformanceTestRun*.json
+/[Aa]ssets/Resources/PerformanceTestRun*.json.meta

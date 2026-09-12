@@ -1,5 +1,6 @@
 using System.Text;
 using PoRumble.Models;
+using PoRumble.Systems;
 using Unity.MLAgents;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -70,11 +71,15 @@ namespace PoRumble.Views
         // allocation rate and would be lying if it allocated an array to do it.
         private readonly float[] _sortedFrames = new float[HISTORY];
 
+        private readonly CompositeDisposable _disposables = new();
+
         private MatchModel _match;
         private MatchFlowModel _flow;
         private FightStatsModel _stats;
         private DirectorModel _director;
         private RosterModel _roster;
+        private DiagnosticsModel _diagnostics;
+        private DiagnosticsSystem _diagnosticsSystem;
 
         private VisualElement _panel;
         private Label _readout;
@@ -132,13 +137,17 @@ namespace PoRumble.Views
             MatchFlowModel flow,
             FightStatsModel stats,
             DirectorModel director,
-            RosterModel roster)
+            RosterModel roster,
+            DiagnosticsModel diagnostics,
+            DiagnosticsSystem diagnosticsSystem)
         {
             _match = match;
             _flow = flow;
             _stats = stats;
             _director = director;
             _roster = roster;
+            _diagnostics = diagnostics;
+            _diagnosticsSystem = diagnosticsSystem;
         }
 
         private void Awake()
@@ -238,6 +247,18 @@ namespace PoRumble.Views
             // The graph has no children: it is painted directly with Painter2D, so the
             // callback is what gives the element its contents.
             _graph.generateVisualContent += DrawGraph;
+
+            // The serialized default seeds the model rather than the element directly, so the
+            // chrome bar's DEBUG button reads the right state on the first frame too.
+            if (_diagnostics != null)
+            {
+                _diagnostics.IsVisible.Value = _visibleOnStart;
+                _diagnostics.IsVisible
+                    .Subscribe(visible => _panel.style.display =
+                        visible ? DisplayStyle.Flex : DisplayStyle.None)
+                    .AddTo(_disposables);
+            }
+
             _panel.style.display = _visibleOnStart ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
@@ -266,11 +287,13 @@ namespace PoRumble.Views
 
         private void Update()
         {
-            if (_panel != null && TogglePressed())
+            // The key and the gesture ask; DiagnosticsSystem decides and the model carries the
+            // answer back to the panel through the subscription in Start. A view that flipped
+            // its own display here would leave the chrome bar's DEBUG button labelled for a
+            // state the sheet is no longer in.
+            if (_diagnosticsSystem != null && TogglePressed())
             {
-                _panel.style.display = _panel.style.display == DisplayStyle.None
-                    ? DisplayStyle.Flex
-                    : DisplayStyle.None;
+                _diagnosticsSystem.Toggle();
             }
 
             // Unscaled: hitstop and the knockout hold both change timeScale, and a frame-time
@@ -659,6 +682,7 @@ namespace PoRumble.Views
         /// </summary>
         private void OnDestroy()
         {
+            _disposables.Dispose();
             _srpBatcherDraws.Dispose();
             _standardDraws.Dispose();
             _dynamicDraws.Dispose();

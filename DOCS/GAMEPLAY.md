@@ -2,6 +2,81 @@
 
 The mechanics layered on top of the base punch exchange, the contestant roster, the rating table and the scripted brain profiles.
 
+## Scale, and the Ring
+
+The project's scale is fixed by the fighters, not by the ring. The drawn boxer is **1.40 world
+units across the shoulders**; a real boxer is about **0.50 m** across the shoulders, so
+
+```
+1 world unit = 0.357 m
+```
+
+Everything else follows from that, and should be checked against it before it is changed:
+
+| Thing | World units | Real |
+|---|---|---|
+| Shoulder width (drawn torso) | 1.40 | 0.50 m |
+| Body separation radius (`_bodyRadius`) | 0.98 | 0.35 m |
+| Reach, centre to glove tip | 1.80 | 0.64 m |
+| Ring inside the ropes (`_arenaHalfExtent` 8.5) | 17.0 | 6.07 m — **19.9 ft** |
+
+A standard professional ring is 20 ft inside the ropes, which is where the 8.5 half extent
+comes from. It was **20** for a long time, making the ring 40 units — 14.3 m, or **47 feet**
+across. That is not a boxing ring, it is most of a tennis court, and it is the reason ten
+fighters read as specks who spend the first half of every match walking toward each other.
+
+Rescaling the ring means moving the drawn ring **and** `BoxerSpawnPoints._arenaHalfExtent`
+together. The walls have colliders but do not contain anyone: positions are model-driven and
+`BoxerSystem.ClampToArena` is what actually holds the fighters in, so a drawn ring that
+disagrees with the half extent produces fighters who stop short of the ropes or walk through
+them, with nothing logged either way.
+
+## Body Parts and Collision
+
+What actually carries a shape, and why the obvious additions are not there:
+
+| Part | Body | Shape |
+|---|---|---|
+| Torso | Kinematic | Circle r 0.64 |
+| Glove L/R | Dynamic | Circle r 0.125 |
+| FaceProbe | Kinematic | Circle r 0.80 — **trigger** |
+| Head | — | none |
+| Upper arm L/R | Dynamic | **none** |
+| Forearm L/R | Dynamic | **none** |
+
+The arms are a real hinge chain — shoulder, elbow, wrist, each a `HingeJoint2D` over a
+Rigidbody2D — and the upper arms and forearms have **bodies but no colliders**, so they sweep
+through opponents. That looks like an oversight and is not one.
+
+**Do not give the arm segments colliders.** It was tried, and the failure is spectacular rather
+than subtle: the limbs come off and scatter across the ring. The chain is *dynamic* and hangs
+off a *kinematic* torso driven by `Rigidbody2D.MovePosition` from the model. A kinematic body is
+infinitely massive to the solver, so an arm caught between two closing torsos has nowhere to go
+and is ejected at enormous velocity, taking the hinge chain with it. Ten fighters in a 17-unit
+ring put an arm in that pinch constantly. The gloves survive the same treatment only because
+they are small and sit at the end of the chain, where they were tuned.
+
+Two further traps, both measured rather than assumed:
+
+- **It is not a layer problem, so do not go looking there.** All of a fighter's colliders share
+  one `BoxerBody{id}` layer and that layer **ignores itself**, so nothing on a boxer ever
+  collides with anything else on the same boxer; every `HingeJoint2D` also has
+  `enableCollision` off. All 45 boxer-vs-boxer layer pairs *do* collide. Self-collision has
+  never been the cause of anything here.
+- **`FaceProbe` must stay a trigger.** It is the hit and perception volume and is far larger
+  than the drawn head — 0.80 against 0.30. Make it solid and it stops being a sensor and starts
+  shoving fighters around at nearly a metre of reach.
+- **Do not separate bodies on glove contact.** The obvious reading of "body parts should
+  collide" is to push two boxers apart whenever a glove enters the other's body circle. That
+  breaks the damage tiers silently: the glove reaches 1.80 from centre and the body radius is
+  0.98, so the enforced minimum separation becomes 2.78 — and `_closeRangeThreshold` is **2.50**,
+  so close-range punches, the entire 2-damage tier, become physically unreachable.
+
+Interpenetration between fighters is therefore held by `BoxerSystem.ResolveOverlaps` — one
+circle of `_bodyRadius` per boxer — and the drawn arms are allowed to overlap. Fixing that for
+real means making the torso dynamic, or driving the whole fighter through physics rather than
+writing model positions into it. It is not a collider change.
+
 ## Combat Depth
 
 - **Haymaker.** Hold charge to wind up; release to throw. Costs mobility while held, locks out

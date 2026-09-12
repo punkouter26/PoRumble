@@ -38,6 +38,7 @@ namespace PoRumble.Views
             builder.Register<FightStatsModel>(Lifetime.Singleton);
             builder.Register<DirectorModel>(Lifetime.Singleton);
             builder.Register<CommentaryModel>(Lifetime.Singleton);
+            builder.Register<DiagnosticsModel>(Lifetime.Singleton);
 
             // Registered through a factory rather than RegisterInstance, because this one is
             // allowed to be null - a training scene assigns no bank - and RegisterInstance
@@ -54,6 +55,7 @@ namespace PoRumble.Views
             builder.Register<FightStatsSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<DirectorSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<CommentarySystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<DiagnosticsSystem>(Lifetime.Singleton).AsSelf();
 
             // The league table on disk. A plain C# class rather than a component, so it is
             // registered as an instance; RatingSystem only ever sees the interface.
@@ -113,6 +115,8 @@ namespace PoRumble.Views
                 InjectOptional<CommentaryView>(container);
                 InjectOptional<MainMenuView>(container);
                 InjectOptional<CrowdAmbienceView>(container);
+                InjectOptional<AppChromeView>(container);
+                InjectOptional<HudVisibilityView>(container);
             });
         }
 

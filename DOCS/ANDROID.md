@@ -94,6 +94,29 @@ installs, launches and dumps the Unity log in one step.
   `MatchFlowModel.CanOpenCard` is true. A two-finger tap is the shortcut for anyone who finds it.
   Both are gated between matches: re-seating the roster mid-fight would swap contestants into
   chairs that are currently mid-punch.
+- **The chrome bar is the only part of the HUD that is always up, and it owns two whole rows.**
+  `AppChromeView` draws the five fixed points - title top-left, frame rate top-centre, MENU
+  top-right, DEBUG bottom-left, version bottom-right - and its document sorts at 30, above
+  every other one in the scene. Two consequences are easy to trip over. Its root is set to
+  `PickingMode.Ignore` in code, because a full-screen root sorted above everything would
+  otherwise swallow the tap-anywhere restart for the entire match. And the rows it occupies are
+  reserved in `porumble.uss` by `--band-top` and `--band-bottom-card` rather than by each panel
+  dodging it: the top panels moved off `--band-edge` onto `--band-top`, and `--band-top-max`
+  came down from 36% to 31% to pay for the 96px they lost, or their bottom edge lands in the
+  standings at `--band-second-row`.
+- **MENU is the only way out of a live fight on a phone.** `TryRestart` is deliberately refused
+  outside the results screen, so before this button existed a ten-way brawl on a device ran
+  until nine fighters were down - there is no Escape key and a tap anywhere is ignored while
+  the fight is live. `MatchFlowSystem.TryReturnToTitle` is the deliberate exit, and it re-racks
+  and re-arms exactly as a restart does, because a fight abandoned halfway leaves eliminated
+  boxers and a decided `MatchModel` behind. It does **not** bump `MatchNumber`: an abandoned
+  fight is not a fought one.
+- **The version code auto-increments, and it had to.** `Assets/Editor/AndroidVersionCodeStep.cs`
+  bumps `bundleVersionCode` on every Android build. The failure it closes is silent rather than
+  loud: `adb install -r` of a rebuilt APK at the *same* version code succeeds, the app launches,
+  and you are looking at the previous build wondering why the change is not there. Android
+  refuses a *lower* code outright, which is the loud half - and is what ProjectSettings drifting
+  back to 1 while the device carried 7 produced.
 - **Two startup log lines are expected and harmless.** `ClassNotFoundException:
   AssetPackManager` is Unity looking for Play Asset Delivery, which a sideloaded APK does not
   use. A burst of `NullReferenceException` in `TensorProxy.Finalize` fires once as the first

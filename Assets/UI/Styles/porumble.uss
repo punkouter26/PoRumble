@@ -94,7 +94,19 @@
     --band-edge: 16px;
     --band-gap: 8%;
     --col: 46%;
-    --band-top-max: 36%;
+    --band-top-max: 31%;
+
+    /* The chrome bars own the first and last rows outright, so every panel that used to anchor
+       to --band-edge at the top now anchors to --band-top instead. Reserved as a token rather
+       than measured per panel for the reason the rest of this grid exists: the bar is one
+       element and the panels that must clear it are four, and four hand-tuned offsets is how
+       the overlaps this grid was written to fix got there in the first place.
+
+       --band-top-max came down from 36% to pay for it. The top panels start 96px lower now, and
+       a max-height that did not move would have pushed their bottom edge from 707px to 787px on
+       the 1920 reference - straight through the standings panel at --band-second-row. */
+    --chrome-bar: 96px;
+    --band-top: 112px;
 
     /* Where the stacked right-hand column's second panel starts. Just below --band-top-max,
        so the standings sit under the telemetry board rather than beside the match panel. */
@@ -104,8 +116,8 @@
        the list walks up the screen: the card button sits on the floor, the player's panel
        above it, the commentary caption above that. Each gap is wide enough for the panel
        below it at its tallest. */
-    --band-bottom-card: 0;
-    --band-bottom-player: 12%;
+    --band-bottom-card: 112px;
+    --band-bottom-player: 14%;
     --band-bottom-commentary: 30%;
 
     /* The clear middle of the screen, between the second row of panels and the bottom stack.
@@ -512,7 +524,7 @@
    apart at a glance. */
 .match-hud {
     position: absolute;
-    top: var(--band-edge);
+    top: var(--band-top);
     left: var(--band-edge);
     width: var(--col);
     max-height: var(--band-top-max);
@@ -683,7 +695,7 @@
    read through it and the two sets of text interleaved. */
 .diag {
     position: absolute;
-    top: var(--band-edge);
+    top: var(--band-top);
     left: var(--band-edge);
     right: var(--band-edge);
     background-color: rgb(6, 7, 11);
@@ -858,7 +870,7 @@
    --band-gap come to exactly 100% and the clearance is structural rather than measured. */
 .stats {
     position: absolute;
-    top: var(--band-edge);
+    top: var(--band-top);
     right: var(--band-edge);
     width: var(--col);
     max-height: var(--band-top-max);
@@ -1021,3 +1033,114 @@
 }
 
 .commentary--on { opacity: 1; }
+
+/* ----------------------------------------------------------------- app chrome */
+/* The persistent bar. Two rows that nothing else in the HUD is allowed into: the top one above
+   --band-top, the bottom one below --band-bottom-card, both reserved by tokens so the panels
+   underneath clear them structurally rather than by measurement.
+
+   The container itself has no background. A chrome bar that painted a strip across the top and
+   bottom of a 2D ring would read as letterboxing, and on the title screen - where the menu's
+   own scrim is already dimming everything - as a second, mismatched frame. The individual
+   labels and buttons carry --surface-panel instead, so each one is legible against the canvas
+   without any of them claiming the whole row. */
+.chrome {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.chrome__bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: var(--chrome-bar);
+    justify-content: center;
+}
+
+.chrome__bar--top { top: 0; }
+.chrome__bar--bottom { bottom: 0; }
+
+/* Every item in the bar is positioned against the bar rather than flowed in it. A row of three
+   with space-between centres the middle item only when the two outer ones happen to be the
+   same width, and here they never are: "PO RUMBLE" against a MENU button is about 90px of
+   difference, which is enough to read as a mistake on the one element whose whole job is to
+   sit in the middle. */
+.chrome__title,
+.chrome__fps,
+.chrome__version {
+    position: absolute;
+    letter-spacing: 2px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    background-color: var(--surface-panel);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+}
+
+.chrome__title { left: var(--band-edge); }
+.chrome__version { right: var(--band-edge); }
+
+/* Centred by translate rather than by left/right:0 plus a centred text alignment, so the panel
+   background is the width of the reading and not the width of the screen. */
+.chrome__fps {
+    left: 50%;
+    translate: -50% 0;
+    -unity-font-definition: var(--font-mono);
+    -unity-text-align: middle-center;
+    min-width: 180px;
+}
+
+/* Sized as a thumb target, not as a label. 96px at the 1080-wide reference is about 5.8mm on a
+   modern phone - not the 9mm a primary control would want, but this is chrome rather than a
+   game control, and a taller bar starts eating the ring it sits over. */
+.chrome__button {
+    position: absolute;
+    height: var(--chrome-bar);
+    min-width: 200px;
+    letter-spacing: 3px;
+    color: var(--text-primary);
+    background-color: var(--surface-panel);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: var(--touch-surface);
+    border-right-color: var(--touch-surface);
+    border-top-color: var(--touch-surface);
+    border-bottom-color: var(--touch-surface);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: background-color, opacity;
+    transition-duration: var(--motion-fast);
+}
+
+.chrome__button--left { left: var(--band-edge); }
+.chrome__button--right { right: var(--band-edge); }
+
+.chrome__button:hover { background-color: var(--touch-surface); }
+.chrome__button:active { background-color: var(--touch-surface-strong); }
+
+/* Lit while the sheet it opens is up, so the button reports state rather than only sending a
+   request. Without it DEBUG is a control you press twice to find out what it did. */
+.chrome__button--on {
+    background-color: var(--touch-charge);
+    border-left-color: var(--state-charge);
+    border-right-color: var(--state-charge);
+    border-top-color: var(--state-charge);
+    border-bottom-color: var(--state-charge);
+}
+
+/* Disabled, not hidden - MENU is dead on the title screen because there is nothing to leave,
+   and a control that disappears from a fixed bar reads as a glitch. */
+.chrome__button:disabled {
+    opacity: 0.32;
+}

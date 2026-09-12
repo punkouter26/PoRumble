@@ -1180,6 +1180,9 @@ MonoBehaviour:
   _trailThreshold: 0.35
   _cockDepth: 0.35
   _cockFraction: 0.22
+  _shoulderDroopAngle: -14
+  _elbowDroopAngle: 78
+  _maxDroop: 0.75
   _servoGain: 60
   _maxMotorTorque: 1100
   _elbowTorqueScale: 0.55
@@ -1427,6 +1430,9 @@ MonoBehaviour:
   _trailThreshold: 0.35
   _cockDepth: 0.35
   _cockFraction: 0.22
+  _shoulderDroopAngle: -14
+  _elbowDroopAngle: 78
+  _maxDroop: 0.75
   _servoGain: 60
   _maxMotorTorque: 1100
   _elbowTorqueScale: 0.55
@@ -1553,7 +1559,7 @@ MonoBehaviour:
     NumStackedVectorObservations: 2
     m_ActionSpec:
       m_NumContinuousActions: 4
-      BranchSizes: 0200000002000000
+      BranchSizes: 0200000002000000i
     VectorActionSize: 
     VectorActionDescriptions: []
     VectorActionSpaceType: 0
@@ -1659,7 +1665,7 @@ MonoBehaviour:
   m_CastsShadows: 1
   m_SelfShadows: 0
   m_AlphaCutoff: 0.1
-  m_ApplyToSortingLayers: e8030000e903000000000000eb030000ec030000ed030000ee030000
+  m_ApplyToSortingLayers: e8030000e903000000000000eb030000ec030000ed030000ee030000i
   m_ShapePath:
   - {x: 0.62, y: 0, z: 0}
   - {x: 0.4384062, y: 0.21213204, z: 0}
@@ -1682,6 +1688,7 @@ MonoBehaviour:
   m_PreviousEdgeProcessing: -1
   m_PreviousShadowCastingSource: -1
   m_PreviousShadowShape2DSource: {fileID: 0}
+  m_PreviousShadowShape2DProviderHash: 0
   m_SelectionSources:
     rid: 187533268602585182
   references:
@@ -1697,6 +1704,7 @@ MonoBehaviour:
       data:
         m_Vertices: []
         m_Indices: 
+        m_IsTransformable: 1
         m_LocalBounds:
           m_Center: {x: 0, y: 0, z: 0}
           m_Extent: {x: 0, y: 0, z: 0}
@@ -1973,6 +1981,10 @@ MonoBehaviour:
   _playerOutlineColor: {r: 0.45, g: 0.85, b: 1, a: 1}
   _playerOutlineAmount: 0.5
   _counterPulseHz: 6
+  _hurtGuardThreshold: 0.35
+  _mirrorFaceDamage: 0
+  _sweatThreshold: 0.3
+  _sweatMaxAmount: 0.55
 --- !u!1 &8057991017000579499
 GameObject:
   m_ObjectHideFlags: 0

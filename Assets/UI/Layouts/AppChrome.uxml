@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The persistent chrome bar: the five things that are on screen in every phase, in the same
+  place in every phase.
+
+  Everything else in this HUD comes and goes with the round loop - the match panel fades on the
+  title screen, the menu hides during a fight, the standings only mean something after one. That
+  left the build with no fixed point at all: nothing named the app, nothing reported a frame
+  rate outside the developer overlay, nothing said which build was installed, and on a phone
+  there was no way back out of a live fight or into the telemetry sheet without knowing that
+  three fingers and a key that does not exist were the way in.
+
+  Two thin bars rather than five free-floating labels, because the corners are already spoken
+  for by the band grid: the top bar has its own row above the band-top token and the bottom bar
+  its own row below the card button, so no panel underneath has to know these exist beyond the
+  one token that reserves their height.
+
+  Do not write a double hyphen anywhere in this comment. XML forbids it inside a comment, and
+  the way UXML fails on it is silent and total: the importer produces a VisualTreeAsset that
+  parses to zero children, CloneTree adds nothing, no error is raised at runtime, and the bar
+  simply is not on screen. That cost one full device build to find.
+
+  picking-mode="Ignore" on every element except the two buttons, and the document root is set
+  to Ignore in code as well. This document sorts above every other one in the scene, so
+  anything here that stayed pickable would swallow the tap-anywhere restart for the whole
+  match - the same trap MainMenuView documents on its scrim.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="chrome" class="chrome" picking-mode="Ignore">
+        <ui:VisualElement name="chrome-top" class="chrome__bar chrome__bar--top" picking-mode="Ignore">
+            <ui:Label name="title" text="PO RUMBLE" class="text text--sm text--bold chrome__title" picking-mode="Ignore" />
+            <ui:Label name="fps" text="-- FPS" class="text text--sm chrome__fps" picking-mode="Ignore" />
+            <ui:Button name="menu" text="MENU" class="text text--sm text--bold chrome__button chrome__button--right" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="chrome-bottom" class="chrome__bar chrome__bar--bottom" picking-mode="Ignore">
+            <ui:Button name="debug" text="DEBUG" class="text text--sm text--bold chrome__button chrome__button--left" />
+            <ui:Label name="version" text="" class="text text--xs text--muted chrome__version" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

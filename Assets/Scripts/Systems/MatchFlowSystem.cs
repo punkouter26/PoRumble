@@ -168,6 +168,34 @@ namespace PoRumble.Systems
         }
 
         /// <summary>
+        /// Abandons whatever is on screen and goes back to the menu.
+        ///
+        /// <see cref="TryRestart"/> deliberately only works on the results screen, so that a
+        /// mashed key cannot cut a fight short. That left the shipping build with no way out
+        /// of a live fight at all: the phone has no Escape key, a tap anywhere is refused
+        /// outside Results, and a ten-way brawl runs until nine of them are down. This is the
+        /// deliberate exit the chrome bar's MENU button drives, which is why it is a separate
+        /// method rather than a relaxed guard on the other one.
+        ///
+        /// Re-racks and re-arms exactly as a restart does - a fight abandoned halfway leaves
+        /// eliminated boxers and a decided <see cref="MatchModel"/> behind, and returning to
+        /// the menu without clearing them would put a dead roster back on the card.
+        /// </summary>
+        public bool TryReturnToTitle()
+        {
+            if (_flow.Phase.Value == MatchFlowPhase.Title)
+            {
+                return false;
+            }
+
+            Time.timeScale = 1f;
+            _spawnSystem.ResetRoster(_boxerCount, _spawnRadius);
+            _match.BeginNewEpisode();
+            EnterPhase(MatchFlowPhase.Title);
+            return true;
+        }
+
+        /// <summary>
         /// Starts a fight from the menu. Ignored anywhere else, so the tap that dismissed the
         /// results cannot also be read as the tap that starts the next bout.
         /// </summary>
