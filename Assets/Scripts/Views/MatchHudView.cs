@@ -288,15 +288,11 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// Chosen from the devices actually present rather than from a platform define, so the
-        /// Editor still reads "PRESS" while a phone reads "TAP" - and so a desktop with a
-        /// touchscreen does not get told to tap when it has a keyboard sitting right there.
+        /// Shared with the title screen's hint, and moved out of here because the reading is
+        /// subtler than it looks: Android reports a Keyboard device on every phone, so device
+        /// presence alone told a touchscreen to press R. See <see cref="InputPresence"/>.
         /// </summary>
-        private static bool IsTouchOnly()
-        {
-            return UnityEngine.InputSystem.Touchscreen.current != null
-                && UnityEngine.InputSystem.Keyboard.current == null;
-        }
+        private static bool IsTouchOnly() => InputPresence.IsTouchOnly();
 
         /// <summary>
         /// Wipes "FIGHT!" a beat after the bell. Scheduled on the panel rather than timed in

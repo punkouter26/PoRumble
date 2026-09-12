@@ -171,7 +171,12 @@ namespace PoRumble.Views
             // Named from the devices actually present rather than from a platform define, for
             // the reason the match HUD's prompts already are: a phone has no Enter key, and a
             // desktop that happens to have a touchscreen still has a keyboard sitting there.
-            if (UnityEngine.InputSystem.Keyboard.current != null)
+            //
+            // Asked through InputPresence rather than of Keyboard.current directly, because
+            // Android answers that question yes on every phone - the hardware buttons arrive as
+            // key events and the Input System builds a Keyboard to carry them. This line shipped
+            // to a device, under the two buttons that were the only way to do either thing.
+            if (InputPresence.HasUsableKeyboard())
             {
                 _builder.Append("\nENTER TO FIGHT      TAB FOR THE CARD");
             }
