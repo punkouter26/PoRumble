@@ -111,6 +111,12 @@ installs, launches and dumps the Unity log in one step.
   and re-arms exactly as a restart does, because a fight abandoned halfway leaves eliminated
   boxers and a decided `MatchModel` behind. It does **not** bump `MatchNumber`: an abandoned
   fight is not a fought one.
+- **The debug sheet leads with a sentence, because on a phone the numbers alone were unusable.**
+  DEBUG bottom-left opens it and the top line is `DiagnosticsVerdict`'s ranking: the worst thing
+  currently wrong, the number that says so, and where to go and look. The twenty tabular figures
+  below it are unchanged and still correct - they are simply not what anybody can read at arm's
+  length while a fight is running. The full ranking rule is in
+  [PRESENTATION.md](PRESENTATION.md).
 - **The version code auto-increments, and it had to.** `Assets/Editor/AndroidVersionCodeStep.cs`
   bumps `bundleVersionCode` on every Android build. The failure it closes is silent rather than
   loud: `adb install -r` of a rebuilt APK at the *same* version code succeeds, the app launches,

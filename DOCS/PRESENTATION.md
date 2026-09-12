@@ -405,6 +405,23 @@ anyway. It is also the one panel that is *fully* opaque: a developer reading fra
 also watching the fight, and at 0.92 the match panel's labels still read through and the two sets
 of text interleaved.
 
+**A sentence sits above the graph, and it is the part written for somebody who is not already
+holding the project in their head.** Everything below it is twenty true numbers with no ranking
+between them — the right tool at a desk with a profiler open, and the wrong one on a phone at
+arm's length, where the only question is "is this build broken, and by what". `DiagnosticsVerdict`
+scores each check by how far past its own threshold the measurement is, sorts on that, and the
+sheet leads with the worst: what is wrong, the number that says so, and the place to go and look.
+
+Three things about the ranking are load-bearing. The **functional checks are scored above the
+budget ones** rather than sharing their scale, because a stalled policy runs at a perfect 60fps —
+nothing in the FRAME page moves and the sheet reads as entirely healthy. The **timescale check is
+suspended during a live fight**, since hitstop lowers it on every landed punch and a warning that
+fires there is one nobody reads. And a **stutter is only reported when the peak stands out from
+its own average**: on a device that is uniformly slow every frame is the peak, and that line is
+the frame-time line said twice. It is pure and static for the reason `FramingMath` is — every
+state worth ranking correctly is one that is hard to reach on purpose, so `DiagnosticsVerdictTests`
+reaches them from a test instead.
+
 The two tabs answer different questions and do not share a column. **FRAME** is the renderer and
 the allocator — what the performance rules budget. **COMBAT** is the simulation: agent count,
 Academy steps and steps/sec, whole-field punch tallies from `FightStatsModel`, and the director's
