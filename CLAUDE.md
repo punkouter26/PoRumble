@@ -189,6 +189,7 @@ unity command eval_file --file "Temp/evals/script.cs"
 
 These are the user's standing instructions for this project and any RL project like it.
 They override defaults; where one clashes with something above, this section wins.
+`AGENTS.md` at the repo root is the full list, for agents that read it rather than this file.
 
 ### Git & branches
 
