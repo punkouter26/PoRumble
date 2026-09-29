@@ -75,6 +75,42 @@ namespace PoRumble.Tests
         }
 
         /// <summary>
+        /// The game seats twenty in a 12 half-extent ring. One circle that fits inside the ropes
+        /// has too little arc for twenty bodies plus jitter, so the seats stagger onto two.
+        /// </summary>
+        [Test]
+        public void TwentyFightersStartClearOfEachOther()
+        {
+            const int fullRing = 20;
+            const float gameSpawnRadius = 9.3f;
+            MatchModel crowded = new() { ArenaHalfExtent = new Vector2(12f, 12f) };
+            SpawnSystem spawner = new(crowded, _config);
+            spawner.SpawnRoster(fullRing, gameSpawnRadius);
+            float minimumSeparation = _config.BodyRadius * 2f;
+            float rope = crowded.ArenaHalfExtent.x - _config.BodyRadius;
+
+            for (int episode = 0; episode < 500; episode++)
+            {
+                spawner.ResetRoster(fullRing, gameSpawnRadius);
+
+                for (int first = 0; first < fullRing; first++)
+                {
+                    Assert.That(crowded.Boxers[first].Position.magnitude, Is.LessThan(rope),
+                        $"episode {episode}: boxer {first} spawned through the ropes");
+
+                    for (int second = first + 1; second < fullRing; second++)
+                    {
+                        float separation = Vector2.Distance(
+                            crowded.Boxers[first].Position, crowded.Boxers[second].Position);
+
+                        Assert.That(separation, Is.GreaterThan(minimumSeparation),
+                            $"episode {episode}: boxers {first} and {second} spawned {separation} apart");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Seeded rather than drawn from UnityEngine.Random, so a training run can be replayed.
         /// </summary>
         [Test]

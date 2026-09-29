@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b39ad4c65cc3d574dae43db4952ce0ce, type: 3}
+  m_Name: Fighter_TONG
+  m_EditorClassIdentifier: PoRumble.Models::PoRumble.Models.FighterProfile
+  _id: tong
+  _displayName: TONG
+  _tagline: Tiny, fearless, and feels nothing. Nobody wants to lose to the baby.
+  _face: {fileID: 21300000, guid: 3500a60198be0e449b4d3e5b7d0b58be, type: 3}
+  _tint: {r: 0.62, g: 0.82, b: 1, a: 1}
+  _control: 1
+  _brainProfile: {fileID: 0}
+  _policyCheckpoint: {fileID: 0}
+  _trainingSteps: 0
+  _pressure: 0.6
+  _circling: 0.3
+  _punchGate: 1
+  _opportunism: 0.6
+  _chargeChance: 0
+  _dodgeChance: 0.3
+  _power: 0.6
+  _chin: 0.6
+  _speed: 1.35
+  _recovery: 1.4

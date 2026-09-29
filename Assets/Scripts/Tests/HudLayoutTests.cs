@@ -44,8 +44,11 @@ namespace PoRumble.Tests
         /// </summary>
         private const float NOTCH = 120f;
 
-        /// <summary>The most fighters a card can seat: one per corner of a ten-boxer ring.</summary>
-        private const int FULL_FIELD = 10;
+        /// <summary>Every seat in the ring: twenty boxers, one health row each.</summary>
+        private const int FULL_FIELD = 20;
+
+        /// <summary>Every contestant on the title screen: the seventeen named fighters, the heuristic and the reference policy.</summary>
+        private const int FULL_CARD = 19;
 
         /// <summary>Half a unit of slack for sub-pixel layout rounding.</summary>
         private const float SLACK = 0.5f;
@@ -53,7 +56,9 @@ namespace PoRumble.Tests
         private static readonly string[] FighterNames =
         {
             "STANDARDRL", "HEURISTIC", "FIGHTER 03", "FIGHTER 04", "FIGHTER 05",
-            "FIGHTER 06", "FIGHTER 07", "FIGHTER 08", "CHECKPOINT 09", "CHECKPOINT 10"
+            "FIGHTER 06", "FIGHTER 07", "FIGHTER 08", "CHECKPOINT 09", "CHECKPOINT 10",
+            "MAGA MIKE", "HEGSETH", "FIGHTER 13", "FIGHTER 14", "FIGHTER 15",
+            "FIGHTER 16", "FIGHTER 17", "FIGHTER 18", "STANDARD RL 2", "HEURISTIC 2"
         };
 
         private static readonly string[] StatNames = { "THROWN", "LANDED", "CONNECT", "BLOCKED", "SLIPS", "DAMAGE" };
@@ -79,7 +84,7 @@ namespace PoRumble.Tests
             VisualElement grid = menu.Q<VisualElement>("grid");
             VisualTreeAsset tile = LoadTemplate("RosterTile.uxml");
 
-            for (int index = 0; index < FULL_FIELD; index++)
+            for (int index = 0; index < FULL_CARD; index++)
             {
                 tile.CloneTree(grid);
                 VisualElement clone = grid[grid.childCount - 1];
@@ -88,10 +93,10 @@ namespace PoRumble.Tests
                 clone.Q<Label>("price").text = "WINS 1250";
                 clone.Q<Label>("standing").text = "1234";
 
-                // The first two take a second corner on an eight-fighter card: the widest badge row.
+                // Nineteen entrants in twenty corners: the first takes a second one.
                 Label seats = clone.Q<Label>("seats");
                 seats.text = "x2";
-                seats.EnableInClassList("roster-tile__seats--gone", index >= 2);
+                seats.EnableInClassList("roster-tile__seats--gone", index >= 1);
             }
 
             menu.Q<Label>("bank").text = "BANK 12400   RIGHT 12 OF 30";
@@ -132,6 +137,7 @@ namespace PoRumble.Tests
             yield return _screen.Settle();
 
             AssertBetweenChromeRows(chrome, strip, "the fight strip");
+            AssertRowsReadable(strip, "the fight strip");
             AssertBetweenChromeRows(chrome, feed, "the second-fight feed");
             AssertBetweenChromeRows(chrome, player, "the player's panel");
             AssertBetweenChromeRows(chrome, debug, "the folded debug sheet");
@@ -193,6 +199,7 @@ namespace PoRumble.Tests
             yield return _screen.Settle();
 
             AssertBetweenChromeRows(chrome, board, "the field board");
+            AssertRowsReadable(board, "the field board");
             AssertBetweenChromeRows(chrome, tabs, "the carousel tabs");
             AssertBetweenChromeRows(chrome, stats, "the telemetry board");
             AssertBetweenChromeRows(chrome, standings, "the standings");
@@ -230,6 +237,7 @@ namespace PoRumble.Tests
             yield return _screen.Settle();
 
             AssertBetweenChromeRows(chrome, tape, "the tale of the tape");
+            AssertRowsReadable(board, "the field board");
             AssertApart(tape, "the tale of the tape", board, "the field board");
             AssertApart(tape, "the tale of the tape", standings, "the standings");
             AssertApart(tape, "the tale of the tape", caption, "the countdown");
@@ -298,7 +306,7 @@ namespace PoRumble.Tests
                 clone.Q<Label>("odds").text = "<1%";
             }
 
-            root.Q<Label>("survivors").text = "10 / 10 LEFT";
+            root.Q<Label>("survivors").text = "20 / 20 LEFT";
             root.Q<Label>("bout").text = "BOUT 12";
             root.Q<Label>("pick").text = "YOUR PICK  CHECKPOINT 10   PAYS 11.5x   NOW 14%";
 
@@ -488,6 +496,31 @@ namespace PoRumble.Tests
                            rectA.yMin < rectB.yMax - SLACK && rectB.yMin < rectA.yMax - SLACK;
 
             Assert.That(overlap, Is.False, $"{aName} {rectA} overlaps {bName} {rectB}");
+        }
+
+        /// <summary>
+        /// Every fighter's row lies inside the board and its name is drawn at full height. The
+        /// board's height cap held the panel on screen with twenty rows while the rows inside it
+        /// were squeezed until every name was cut in half, and the panel-level checks all passed.
+        /// </summary>
+        private void AssertRowsReadable(VisualElement board, string what)
+        {
+            Rect panel = _screen.RectOf(board);
+            VisualElement roster = board.Q<VisualElement>("roster");
+
+            Assert.That(roster.childCount, Is.EqualTo(FULL_FIELD), $"{what} should carry every seat");
+
+            for (int index = 0; index < roster.childCount; index++)
+            {
+                Rect row = _screen.RectOf(roster[index]);
+                Label name = roster[index].Q<Label>("name");
+                float lineHeight = name.resolvedStyle.fontSize;
+
+                Assert.That(row.yMax, Is.LessThanOrEqualTo(panel.yMax + SLACK),
+                    $"{what}: row {index} {row} runs out of the panel {panel}");
+                Assert.That(_screen.RectOf(name).height, Is.GreaterThanOrEqualTo(lineHeight - SLACK),
+                    $"{what}: row {index}'s name is {_screen.RectOf(name).height} tall for a {lineHeight} font");
+            }
         }
 
         /// <summary>

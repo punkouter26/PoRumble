@@ -20,8 +20,27 @@ namespace PoRumble.Systems
         /// <summary>How far each fighter slides around the ring from its allotted slot.</summary>
         private const float SLOT_JITTER_DEGREES = 12f;
 
+        /// <summary>
+        /// The slide is never more than this fraction of a slot. It is exactly the 12 degrees
+        /// above at ten seats, so every scene up to ten opens as it always has; past that the
+        /// slots narrow and a fixed 12 degrees would slide neighbours onto each other.
+        /// </summary>
+        private const float MAX_SLOT_JITTER_FRACTION = 1f / 3f;
+
         /// <summary>How far in or out of the spawn circle a fighter can start, as a fraction.</summary>
         private const float RADIUS_JITTER = 0.18f;
+
+        /// <summary>
+        /// Below this many body widths of arc per seat, one circle is too crowded to open on:
+        /// twenty fighters on a circle that fits in the ring have under one and a half each, and
+        /// four in five openings put two of them inside each other. The seats then alternate
+        /// between the spawn circle and an inner one. Ten seats have just over two widths, so
+        /// every training scene stays on a single circle.
+        /// </summary>
+        private const float SINGLE_CIRCLE_MIN_WIDTHS = 1.75f;
+
+        /// <summary>Radius of the inner circle when staggered, as a fraction of the outer.</summary>
+        private const float INNER_CIRCLE_FRACTION = 0.65f;
 
         /// <summary>
         /// How far off dead-centre a fighter can be looking at the bell. Without this the
@@ -90,9 +109,19 @@ namespace PoRumble.Systems
             out Vector2 position,
             out Vector2 facing)
         {
-            float slotDegrees = boxerIndex * (360f / Mathf.Max(1, boxerCount));
-            float degrees = slotDegrees + ringRotationDegrees + NextSigned() * SLOT_JITTER_DEGREES;
-            float radius = spawnRadius * (1f + NextSigned() * RADIUS_JITTER);
+            float slotWidthDegrees = 360f / Mathf.Max(1, boxerCount);
+            float slotDegrees = boxerIndex * slotWidthDegrees;
+            float jitterDegrees = Mathf.Min(SLOT_JITTER_DEGREES, slotWidthDegrees * MAX_SLOT_JITTER_FRACTION);
+            float degrees = slotDegrees + ringRotationDegrees + NextSigned() * jitterDegrees;
+
+            float arcPerSeat = 2f * Mathf.PI * spawnRadius / Mathf.Max(1, boxerCount);
+            bool staggered = arcPerSeat < SINGLE_CIRCLE_MIN_WIDTHS * _config.BodyRadius * 2f;
+
+            // Staggered, the two circles are close enough that the full radial jitter would
+            // carry an inner fighter out into the outer ring, so each gets half of it.
+            float circle = staggered && boxerIndex % 2 == 1 ? spawnRadius * INNER_CIRCLE_FRACTION : spawnRadius;
+            float radiusJitter = staggered ? RADIUS_JITTER * 0.5f : RADIUS_JITTER;
+            float radius = circle * (1f + NextSigned() * radiusJitter);
             float radians = degrees * Mathf.Deg2Rad;
 
             position = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * radius;

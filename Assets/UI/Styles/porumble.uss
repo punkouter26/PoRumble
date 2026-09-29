@@ -554,16 +554,16 @@
 .standings--hidden { opacity: 0; }
 
 /* ----------------------------------------------------------------- field board */
-/* The one list of the ten fighters: name, health and live win chance on one row. It used to be
+/* The one list of the fighters: name, health and live win chance on one row. It used to be
    two panels - this health column and an odds board under it naming the same fighters again -
    and the viewer's stake line lived on the second.
 
-   Top band, left column between bouts. Capped in height as well as width: ten rows is the
-   tallest this panel ever gets, and without the cap a larger roster would grow it down over
-   the ring with nothing to stop it.
+   Top band, left column between bouts. Capped in height as well as width: twenty rows, one per seat, is
+   the tallest this panel ever gets, and without the cap a larger roster would grow it down
+   over the ring with nothing to stop it.
 
    It carries the panel surface because fighters pass directly behind it once the camera frames
-   exchanges tightly, and ten similar rows have to be told apart at a glance. */
+   exchanges tightly, and twenty similar rows have to be told apart at a glance. */
 .match-hud {
     position: absolute;
     top: var(--band-top);
@@ -589,13 +589,24 @@
 
 .match-hud__badges { flex-direction: row; }
 
-.match-hud__roster { margin-top: var(--space-1); }
+/* Two columns of cells. Twenty one-line rows of name, bar and odds came to more than the
+   --band-top-max cap, and the cap won: every row was squeezed until the names were cut in half
+   across the middle. Each cell is half the panel instead - name and odds on one line, the
+   health bar pinned under them - so a full ring is ten cells tall. */
+.match-hud__roster {
+    margin-top: var(--space-1);
+    flex-direction: row;
+    flex-wrap: wrap;
+}
 
 .match-hud__row {
     flex-direction: row;
     align-items: center;
-    margin-bottom: 4px;
+    width: 50%;
+    margin-bottom: 2px;
     padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    padding-bottom: 8px;
     border-left-width: 4px;
     border-left-color: rgba(0, 0, 0, 0);
     transition-property: opacity;
@@ -610,14 +621,15 @@
 .match-hud__row--you .match-hud__name { color: var(--state-stamina); }
 .match-hud__row--out { opacity: 0.4; }
 
-/* A share of the row rather than fixed pixels. The panel is a percentage of the screen, so a
-   fixed name column plus a fixed bar could add up to more than the panel is wide - which
-   overflows rather than shrinking, because a Label does not shrink below its text by default. */
+/* Whatever the cell has left after the odds, rather than fixed pixels. The panel is a
+   percentage of the screen, so a fixed name column could add up to more than the cell is wide -
+   which overflows rather than shrinking, because a Label does not shrink below its text by
+   default. */
 .match-hud__name {
-    flex-grow: 0;
+    flex-grow: 1;
     flex-shrink: 1;
-    flex-basis: 34%;
-    width: 34%;
+    flex-basis: 0;
+    width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text-secondary);
@@ -626,18 +638,20 @@
     text-shadow: 1px 1px 2px var(--text-shadow);
 }
 
+/* Out of the row's flow and along the bottom of the cell, so the name gets the full width of
+   the line above it. The cell's bottom padding is the room it sits in. */
 .match-hud__bar {
-    flex-grow: 1;
-    flex-shrink: 1;
-    flex-basis: 0;
-    width: auto;
-    height: 20px;
+    position: absolute;
+    left: var(--space-1);
+    right: var(--space-1);
+    bottom: 1px;
+    height: 6px;
 }
 
 /* Tabular figures: the percentages tick four times a second and a proportional face makes
    the digits crawl sideways every time a 1 becomes a 4. */
 .match-hud__odds {
-    width: 76px;
+    width: 64px;
     flex-shrink: 0;
     -unity-text-align: middle-right;
     color: var(--text-secondary);
@@ -660,10 +674,10 @@
 .match-hud__pick--lost { color: var(--state-hurt); }
 .match-hud__pick--gone { display: none; }
 
-/* The fight strip: the same board while the fight is live, as one row of ten narrow cells
+/* The fight strip: the same board while the fight is live, as narrow cells ten to a line
    under the chrome bar. Everything else in the HUD clears off the ring for the fight, and this
    is what stays - health and win chance are the two things worth reading while it moves, and
-   a strip across the top costs about 90px of ring rather than a third of the screen. */
+   a strip across the top costs about 90px of ring a line rather than a third of the screen. */
 .match-hud--compact {
     left: var(--band-edge);
     right: var(--band-edge);
@@ -677,8 +691,12 @@
 .match-hud--compact .match-hud__badges,
 .match-hud--compact .match-hud__pick { display: none; }
 
+/* Ten cells to a line, wrapping. Twenty fighters in one row gave each cell 46px - three letters
+   of a name - so a full ring takes a second line instead. The basis leaves room for the cell
+   margins, and flex-grow still stretches a short field across the whole strip. */
 .match-hud--compact .match-hud__roster {
     flex-direction: row;
+    flex-wrap: wrap;
     margin-top: 0;
 }
 
@@ -687,27 +705,36 @@
     align-items: stretch;
     flex-grow: 1;
     flex-shrink: 1;
-    flex-basis: 0;
-    width: 0;
+    flex-basis: 9%;
+    width: 9%;
     margin-bottom: 0;
     margin-left: 3px;
     margin-right: 3px;
     padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0;
     border-left-width: 0;
     border-bottom-width: 3px;
     border-bottom-color: rgba(0, 0, 0, 0);
+    margin-top: 2px;
 }
 
 .match-hud--compact .match-hud__row--pick { border-bottom-color: var(--state-charge); }
 .match-hud--compact .match-hud__row--you { border-bottom-color: var(--state-stamina); }
 
 .match-hud--compact .match-hud__name {
+    flex-grow: 0;
     flex-basis: auto;
     width: auto;
     -unity-text-align: middle-center;
 }
 
+/* Back into the flow: in the strip the cell is a column and the bar sits between name and odds. */
 .match-hud--compact .match-hud__bar {
+    position: relative;
+    left: 0;
+    right: 0;
+    bottom: 0;
     flex-grow: 0;
     flex-basis: auto;
     height: 10px;
@@ -1535,8 +1562,9 @@
    follow tag and the tale of the tape need sits in one place. A later :root merges with the
    first one. */
 :root {
-    /* Under the live fight strip, which is --band-top plus its own height (130 at the reference). */
-    --band-feed-top: 224px;
+    /* Under the live fight strip, which is --band-top plus its own height: two lines of cells
+       with a full twenty-seat ring, 184 at the reference. */
+    --band-feed-top: 320px;
     --tape-portrait-size: 140px;
     --result-portrait-size: 160px;
 }

@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b39ad4c65cc3d574dae43db4952ce0ce, type: 3}
+  m_Name: Fighter_VELEZ
+  m_EditorClassIdentifier: PoRumble.Models::PoRumble.Models.FighterProfile
+  _id: velez
+  _displayName: VELEZ
+  _tagline: Southpaw puzzle. Circles left, slips right, counters down the middle.
+  _face: {fileID: 21300000, guid: 11a118fce00f858429dba07b478cc6c5, type: 3}
+  _tint: {r: 0.3, g: 0.3, b: 0.32, a: 1}
+  _control: 1
+  _brainProfile: {fileID: 0}
+  _policyCheckpoint: {fileID: 0}
+  _trainingSteps: 0
+  _pressure: -0.25
+  _circling: 0.6
+  _punchGate: 0.55
+  _opportunism: 0.15
+  _chargeChance: 0.1
+  _dodgeChance: 0.6
+  _power: 1
+  _chin: 1
+  _speed: 1.1
+  _recovery: 1.05
