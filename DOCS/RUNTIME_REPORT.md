@@ -96,3 +96,51 @@ after, which is the check that adoption did not quietly create a second set of a
 | `Assets/` | 26 MB | 22 MB | 4 MB |
 
 Roughly 323 MB off the working copy, of which 3.40 MB is tracked content.
+
+---
+
+## Pass of 2026-09-28
+
+`SampleScene`, Editor Play mode, driven Title -> Introducing -> Countdown -> Fighting ->
+KnockoutHold -> Results -> rematch through `MatchFlowSystem`, before and after a cleanup.
+
+### Errors
+
+**One major defect, now fixed: a ten-way could run forever.** Three survivors on 1, 14 and 12
+health stood apart in the fully closed ring (`RingScale` 0.30) for over nine minutes without
+landing a punch. `MaxStep` is 0 in the game scene, so the MaxStep bell never exists there, and
+the ropes were documented as guaranteeing an ending on their own. They do not.
+`SuddenDeathMath.BELL_SECONDS` (180s: 60s open, 60s closing, a final minute at the smallest ring)
+now decides the fight on health through `MatchSystem.EndByTimeout`, the path training already
+uses. `BroadcastAdditionsTests.AFightThatNobodyFinishesIsStillBelled` pins it.
+
+Otherwise clean before and after: **0 errors and 0 warnings**, only the two informational
+ML-Agents lines (no trainer on port 5004; communicator registered).
+
+### Telemetry
+
+| Metric | 2026-09-11 | Before (ten alive) | Before (three alive) | After (end of fight) |
+|---|---|---|---|---|
+| Draw calls | 98 - 158 | 428 - 500 | 235 - 241 | 223 |
+| SetPass calls | 62 | 160 - 264 | 115 | 118 |
+| CPU frame (Editor) | 6.1 - 7.7 ms | 14.5 - 20.9 ms | 11.4 - 19.7 ms | 15.9 ms |
+| CPU main thread | 2.1 ms | 4.5 - 6.4 ms | 2.7 - 7.7 ms | 3.5 ms |
+| Agents / AudioSource / UIDocument | 10 / 19 / 8 | 10 / 21 / 13 | | 10 / 21 / 13 |
+
+**Draw calls have roughly tripled since 2026-09-11.** They fall by about 35 per fighter knocked
+out, so the growth is on the fighters rather than in the new broadcast documents. That points at
+per-fighter rendering added since: the face damage, sweat and swelling drawn through property
+blocks, and the fighter shadow casters. It is not a frame-time problem in the Editor yet, but it is
+the first thing to profile on the phone.
+
+The AudioSource count is unchanged by moving the commentary, crowd and music voices from code into
+the scene. That is the check that the authored rig replaced the created one one for one.
+
+### Prefab override churn
+
+Every Boxer instance re-records about 375 overrides on its `ShadowCaster2D`
+(`managedReferences[...].m_Vertices`, `m_Indices`, `m_TrimEdge`) whenever a scene is saved: the
+Editor regenerates the shadow mesh per instance and it never matches the prefab's copy exactly.
+Stripping them does not stick - they are back on the next save - so a ten-boxer scene carries
+roughly 3,800 of them. The fix is on the prefab's shadow caster (a fixed shape rather than one
+generated from the sprite), and it is a rendering decision rather than cleanup.

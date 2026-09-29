@@ -549,8 +549,8 @@ sampled on **both** tabs, because a ring buffer that only advanced while its own
 a flat line for however long you were reading the other one — which looks exactly like a stalled
 policy. It has its **own write head**, since the frame history is written every frame and this
 once per refresh. And the agent count excludes inactive objects, unlike every other scene search
-in this project: the boxers are clones of `Boxer_Template`, which stays in the hierarchy switched
-off, and counting it reported eleven agents in a ten-boxer ring. `Academy.IsInitialized` is
+in this project: a switched-off boxer is not in the fight, and a disabled template that once sat
+in the hierarchy was counted as an eleventh agent in a ten-boxer ring. `Academy.IsInitialized` is
 checked before `Academy.Instance`, because touching the instance *constructs* an Academy as a side
 effect of looking for one.
 

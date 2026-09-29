@@ -28,7 +28,7 @@ Renderer, so 3D lit materials will not light correctly.
 | Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** flips the title screen between PICK and CARD · **Enter** fight / rematch · **R** back to the menu from the results · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode editor` — 295 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
+| Tests | `unity command run_tests --mode editor` — 297 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the

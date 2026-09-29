@@ -9,10 +9,19 @@ Four assemblies enforce `Views → Systems → Models`:
 ```
 Assets/Scripts/
 ├── Models/    PoRumble.Models.asmdef    → Unity.InferenceEngine (the ModelAsset type only)
+│     Core · Config · Boxer · Match · Broadcast · Diagnostics · Math · Messages
 ├── Systems/   PoRumble.Systems.asmdef   → Models, MessagePipe, VContainer
+│     Boxer · Match · Broadcast
 ├── Views/     PoRumble.Views.asmdef     → Models, Systems, ML-Agents, Input System
-└── Tests/     PoRumble.Tests.asmdef     EditMode only
+│     Composition · Boxer · Camera · Ring · Feedback · Audio · Hud · Input · Platform · Persistence
+└── Tests/     PoRumble.Tests.asmdef     EditMode only, flat
 ```
+
+The subfolders are for finding things; they carry no asmdef and no namespace of their own, so a
+file moves between them without touching a reference. One type per file, file named after it -
+the one deliberate exception is `Models/Messages/GameMessages.cs`, which keeps every
+MessagePipe message struct side by side. All console output goes through `Views/Composition/GameLog`,
+which compiles out of release builds.
 
 DI is VContainer, cross-system events are MessagePipe. `ReactiveProperty<T>` and
 `CompositeDisposable` are **hand-rolled in Models**, which is what keeps Models free of any

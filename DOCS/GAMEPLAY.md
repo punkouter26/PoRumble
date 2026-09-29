@@ -39,6 +39,12 @@ took minutes, with long plateaus where the last few blocked each other. So after
 `CLOSE_SECONDS` (60) to `MIN_SCALE` (0.3 - a 5-unit square at the shipped 8.5 half extent). The
 fight still has to be won with punches; there is just less and less room not to throw them.
 
+- **Then a bell, because the ropes alone do not guarantee an ending.** Measured against the
+  shipped policy, three survivors stood apart in the smallest ring for over nine minutes without
+  landing a punch. At `BELL_SECONDS` (180) `SuddenDeathSystem.Step` reports the bell and
+  `MatchDirector` decides the fight on health through `MatchSystem.EndByTimeout` - the same path
+  training's MaxStep bell takes.
+
 - **Two extents, on purpose.** `MatchModel.ArenaHalfExtent` is the ring as built and never
   changes - the agents' positional observation is normalised against it, so shrinking it would
   shift the policy's inputs out of the range it trained on. `MatchModel.RingScale` is the only
