@@ -66,3 +66,67 @@ speak communicator API **1.5.0**. There is no newer `mlagents` on PyPI.
 
 ---
 
+
+## Audit of 2026-09-29
+
+- **The ten-way trained in a ring the game never uses.** `Training10Way` was 40x40; the game's
+  ring is 17x17 and closes to 5x5 in sudden death. Positions are normalised so the observation
+  was in range, but every distance the policy learned - approach, range, the rays' 24-unit reach
+  against the walls - belonged to a ring more than twice the size. Run with the shipped model in
+  the game-size ring, a 2,500-step episode ended with one knockout. The ring, spawn radius and
+  half extent now copy `SampleScene`'s exactly.
+- **The ten-way now seats two scripted fighters** (ids 8 and 9, red), as two seats of the game's
+  card are. `HeuristicOnly` agents send no experience, so eight learners per arena train against
+  the mix of opponents they meet in the game.
+- **`MaxStep` on the prefab is 2500, not the 1500 the config comments assume.** At `DecisionPeriod`
+  5 that is 500 decisions, and the +2 win is worth 0.995^500 = 0.08 at the opening bell, not 0.22.
+  Left as it is: the longer episode gives a 17x17 ring time to resolve. Remember it before
+  retuning `gamma`.
+- **Reward balance.** Landing damage (0.35 per point) dominates: emptying one 30 HP opponent is
+  worth 10.5, against 0.5 for the elimination and 2 for the win. The dense shaping - aim 0.6,
+  approach 0.25, range 0.4, each spread over `MaxStep` - totals about +1.25 an episode against the
+  -1 existential cost, so standing at range facing someone is mildly positive on its own. That
+  is intended as a gradient toward the first hit and is small next to one landed punch; watch
+  for it if a run's reward rises while finishes fall.
+- **Observations are already minimal** (15 self scalars and 17 rays, frozen by the model
+  contract), and nothing in the agent runs during training that training does not use - the
+  style modulator, the scripted brain and the keyboard path are all bypassed for learners.
+- **There is no ragdoll.** The fighters are kinematic top-down bodies with no joints; "joint
+  limits" do not exist here to tune. The locomotion is already human-scale if a body diameter of
+  two units is a boxer's half-metre shoulder width: about 1.3 m/s footwork, a 0.22 s jab, 360°/s
+  pivots, 5 m/s² acceleration.
+
+### Throughput on this machine (i7-10750H, 6 cores / 12 threads, no GPU training)
+
+| Setup | Steps/s |
+|---|---|
+| Editor Play mode, one arena | the old baseline; a fraction of the below |
+| `Train1v1` build, 8 headless arenas, one learner each | ~410 |
+| `Train10Way` build, 6 headless arenas, eight learners each, time scale 20 | ~1,720 |
+| same at time scale 40 | ~1,740 - CPU-bound, the time scale buys nothing |
+
+Torch runs on the CPU (`torch==2.5.1+cpu`): a 256x2 MLP is faster there than behind a PCIe
+round trip, and the arenas, not the network, are the bottleneck. `threaded: true` lets the PPO
+update overlap stepping.
+
+**`.venv` is not in the repository.** Rebuild it with the pins above:
+
+```powershell
+uv venv .venv --python C:\Users\punko\AppData\Local\Programs\Python\Python310\python.exe
+uv pip install --python .venv\Scripts\python.exe --index-strategy unsafe-best-match `
+  --extra-index-url https://download.pytorch.org/whl/cpu "mlagents==1.1.0" "torch==2.5.1" `
+  "numpy<1.24" "protobuf<3.21" "setuptools<81"
+```
+
+`mlagents` 1.1.0 needs Python 3.10.1-3.10.12; uv's own 3.10.21 is too new.
+
+### Overnight runs
+
+Build `Training1v1` to `Builds/Train1v1/PoRumbleTrain.exe` and `Training10Way` to
+`Builds/Train10Way/PoRumbleTrain.exe` (one scene each), close the Editor, then
+`Tools\train_overnight.ps1 -Tag <tag> -Hours 8`. It checks TensorBoard is listening, spars to
+1.5M steps, initialises the ten-way from that and runs it to 40M or the deadline, then copies
+both runs into `results/_preserved/`. It never replaces `PoRumbleBoxer.onnx`.
+
+**Killing `mlagents-learn` does not kill its arena workers.** A plain `Stop-Process` left twelve
+Python workers running; kill the tree (`taskkill /T /F /PID`).

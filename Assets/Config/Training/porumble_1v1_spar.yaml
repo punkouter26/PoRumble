@@ -34,7 +34,10 @@ behaviors:
         gamma: 0.995
         strength: 1.0
     keep_checkpoints: 15
-    checkpoint_interval: 100000
-    max_steps: 5000000
+    checkpoint_interval: 250000
+    max_steps: 1500000
     time_horizon: 128
     summary_freq: 10000
+    # Trainer updates overlap environment stepping. Measured CPU-bound on the environments
+    # (doubling --time-scale gained nothing), so the update no longer idles them.
+    threaded: true
