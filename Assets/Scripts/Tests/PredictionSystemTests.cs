@@ -16,11 +16,11 @@ namespace PoRumble.Tests
     {
         private sealed class MemoryStore : IPredictionStore
         {
-            public int Saves;
+            public int SaveCount { get; private set; }
 
             public void Load(PredictionModel predictions) { }
 
-            public void Save(PredictionModel predictions) => Saves++;
+            public void Save(PredictionModel predictions) => SaveCount++;
         }
 
         private readonly List<Object> _created = new();
@@ -129,7 +129,7 @@ namespace PoRumble.Tests
             Assert.That(_predictions.Outcome, Is.EqualTo(PredictionOutcome.Won));
             Assert.That(_predictions.Bank.Value, Is.EqualTo(PredictionModel.STARTING_BANK + PredictionSystem.STAKE));
             Assert.That(_predictions.Correct, Is.EqualTo(1));
-            Assert.That(_store.Saves, Is.EqualTo(1));
+            Assert.That(_store.SaveCount, Is.EqualTo(1));
         }
 
         [Test]

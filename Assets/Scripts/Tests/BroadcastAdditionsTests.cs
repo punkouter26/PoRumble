@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using PoRumble.Models;
+using PoRumble.Systems;
 using UnityEngine;
 
 namespace PoRumble.Tests
@@ -36,6 +37,37 @@ namespace PoRumble.Tests
             Assert.That(SuddenDeathMath.RingScaleAt(end), Is.EqualTo(SuddenDeathMath.MIN_SCALE).Within(1e-5f));
             Assert.That(SuddenDeathMath.RingScaleAt(end + 600f), Is.EqualTo(SuddenDeathMath.MIN_SCALE).Within(1e-5f));
             Assert.That(SuddenDeathMath.IsClosing(start), Is.True);
+        }
+
+        [Test]
+        public void TheBellOnlyRingsAfterTheRopesHaveFinishedClosing()
+        {
+            float closed = SuddenDeathMath.START_SECONDS + SuddenDeathMath.CLOSE_SECONDS;
+
+            Assert.That(SuddenDeathMath.BELL_SECONDS, Is.GreaterThan(closed));
+            Assert.That(SuddenDeathMath.IsBell(closed), Is.False);
+            Assert.That(SuddenDeathMath.IsBell(SuddenDeathMath.BELL_SECONDS), Is.True);
+        }
+
+        [Test]
+        public void AFightThatNobodyFinishesIsStillBelled()
+        {
+            var match = new MatchModel();
+            var flow = new MatchFlowModel();
+            var system = new SuddenDeathSystem(match, flow, new SuddenDeathModel());
+            flow.Phase.Value = MatchFlowPhase.Fighting;
+
+            const float STEP = 0.02f;
+            int steps = Mathf.CeilToInt(SuddenDeathMath.BELL_SECONDS / STEP) + 1;
+            bool belled = false;
+
+            for (int stepIndex = 0; stepIndex < steps && !belled; stepIndex++)
+            {
+                belled = system.Step(STEP);
+            }
+
+            Assert.That(belled, Is.True, "a stalled fight must still reach the bell");
+            Assert.That(match.RingScale, Is.EqualTo(SuddenDeathMath.MIN_SCALE).Within(1e-5f));
         }
 
         [Test]

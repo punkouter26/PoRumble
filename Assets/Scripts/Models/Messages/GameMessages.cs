@@ -129,25 +129,21 @@ namespace PoRumble.Models
     {
         public readonly int BoxerId;
         public readonly Vector2 Position;
-        public readonly Vector2 Direction;
 
-        public BoxerDodgedMessage(int boxerId, Vector2 position, Vector2 direction)
+        public BoxerDodgedMessage(int boxerId, Vector2 position)
         {
             BoxerId = boxerId;
             Position = position;
-            Direction = direction;
         }
     }
 
     public readonly struct BoxerDamagedMessage
     {
         public readonly int BoxerId;
-        public readonly int NewHealth;
 
-        public BoxerDamagedMessage(int boxerId, int newHealth)
+        public BoxerDamagedMessage(int boxerId)
         {
             BoxerId = boxerId;
-            NewHealth = newHealth;
         }
     }
 

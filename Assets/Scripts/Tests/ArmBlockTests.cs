@@ -86,15 +86,15 @@ namespace PoRumble.Tests
         {
             Vector2 shoulder = new(0f, 0f);
             Vector2 glove = new(1.6f, 0f);
-            const int samples = 17;
+            const int SAMPLES = 17;
             int blocked = 0;
 
             // Stepped by an integer index rather than by accumulating 0.1f. Accumulation puts
             // the final sample at 1.6000001, just past the glove, and silently drops it - the
             // loop then tests sixteen points and quietly passes a weaker assertion.
-            for (int step = 0; step < samples; step++)
+            for (int step = 0; step < SAMPLES; step++)
             {
-                float along = 1.6f * step / (samples - 1);
+                float along = 1.6f * step / (SAMPLES - 1);
 
                 if (CombatMath.ArmBlocks(new Vector2(along, 0f), shoulder, glove, BLOCK_RADIUS))
                 {
@@ -102,7 +102,7 @@ namespace PoRumble.Tests
                 }
             }
 
-            Assert.That(blocked, Is.EqualTo(samples), "Every sample on the limb should stop a punch.");
+            Assert.That(blocked, Is.EqualTo(SAMPLES), "Every sample on the limb should stop a punch.");
         }
 
         [Test]
