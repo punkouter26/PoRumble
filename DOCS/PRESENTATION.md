@@ -15,17 +15,17 @@ every one of them.
 | `CameraRig` | `SpectatorCameraView` | Frames the living fighters; tightens as the field thins |
 | `PlayerStatusHud` | `PlayerStatusHudView` | Player health, breath, haymaker meter, hit vignette, behind-you warning |
 | `DiagnosticsHud` | `DiagnosticsHudView` | **F3** telemetry overlay |
-| `MatchInput` | `MatchInputView` | The keys: **Enter** fight / rematch, **R** menu, **Tab** PICK / CARD on the title screen |
+| `MatchInput` | `MatchInputView` | The keys: **Enter** fight / rematch, **R** menu |
 | `MatchHud` | `MatchHudView` | The field board (health + live win chance + your stake, one row per fighter; a strip during the fight), countdown, the results card |
 | `KnockoutMood` | `KnockoutMoodView` | Blends a desaturated, vignetted grade **and** the mixer's `Knockout` snapshot for the knockout hold |
 | `Standings` | `StandingsHudView` | Top three of the Elo table |
 | `FightStats` | `FightStatsHudView` | The telemetry board — thrown/landed/connect/blocked/slips/damage for the pair the director is watching, plus a momentum bar and sparkline |
 | `CameraRig` | `CameraDirectorView` | Owns `ImpactCam` and hands it the frame on a knockout or a landed haymaker |
 | `Commentary` | `CommentaryView` | Speaks the baked commentary and prints the subtitle |
-| `MainMenu` | `MainMenuView` | The title screen — the contestant grid, PICK / CARD, the bank, FIGHT. Owns the `Title` phase outright |
+| `MainMenu` | `MainMenuView` | The title screen — the fixed contestant grid (a tap backs a fighter and the camera follows them), the bank, FIGHT. Owns the `Title` phase outright |
 | `Crowd` | `CrowdAmbienceView` | The crowd bed and its reaction swells |
 | `HudCarousel` | `HudCarouselView` | Portrait only: the telemetry board and the standings share one slot under TAPE / TABLE tabs |
-| `SecondFightFeed` | `PictureInPictureView` | The corner feed on the second fight, filmed by `CameraRig/SecondFightCamera` |
+| `SecondFightFeed` | `PictureInPictureView` | **Inactive.** The corner feed on the second fight, filmed by `CameraRig/SecondFightCamera` (also inactive) |
 | `DamageMap` | `DamageMapView` | The fight map — the canvas lit where the damage was done, on the results screen |
 
 ## The Camera Director
@@ -134,6 +134,11 @@ the broadcast layer, so training never runs it.
   card is worse than asking again.
 
 ## The Second-Fight Feed
+
+**Switched off in `SampleScene`.** `SecondFightFeed` and `CameraRig/SecondFightCamera` are both
+inactive: at twenty fighters it read as a mini map of specks rather than a fight. Nothing needs
+it - `GameLifetimeScope` injects it optionally - and re-activating both GameObjects brings it
+back as described below.
 
 `DirectorSystem` now keeps every pair it scored and, after choosing the main pair, picks the
 best pair that shares **nobody** with it (`PairSelection.TryPickSecondary`, pure and tested).
@@ -393,13 +398,21 @@ chrome row on the floor (`--band-bottom-card`), the player's panel above it. The
 caption used to hold a third band there; it lives inside the chrome row now.
 
 **`HudLayoutTests` is what holds all of this.** It lays the real UXML and `porumble.uss` out in an
-editor panel at 1080x1920 and 1080x2400, filled to the worst case (ten fighters, long names,
-every line populated), and asserts each panel sits between the chrome rows and clear of every
+editor panel at 1080x1920 and 1080x2400, filled to the worst case (nineteen seats, nineteen card
+tiles, long names, every line populated), and asserts each panel sits between the chrome rows and clear of every
 other panel up at the same time - title screen, live fight, results, opened debug sheet. Every
 overlap described in this section was found by looking at a device; the test found the next one
 (the folded debug sheet across the second-fight feed) before a screen did. It applies each
 phase's classes by hand rather than running the views, so a view that starts adding a new
 layout class needs its scenario updated to match.
+
+**Measuring the panel is not enough; `AssertRowsReadable` measures the rows.** At twenty seats
+the field board's `--band-top-max` cap held the panel on screen while the rows inside it were
+squeezed until every name was cut in half across the middle, and every panel-level assertion
+passed - it was found on a phone. The board is now two columns of cells, name and odds on one
+line with the health bar pinned absolutely along the bottom, ten cells tall. The live strip
+wraps ten cells to a line, so a full ring is two lines, and `--band-feed-top` moved to 320px to
+put the knockout feed under both.
 
 Two consequences worth knowing. **Panel-internal widths had to become flexible with it** — a
 fixed 190px name beside a fixed 300px bar can exceed a panel that is now a percentage of the
@@ -413,11 +426,9 @@ its own with 300px tiles three to a row: a full ten-fighter card came to four ro
 roughly 1,870px of a 1,920 screen once the title and footer were added, under both chrome bars.
 It also duplicated the pick strip, which offered prices on the same contestants as chips along
 the bottom of the menu. Now `MainMenuView` draws one grid of compact tiles (`--tile-width` 23%,
-four to a row, a 128px face, a price badge and a rating badge) and a PICK / CARD switch decides
-what a tap does. The switch *is* `RosterModel.IsOpen`, so Tab still flips it and `RosterSystem`
-still gates it; leaving CARD commits the card through `BoxerSpawnPoints.SeatRoster`, as closing
-the modal did. The FIGHT button and the phase change both close CARD first, because Enter can
-start a fight without passing through the button.
+four to a row, a 128px face, a price badge and a rating badge), and a tap on a tile backs that
+fighter. The card itself is fixed at one of each contestant; the PICK / CARD switch that used to
+edit it is gone, with Tab and `RosterSystem`.
 
 **`MainMenuView` owns `MatchFlowPhase.Title` outright.** The phase and the loop that returns to
 it already existed; what it had was a caption and a line of instruction text drawn onto the match
@@ -427,8 +438,8 @@ is deliberately blank.
 **The results screen is one card.** A winner banner, a "tap to continue" prompt, a floating
 fight-card button and a stake line on the odds board became the results card in `MatchHud.uxml`:
 winner, a rating badge (Elo after the bout and its change), a pick badge (won / lost / refunded
-and the bank), and REMATCH / NEW CARD. REMATCH is `TryRestart` then `TryStartFight`; NEW CARD is
-`TryRestart` and opens CARD. There is no knockout replay on it: the knockout hold is the slow-motion
+and the bank), and REMATCH / NEW PICK. REMATCH is `TryRestart` then `TryStartFight`; NEW PICK is
+`TryRestart`, back to the title to back someone else. There is no knockout replay on it: the knockout hold is the slow-motion
 of the live punch, and nothing records a fight to play back.
 
 **No touch input outside UI Toolkit.** `MatchInputView` used to read a tap anywhere straight off

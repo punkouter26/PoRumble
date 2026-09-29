@@ -47,7 +47,7 @@
             </ui:VisualElement>
             <ui:VisualElement name="result-actions" class="results__actions" picking-mode="Ignore">
                 <ui:Button name="rematch" text="REMATCH" class="text text--md text--bold results__button results__button--primary" />
-                <ui:Button name="new-card" text="NEW CARD" class="text text--md text--bold results__button" />
+                <ui:Button name="new-pick" text="NEW PICK" class="text text--md text--bold results__button" />
             </ui:VisualElement>
             <ui:Label name="prompt" class="text text--xs text--muted results__hint" picking-mode="Ignore" />
         </ui:VisualElement>

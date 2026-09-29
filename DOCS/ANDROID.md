@@ -18,7 +18,13 @@ training arenas are editor-side tools.
 
 `adb` ships with the Editor rather than on PATH, under
 `Editor/Data/PlaybackEngines/AndroidPlayer/SDK/platform-tools/`. `Temp/deploy_android.sh`
-installs, launches and dumps the Unity log in one step.
+installs, launches and dumps the Unity log in one step - but `Temp/` is not in git, so a fresh
+clone does not have it: `adb install -r Builds/PoRumble.apk` and a `monkey` launch do the same.
+
+**An APK built on another clone will not install over this one.** Each machine signs with its
+own debug keystore, and `adb install -r` fails `INSTALL_FAILED_UPDATE_INCOMPATIBLE`. The only way
+past it is `adb uninstall com.punkouter.porumble`, which deletes the saved ratings and the bank
+on the phone - ask before doing it.
 
 ### Things that are easy to get wrong
 
@@ -87,13 +93,11 @@ installs, launches and dumps the Unity log in one step.
 - **`MatchHudView` picks its prompts from the devices present,** not from a platform define, so
   the editor still reads "PRESS" while a phone reads "TAP" - and a desktop that happens to have
   a touchscreen is not told to tap when it has a keyboard sitting right there.
-- **The fight card is on the title screen, behind a PICK / CARD switch, because `Tab` does not
-  exist on a phone.** For a long time the card was a modal opened only by Tab, so it could not
-  be reached in the shipping build at all; then it was a modal behind a button, and a full card
-  ran off the bottom of the screen. Now the contestants are one grid on the title screen and the
-  switch decides whether a tap backs a fighter or puts them on or off the card. The card can only
-  change on the title screen: re-seating the roster mid-fight would swap contestants into chairs
-  that are currently mid-punch.
+- **The fight card is the title screen, and it is fixed.** For a long time the card was a modal
+  opened only by Tab, so it could not be reached in the shipping build at all; then it was a modal
+  behind a button, then a PICK / CARD switch on the title screen. Now the card is one of each
+  contestant, not editable, and a tap on a tile backs that fighter - which is also who the camera
+  follows once the bell goes.
 - **A touch is only ever a button press.** `MatchInputView` used to read a tap anywhere straight
   off the `Touchscreen` device, on the press. That meant the tap on a pick chip or the FIGHT CARD
   button also started the fight, and a tap on a results-screen button changed phase before the

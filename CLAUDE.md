@@ -1,7 +1,7 @@
 # CLAUDE.md — PoRumble
 
 Top-down 2D boxing battle royale, after the style of Activision's Boxing (Atari 2600, 1980).
-Ten fighters, last one standing, with ML-Agents-trained opponents.
+Nineteen fighters - one of each contestant - last one standing, with ML-Agents-trained opponents.
 
 ---
 
@@ -24,11 +24,11 @@ Renderer, so 3D lit materials will not light correctly.
 
 | Task | How |
 |---|---|
-| Play | Open `Assets/Scenes/SampleScene.unity` → Play. 10 boxers, HUD, boxer #0 on keyboard |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** flips the title screen between PICK and CARD · **Enter** fight / rematch · **R** back to the menu from the results · **F3** diagnostics overlay |
+| Play | Open `Assets/Scenes/SampleScene.unity` → Play. 19 boxers, HUD, all AI (`_humanBoxerId` -1) |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Enter** fight / rematch · **R** back to the menu from the results · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode editor` — 297 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
+| Tests | `unity command run_tests --mode editor` — 300 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
@@ -114,6 +114,9 @@ silent failures - nothing errors, and the thing simply does not work.
 - **Sudden death moves `RingScale`, never `ArenaHalfExtent`.** The agents' positional
   observation is normalised against the built ring, and training must never step
   `SuddenDeathSystem`. → `DOCS/GAMEPLAY.md`
+- **A new seat needs its own `BoxerBody{id}` layer and its own ray mask.** Duplicating a boxer
+  copies the source's mask, and the copy is blind to the boxer it was cloned from; a missing
+  layer only warns. Seats 0-18 use layers 8-26; `BoxerBody19` on 27 is a spare. → `DOCS/GAMEPLAY.md`
 - **Changing a `[SerializeField]` default does not retune an object that already exists.**
   The serialized value in the scene wins. This fails quietly every time.
 - **Sprite pixels-per-unit equals the sprite's pixel width**, so one sprite is one world unit.
@@ -138,6 +141,9 @@ unity command create_gameobject --name Foo --primitive quad --parent "/Ring"
 unity command eval_file --file "Temp/evals/script.cs"
 ```
 
+- The CLI picks the Editor from the working directory. The **port is not fixed**: with another
+  project's Editor open this one has been on 7801 and 7802, moving after a domain reload. A
+  `Network error` right after a target switch is the bridge restarting - retry.
 - Args are `--flag value`. **Run from PowerShell** — Git Bash rewrites `/Main Camera` into a
   filesystem path.
 - `eval` bodies take **no `using` directives**; fully qualify types.

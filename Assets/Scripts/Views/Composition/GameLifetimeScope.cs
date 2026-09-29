@@ -59,7 +59,6 @@ namespace PoRumble.Views
             builder.Register<MatchSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<MatchFlowSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<SpawnSystem>(Lifetime.Singleton).AsSelf();
-            builder.Register<RosterSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<RatingSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<FightStatsSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<DirectorSystem>(Lifetime.Singleton).AsSelf();

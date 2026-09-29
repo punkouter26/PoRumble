@@ -79,7 +79,7 @@ FightStatsSystem ─► FightStatsModel ──┬─► FightStatsHudView (the t
 
 DirectorSystem ─► DirectorModel ──┬─► SpectatorCameraView (which pair, how tight)
                                   ├─► CameraDirectorView  (the hard cut to ImpactCam)
-                                  └─► PictureInPictureView (the second fight, in a corner)
+                                  └─► PictureInPictureView (the second fight, in a corner; inactive in SampleScene)
 
 WinOddsSystem ─► WinOddsModel ──┬─► MatchHudView         (per-seat odds on the field board, stake)
                                 ├─► FightStatsHudView    (the head-to-head share badges)
@@ -186,7 +186,7 @@ DamageMapSystem ─► DamageMapModel ─► DamageMapView (the fight map on the
 
 | Scene | Purpose |
 |---|---|
-| `Assets/Scenes/SampleScene.unity` | The game: 40×40 ring, 10 boxers, HUD, feedback rig, spectator camera |
+| `Assets/Scenes/SampleScene.unity` | The game: 24×24 ring, 19 boxers, HUD, feedback rig, spectator camera |
 | `Assets/Scenes/Training1v1.unity` | Curriculum stage 1: four arenas (`Arena_0`..`Arena_3`, 30 units apart), each a `GameLifetimeScope` owning its own ring - the game's 17×17 - with one learner against the scripted sparring partner, auto-restart. Spawn radius 4.5. Models are arena-local; only `BoxerView` adds the ring's world origin |
 | `Assets/Scenes/Training10Way.unity` | Curriculum stage 3: the ten-boxer free-for-all, auto-restart. Pairs with `porumble_10way_ffa.yaml` |
 

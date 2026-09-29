@@ -9,8 +9,7 @@ namespace PoRumble.Models
     /// own idea of whether the sheet was showing and the button's label would drift out of step
     /// with the sheet it names.
     ///
-    /// One reactive bool instead, on the same shape as <see cref="RosterModel.IsOpen"/>: the
-    /// overlay renders it, the chrome bar labels itself from it, and neither needs to know the
+    /// One reactive bool instead: the overlay renders it, the chrome bar labels itself from it, and neither needs to know the
     /// other exists.
     ///
     /// <see cref="FindingCount"/> is the same idea for the verdict. The overlay ranks what is

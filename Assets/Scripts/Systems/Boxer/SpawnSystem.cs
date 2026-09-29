@@ -33,14 +33,18 @@ namespace PoRumble.Systems
         /// <summary>
         /// Below this many body widths of arc per seat, one circle is too crowded to open on:
         /// twenty fighters on a circle that fits in the ring have under one and a half each, and
-        /// four in five openings put two of them inside each other. The seats then alternate
-        /// between the spawn circle and an inner one. Ten seats have just over two widths, so
-        /// every training scene stays on a single circle.
+        /// four in five openings put two of them inside each other. The seats then split between
+        /// the spawn circle and an inner one. Ten seats have just over two widths, so every
+        /// training scene stays on a single circle.
         /// </summary>
         private const float SINGLE_CIRCLE_MIN_WIDTHS = 1.75f;
 
-        /// <summary>Radius of the inner circle when staggered, as a fraction of the outer.</summary>
-        private const float INNER_CIRCLE_FRACTION = 0.65f;
+        /// <summary>
+        /// Radius of the inner circle when staggered, as a fraction of the outer. At 0.65 an odd
+        /// ring of nineteen could still land an inner and an outer fighter on the same bearing
+        /// close enough to touch; 0.6 clears both nineteen and twenty in every opening measured.
+        /// </summary>
+        private const float INNER_CIRCLE_FRACTION = 0.6f;
 
         /// <summary>
         /// How far off dead-centre a fighter can be looking at the bell. Without this the
@@ -109,17 +113,31 @@ namespace PoRumble.Systems
             out Vector2 position,
             out Vector2 facing)
         {
-            float slotWidthDegrees = 360f / Mathf.Max(1, boxerCount);
+            int seats = Mathf.Max(1, boxerCount);
+            float slotWidthDegrees = 360f / seats;
+            float arcPerSeat = 2f * Mathf.PI * spawnRadius / seats;
+            bool staggered = arcPerSeat < SINGLE_CIRCLE_MIN_WIDTHS * _config.BodyRadius * 2f;
+            bool inner = staggered && boxerIndex % 2 == 1;
+
+            // Staggered, each circle is spaced evenly on its own - even seats outside, odd seats
+            // inside and offset half a slot. With an even count that is exactly alternating round
+            // one circle; with an odd one it stops the last seat and the first landing side by side
+            // on the outer circle with nobody between them.
             float slotDegrees = boxerIndex * slotWidthDegrees;
+
+            if (staggered)
+            {
+                int onCircle = inner ? seats / 2 : (seats + 1) / 2;
+                float circleSlot = 360f / onCircle;
+                slotDegrees = (boxerIndex / 2) * circleSlot + (inner ? circleSlot * 0.5f : 0f);
+            }
+
             float jitterDegrees = Mathf.Min(SLOT_JITTER_DEGREES, slotWidthDegrees * MAX_SLOT_JITTER_FRACTION);
             float degrees = slotDegrees + ringRotationDegrees + NextSigned() * jitterDegrees;
 
-            float arcPerSeat = 2f * Mathf.PI * spawnRadius / Mathf.Max(1, boxerCount);
-            bool staggered = arcPerSeat < SINGLE_CIRCLE_MIN_WIDTHS * _config.BodyRadius * 2f;
-
             // Staggered, the two circles are close enough that the full radial jitter would
             // carry an inner fighter out into the outer ring, so each gets half of it.
-            float circle = staggered && boxerIndex % 2 == 1 ? spawnRadius * INNER_CIRCLE_FRACTION : spawnRadius;
+            float circle = inner ? spawnRadius * INNER_CIRCLE_FRACTION : spawnRadius;
             float radiusJitter = staggered ? RADIUS_JITTER * 0.5f : RADIUS_JITTER;
             float radius = circle * (1f + NextSigned() * radiusJitter);
             float radians = degrees * Mathf.Deg2Rad;

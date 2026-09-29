@@ -44,8 +44,8 @@ namespace PoRumble.Tests
         /// </summary>
         private const float NOTCH = 120f;
 
-        /// <summary>Every seat in the ring: twenty boxers, one health row each.</summary>
-        private const int FULL_FIELD = 20;
+        /// <summary>Every seat in the ring: nineteen boxers, one health row each.</summary>
+        private const int FULL_FIELD = 19;
 
         /// <summary>Every contestant on the title screen: the seventeen named fighters, the heuristic and the reference policy.</summary>
         private const int FULL_CARD = 19;
@@ -93,15 +93,14 @@ namespace PoRumble.Tests
                 clone.Q<Label>("price").text = "WINS 1250";
                 clone.Q<Label>("standing").text = "1234";
 
-                // Nineteen entrants in twenty corners: the first takes a second one.
-                Label seats = clone.Q<Label>("seats");
-                seats.text = "x2";
-                seats.EnableInClassList("roster-tile__seats--gone", index >= 1);
+                // The card is one of each in a ring that seats exactly that, so no tile carries
+                // a second-corner badge.
+                clone.Q<Label>("seats").AddToClassList("roster-tile__seats--gone");
             }
 
             menu.Q<Label>("bank").text = "BANK 12400   RIGHT 12 OF 30";
             menu.Q<Label>("hint").text =
-                "YOUR 100 IS ON CHECKPOINT 10   WINS 1250 IF THEY WIN\nENTER TO FIGHT      TAB SWITCHES PICK / CARD";
+                "YOUR 100 IS ON CHECKPOINT 10   WINS 1250 IF THEY WIN - THE CAMERA FOLLOWS THEM\nENTER TO FIGHT";
 
             yield return _screen.Settle();
 
@@ -306,7 +305,7 @@ namespace PoRumble.Tests
                 clone.Q<Label>("odds").text = "<1%";
             }
 
-            root.Q<Label>("survivors").text = "20 / 20 LEFT";
+            root.Q<Label>("survivors").text = "19 / 19 LEFT";
             root.Q<Label>("bout").text = "BOUT 12";
             root.Q<Label>("pick").text = "YOUR PICK  CHECKPOINT 10   PAYS 11.5x   NOW 14%";
 

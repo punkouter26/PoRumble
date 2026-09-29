@@ -7,8 +7,7 @@ using VContainer;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// Match-level keys: Enter to fight or rematch, R back to the menu, Tab to flip the title
-    /// screen between picking a winner and editing the card.
+    /// Match-level keys: Enter to fight or rematch, R back to the menu.
     ///
     /// Separate from the per-boxer controls in <see cref="BoxerAgentView"/> because this is
     /// not a boxer's input - it belongs to the match, works while the player's boxer is lying
@@ -28,18 +27,11 @@ namespace PoRumble.Views
     public sealed class MatchInputView : MonoBehaviour
     {
         private MatchFlowSystem _flowSystem;
-        private RosterSystem _rosterSystem;
-        private MatchFlowModel _flow;
 
         [Inject]
-        public void Construct(
-            MatchFlowSystem flowSystem,
-            RosterSystem rosterSystem,
-            MatchFlowModel flow)
+        public void Construct(MatchFlowSystem flowSystem)
         {
             _flowSystem = flowSystem;
-            _rosterSystem = rosterSystem;
-            _flow = flow;
         }
 
         private void Update()
@@ -48,14 +40,6 @@ namespace PoRumble.Views
 
             if (_flowSystem == null || keyboard == null)
             {
-                return;
-            }
-
-            // The card is part of the title screen, so Tab only means something there. At the
-            // results it used to open a modal over the ring; there is no modal any more.
-            if (keyboard.tabKey.wasPressedThisFrame && _flow.Phase.Value == MatchFlowPhase.Title)
-            {
-                _rosterSystem.Toggle();
                 return;
             }
 

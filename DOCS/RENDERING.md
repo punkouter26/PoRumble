@@ -99,12 +99,25 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
   ScreenSpaceLensFlare and ColorLookup are all at zero intensity, so `IsActive()` is false and
   URP skips them. Check `IsActive()`, never the serialized flag, before concluding an effect
   costs anything.
-- **The faces are circular-cropped at import, not masked at runtime.** The six source
-  photographs at the project root are centre-cropped square, resized to 256 and given a radial
-  alpha with a soft edge, then written to `Assets/Art/Sprites/Faces/` at PPU 256 so one sprite
-  is one world unit like every other part. A SpriteMask or a stencil shader would have cost a
-  draw call per head for a result that never changes. They are packed into `BoxerAtlas`, so a
-  head still batches with the body it sits on.
+- **The faces are circular-cropped at import, not masked at runtime.** The source photographs
+  live in `Tools/SourceArt/Faces/`, and `Tools/make_faces.py` (Pillow, numpy, scipy) crops each
+  to a square around the head - the box is authored per photo, because a centre crop only works
+  on a tight mugshot - resizes to 256, gives it a circular alpha with a ~2px soft edge, and
+  writes it to `Assets/Art/Sprites/Faces/` at PPU 256 so one sprite is one world unit like every
+  other part. It writes the normal map beside it in the same pass: a dome for roundness plus a
+  high-pass of the photo's luminance, strength matched to the original six. A SpriteMask or a
+  stencil shader would have cost a draw call per head for a result that never changes.
+- **The faces are in `BoxerAtlas`, and for a long time were not.** This page said they were
+  packed; the atlas listed only the body and ring sprites, so every face was its own texture and
+  broke the head out of the batch. All seventeen are packables now. A Sprite Atlas V2 has to be
+  written with `SpriteAtlasAsset.Save` - `AssetDatabase.SaveAssets` updates the atlas in memory
+  and leaves the file as it was.
+- **The head is drawn at 1.2 and turned half round.** Twice its old 0.6, so a face reads at
+  twenty-fighter framing; `FaceProbe` is untouched, so no hit maths moved. The photographs are
+  upright images on a boxer that faces +y, which put the chin at the back, so `Torso/Head` is
+  rotated 180° on the prefab - not the images, which are also the title-card portraits. That
+  swaps which half of the photo sits on which side of the body, so `_mirrorFaceDamage` is on.
+  The nose, which is the facing mark, sits past the new rim by its old overhang.
 - **A face is tinted white while its owner is standing.** `BoxerView` takes the head colour
   separately from the body: a photograph carries its own colour and multiplying it by the
   fighter's trunk colour only makes it muddy. It still darkens on elimination, which reads
@@ -157,7 +170,7 @@ the fighter turning rather than as the light moving.
 agree about how spent a boxer is, and writes it **onto the head alone** — like the bruise, and
 for the same cost reason. Neither has an end condition inside a match, so whatever carries them
 stays out of the shared sprite batch until the bell; `_sweatThreshold` is above zero precisely so
-a fresh fighter's head stays batched rather than all ten leaving the batch at the opening bell.
+a fresh fighter's head stays batched rather than all nineteen leaving the batch at the opening bell.
 Both are pushed from `PushFatigue` (which already runs every FixedUpdate) rather than from the
 effect loop, because that loop only runs while something is *animating* and neither of these ever
 wakes it.

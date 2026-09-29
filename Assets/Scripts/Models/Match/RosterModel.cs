@@ -31,9 +31,6 @@ namespace PoRumble.Models
         /// </summary>
         public ReactiveProperty<int> Revision { get; } = new(0);
 
-        /// <summary>True while the roster screen is up. Only ever set by RosterSystem.</summary>
-        public ReactiveProperty<bool> IsOpen { get; } = new(false);
-
         /// <summary>
         /// Publishes the full card. Entrants that are no longer on it are dropped, so an
         /// asset removed from the scene cannot leave a dangling selection behind.

@@ -8,10 +8,9 @@
   decision - who is fighting and who you are backing - and the modal ran off the bottom of a
   phone with a full card, because three 430px rows of tiles do not fit in 1920.
 
-  Now the contestants are one grid of compact tiles and a two-way switch decides what a tap on a
-  tile does: PICK backs that fighter for the next bell, CARD puts them on or off the card. The
-  switch is RosterModel.IsOpen, so Tab on a keyboard still flips it, and leaving CARD is what
-  commits the card to the ring, exactly as closing the old modal did.
+  Now the contestants are one grid of compact tiles, and a tap on a tile backs that fighter for
+  the next bell; the camera follows whoever is backed. The card is fixed at one of each - the
+  PICK / CARD switch that put fighters on and off it is gone.
 
   Full-screen scrim, because the menu is a modal moment: dimming the racked ring behind it is
   what makes the controls read as the only live things on screen. The scrim is padded clear of
@@ -21,11 +20,9 @@
     <ui:VisualElement name="screen" class="menu-screen">
         <ui:VisualElement name="panel" class="menu" picking-mode="Ignore">
             <ui:Label name="title" text="PO RUMBLE" class="text text--display text--bold menu__title" picking-mode="Ignore" />
-            <ui:Label name="tagline" text="TWENTY FIGHTERS. ONE LEFT STANDING." class="text text--xs text--muted menu__tagline" picking-mode="Ignore" />
+            <ui:Label name="tagline" text="NINETEEN FIGHTERS. ONE LEFT STANDING." class="text text--xs text--muted menu__tagline" picking-mode="Ignore" />
 
             <ui:VisualElement name="modes" class="menu__modes" picking-mode="Ignore">
-                <ui:Button name="mode-pick" text="PICK" class="text text--sm text--bold menu__mode" />
-                <ui:Button name="mode-card" text="CARD" class="text text--sm text--bold menu__mode" />
                 <ui:Label name="bank" class="text text--xs text--bold badge menu__bank" picking-mode="Ignore" />
             </ui:VisualElement>
 

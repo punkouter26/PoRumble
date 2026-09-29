@@ -82,6 +82,8 @@ namespace PoRumble.Systems
         private readonly MatchFlowModel _flow;
         private readonly FightStatsSystem _stats;
         private readonly BoxerConfig _config;
+        private readonly RosterModel _roster;
+        private readonly PredictionModel _predictions;
         private readonly CompositeDisposable _disposables = new();
 
         /// <summary>Seconds left on an impact cut. Zero when the director is free to choose.</summary>
@@ -105,6 +107,8 @@ namespace PoRumble.Systems
             MatchFlowModel flow,
             FightStatsSystem stats,
             BoxerConfig config,
+            RosterModel roster,
+            PredictionModel predictions,
             ISubscriber<PunchLandedMessage> landedSubscriber,
             ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber)
         {
@@ -113,6 +117,8 @@ namespace PoRumble.Systems
             _flow = flow;
             _stats = stats;
             _config = config;
+            _roster = roster;
+            _predictions = predictions;
 
             landedSubscriber.Subscribe(OnPunchLanded).AddTo(_disposables);
             eliminatedSubscriber.Subscribe(OnBoxerEliminated).AddTo(_disposables);
@@ -552,6 +558,33 @@ namespace PoRumble.Systems
             _impactHold = 0f;
             _pairCount = 0;
             _secondElapsed = 0f;
+            PinPick();
+        }
+
+        /// <summary>
+        /// Follows the fighter the viewer backed on the title screen from the bell. The pick is a
+        /// contestant and the camera follows a seat, so it is the first seat holding them - with
+        /// one of each on the card that is the only one. Nothing is pinned without a pick, or in
+        /// the training scenes, which seat no roster at all. A tap on the board still moves the
+        /// camera to anyone else, and the pin lets go on its own when the fighter goes down.
+        /// </summary>
+        private void PinPick()
+        {
+            FighterProfile pick = _predictions.Pick.Value;
+
+            if (pick == null)
+            {
+                return;
+            }
+
+            for (int boxerId = 0; boxerId < _match.Boxers.Count; boxerId++)
+            {
+                if (_roster.SeatOf(boxerId) == pick)
+                {
+                    _director.PinnedId.Value = boxerId;
+                    return;
+                }
+            }
         }
 
         public void Dispose()

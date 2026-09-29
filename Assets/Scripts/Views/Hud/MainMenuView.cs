@@ -15,17 +15,15 @@ namespace PoRumble.Views
     /// button; the card was a full-screen modal of its own with 300px tiles three to a row, which
     /// ran off the bottom of a phone once the card was full; and a pick strip along the bottom
     /// offered prices on the same contestants as a row of chips. Now there is one grid of compact
-    /// tiles and a PICK / CARD switch deciding what a tap on a tile does.
+    /// tiles, and a tap on a tile backs that fighter - and the camera follows them from the bell.
     ///
-    /// The switch is <see cref="RosterModel.IsOpen"/>, so Tab still flips it and
-    /// <see cref="RosterSystem"/> still decides when it may. Leaving CARD is what commits the
-    /// card to the ring, exactly as closing the old modal did: re-dealing seats every boxer
-    /// again, which swaps faces, controllers and attributes on objects that already exist.
+    /// The card is fixed: one of each contestant, one corner each. There used to be a PICK / CARD
+    /// switch for putting fighters on and off it, and it went when the ring was sized to seat the
+    /// whole card exactly.
     ///
     /// A View throughout. Whether a pick is legal and what it pays is
-    /// <see cref="PredictionSystem"/>'s business; whether the card may change is
-    /// <see cref="RosterSystem"/>'s; whether a fight may start is <see cref="MatchFlowSystem"/>'s.
-    /// This draws tiles and forwards taps.
+    /// <see cref="PredictionSystem"/>'s business; whether a fight may start is
+    /// <see cref="MatchFlowSystem"/>'s. This draws tiles and forwards taps.
     ///
     /// Optional, like every other presentation component: the training scenes have no menu,
     /// and <see cref="GameLifetimeScope"/> injects this only if it is in the scene.
@@ -56,7 +54,6 @@ namespace PoRumble.Views
         private MatchFlowModel _flow;
         private MatchFlowSystem _flowSystem;
         private RosterModel _roster;
-        private RosterSystem _rosterSystem;
         private RatingModel _ratings;
         private PredictionModel _predictions;
         private PredictionSystem _predictionSystem;
@@ -64,26 +61,16 @@ namespace PoRumble.Views
         private BoxerSpawnPoints _spawnPoints;
 
         private VisualElement _screen;
-        private Button _modePick;
-        private Button _modeCard;
         private Label _bank;
         private Label _hint;
 
         private bool _visible;
-
-        /// <summary>
-        /// Whether the card was being edited, so the commit fires on the edge out of CARD
-        /// rather than on every false the subscription pushes - including the one it pushes the
-        /// moment it is made.
-        /// </summary>
-        private bool _wasEditing;
 
         [Inject]
         public void Construct(
             MatchFlowModel flow,
             MatchFlowSystem flowSystem,
             RosterModel roster,
-            RosterSystem rosterSystem,
             RatingModel ratings,
             PredictionModel predictions,
             PredictionSystem predictionSystem,
@@ -93,7 +80,6 @@ namespace PoRumble.Views
             _flow = flow;
             _flowSystem = flowSystem;
             _roster = roster;
-            _rosterSystem = rosterSystem;
             _ratings = ratings;
             _predictions = predictions;
             _predictionSystem = predictionSystem;
@@ -131,8 +117,6 @@ namespace PoRumble.Views
             root.pickingMode = PickingMode.Ignore;
 
             _screen = root.Q<VisualElement>("screen");
-            _modePick = root.Q<Button>("mode-pick");
-            _modeCard = root.Q<Button>("mode-card");
             _bank = root.Q<Label>("bank");
             _hint = root.Q<Label>("hint");
 
@@ -140,23 +124,12 @@ namespace PoRumble.Views
 
             if (fight != null)
             {
-                fight.clicked += OnFightClicked;
-            }
-
-            if (_modePick != null)
-            {
-                _modePick.clicked += () => SetEditing(false);
-            }
-
-            if (_modeCard != null)
-            {
-                _modeCard.clicked += () => SetEditing(true);
+                fight.clicked += () => _flowSystem.TryStartFight();
             }
 
             BuildTiles(root.Q<VisualElement>("grid"));
 
             _flow.Phase.Subscribe(OnPhaseChanged).AddTo(_disposables);
-            _roster.IsOpen.Subscribe(OnEditingChanged).AddTo(_disposables);
             _roster.Revision.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
             _ratings.Revision.Subscribe(_ => RefreshStandings()).AddTo(_disposables);
             _predictions.Pick.Subscribe(_ => RefreshTiles()).AddTo(_disposables);
@@ -165,31 +138,8 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// Commits a card that is mid-edit before asking for the bell, so the fight that starts
-        /// is the card on screen rather than the one dealt before the edit began.
-        /// </summary>
-        private void OnFightClicked()
-        {
-            if (_roster.IsOpen.Value)
-            {
-                _rosterSystem.Close();
-            }
-
-            _flowSystem.TryStartFight();
-        }
-
-        private void SetEditing(bool editing)
-        {
-            if (_roster.IsOpen.Value != editing)
-            {
-                _rosterSystem.Toggle();
-            }
-        }
-
-        /// <summary>
         /// Clones one tile per selectable contestant and fills in what comes from data. Built
-        /// once for the whole card: entering or dropping a fighter, or flipping the mode, only
-        /// changes classes, so nothing rebuilds under a tap.
+        /// once for the whole card: a pick only changes classes, so nothing rebuilds under a tap.
         /// </summary>
         private void BuildTiles(VisualElement grid)
         {
@@ -259,35 +209,16 @@ namespace PoRumble.Views
             }
         }
 
-        /// <summary>
-        /// PICK backs the fighter; CARD puts them on or off the card. A refusal in CARD mode is
-        /// the card already being down to the two fighters a match needs, which the hint says.
-        /// </summary>
+        /// <summary>Backs the fighter, or withdraws the bet if they were already backed.</summary>
         private void OnTileClicked(FighterProfile profile)
         {
-            if (_roster.IsOpen.Value)
-            {
-                _rosterSystem.ToggleEntrant(profile);
-                RefreshTiles();
-                return;
-            }
-
             _predictionSystem.TogglePick(profile);
         }
 
-        /// <summary>
-        /// Shows the screen on the title phase and nowhere else, and commits a card left
-        /// mid-edit when the phase moves on - Enter on a keyboard can start the fight without
-        /// passing through the FIGHT button.
-        /// </summary>
+        /// <summary>Shows the screen on the title phase and nowhere else.</summary>
         private void OnPhaseChanged(MatchFlowPhase phase)
         {
             bool title = phase == MatchFlowPhase.Title;
-
-            if (!title && _roster.IsOpen.Value)
-            {
-                _rosterSystem.Close();
-            }
 
             _visible = title;
 
@@ -309,49 +240,21 @@ namespace PoRumble.Views
             }
         }
 
-        private void OnEditingChanged(bool editing)
-        {
-            if (_wasEditing && !editing)
-            {
-                // Leaving CARD is what commits the card. No agent is destroyed and nothing is
-                // respawned: the ring's existing seats are reconfigured.
-                _spawnPoints.SeatRoster();
-            }
-
-            _wasEditing = editing;
-
-            if (_modePick != null)
-            {
-                _modePick.EnableInClassList("menu__mode--on", !editing);
-            }
-
-            if (_modeCard != null)
-            {
-                _modeCard.EnableInClassList("menu__mode--on", editing);
-            }
-
-            RefreshTiles();
-        }
-
         private void RefreshTiles()
         {
             IReadOnlyList<FighterProfile> available = _roster.Available;
-            bool editing = _roster.IsOpen.Value;
             FighterProfile pick = _predictions.Pick.Value;
 
             for (int index = 0; index < _tiles.Count && index < available.Count; index++)
             {
                 FighterProfile profile = available[index];
                 VisualElement tile = _tiles[index];
-                bool entrant = _roster.IsEntrant(profile);
 
-                tile.EnableInClassList("roster-tile--in", editing && entrant);
-                tile.EnableInClassList("roster-tile--off", editing && !entrant);
-                tile.EnableInClassList("roster-tile--hidden", !editing && !entrant);
-                tile.EnableInClassList("roster-tile--pick", !editing && profile == pick);
+                tile.EnableInClassList("roster-tile--pick", profile == pick);
 
-                // A short card deals some contestants two corners. Said on the tile, before the
-                // bell, rather than discovered as two rows with the same name on the board.
+                // A card shorter than the ring deals some contestants two corners. Said on the
+                // tile, before the bell, rather than discovered as two rows with the same name on
+                // the board. The shipped ring seats the whole card once, so this stays hidden.
                 Label seats = index < _seats.Count ? _seats[index] : null;
 
                 if (seats != null)
@@ -466,12 +369,8 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// The line above FIGHT: what a tap on a tile does right now, how many are on the card,
-        /// and the keys where there is a keyboard to press them.
-        ///
-        /// The count matters because the card seats the ring cyclically: three contestants in a
-        /// ten-boxer ring is legal and means several of them fight more than once, which is
-        /// worth knowing before the bell rather than discovering from the field board.
+        /// The line above FIGHT: what a tap on a tile does, what the current bet pays, and the key
+        /// where there is a keyboard to press it.
         /// </summary>
         private void RefreshHint()
         {
@@ -482,24 +381,18 @@ namespace PoRumble.Views
 
             _builder.Clear();
 
-            int entrants = _roster.Entrants.Count;
-
             FighterProfile pick = _predictions.Pick.Value;
 
-            if (_roster.IsOpen.Value)
-            {
-                _builder.Append("TAP TO ADD OR DROP   ").Append(entrants).Append(" ON THE CARD, ")
-                        .Append(_spawnPoints.BoxerCount).Append(" CORNERS");
-            }
-            else if (pick != null)
+            if (pick != null)
             {
                 _builder.Append("YOUR ").Append(PredictionSystem.STAKE).Append(" IS ON ")
                         .Append(pick.DisplayName).Append("   WINS ").Append(PayoutFor(pick))
-                        .Append(" IF THEY WIN");
+                        .Append(" IF THEY WIN - THE CAMERA FOLLOWS THEM");
             }
-            else if (entrants > 0)
+            else if (_roster.Entrants.Count > 0)
             {
-                _builder.Append("TAP A FIGHTER TO BET ").Append(PredictionSystem.STAKE).Append(" ON THEM");
+                _builder.Append("TAP A FIGHTER TO BET ").Append(PredictionSystem.STAKE)
+                        .Append(" ON THEM AND FOLLOW THEM");
             }
             else
             {
@@ -511,7 +404,7 @@ namespace PoRumble.Views
             // key events and the Input System builds a Keyboard to carry them.
             if (InputPresence.HasUsableKeyboard())
             {
-                _builder.Append("\nENTER TO FIGHT      TAB SWITCHES PICK / CARD");
+                _builder.Append("\nENTER TO FIGHT");
             }
 
             _hint.text = _builder.ToString();

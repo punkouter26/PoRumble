@@ -20,7 +20,7 @@ namespace PoRumble.Views
     /// the chrome bar, and it is the only part of the HUD that stays over the ring.
     ///
     /// The results card is the whole results screen: winner, what it did to their rating and to
-    /// the viewer's stake, and REMATCH / NEW CARD. It replaced a banner, a tap-anywhere prompt
+    /// the viewer's stake, and REMATCH / NEW PICK. It replaced a banner, a tap-anywhere prompt
     /// and a floating fight-card button - and the tap-anywhere half of that could not survive
     /// buttons on the same screen, because it fired on the press and changed phase before the
     /// button under the finger ever saw its release.
@@ -88,7 +88,6 @@ namespace PoRumble.Views
         private MatchFlowModel _flow;
         private MatchFlowSystem _flowSystem;
         private RosterModel _roster;
-        private RosterSystem _rosterSystem;
         private RatingModel _ratings;
         private WinOddsModel _odds;
         private PredictionModel _predictions;
@@ -119,7 +118,6 @@ namespace PoRumble.Views
             MatchFlowModel flow,
             MatchFlowSystem flowSystem,
             RosterModel roster,
-            RosterSystem rosterSystem,
             RatingModel ratings,
             WinOddsModel odds,
             PredictionModel predictions,
@@ -137,7 +135,6 @@ namespace PoRumble.Views
             _flow = flow;
             _flowSystem = flowSystem;
             _roster = roster;
-            _rosterSystem = rosterSystem;
             _ratings = ratings;
             _odds = odds;
             _predictions = predictions;
@@ -220,14 +217,14 @@ namespace PoRumble.Views
         }
 
         /// <summary>
-        /// REMATCH runs the same card again straight away; NEW CARD goes back to the title
-        /// screen with the card open. Both are asked of the flow system, which refuses either
+        /// REMATCH runs the same card again straight away; NEW PICK goes back to the title
+        /// screen to back someone else. Both are asked of the flow system, which refuses either
         /// outside the results phase - so a stale click cannot restart a live fight.
         /// </summary>
         private void BindResultButtons(VisualElement root)
         {
             Button rematch = root.Q<Button>("rematch");
-            Button newCard = root.Q<Button>("new-card");
+            Button newPick = root.Q<Button>("new-pick");
 
             if (rematch != null)
             {
@@ -240,15 +237,9 @@ namespace PoRumble.Views
                 };
             }
 
-            if (newCard != null)
+            if (newPick != null)
             {
-                newCard.clicked += () =>
-                {
-                    if (_flowSystem.TryRestart() && !_roster.IsOpen.Value)
-                    {
-                        _rosterSystem.Toggle();
-                    }
-                };
+                newPick.clicked += () => _flowSystem.TryRestart();
             }
         }
 

@@ -18,12 +18,18 @@ Everything else follows from that, and should be checked against it before it is
 | Shoulder width (drawn torso) | 1.40 | 0.50 m |
 | Body separation radius (`_bodyRadius`) | 0.98 | 0.35 m |
 | Reach, centre to glove tip | 1.80 | 0.64 m |
-| Ring inside the ropes (`_arenaHalfExtent` 8.5) | 17.0 | 6.07 m — **19.9 ft** |
+| Ring inside the ropes (`_arenaHalfExtent` 12) | 24.0 | 8.57 m — **28.1 ft** |
 
 A standard professional ring is 20 ft inside the ropes, which is where the 8.5 half extent
 comes from. It was **20** for a long time, making the ring 40 units — 14.3 m, or **47 feet**
 across. That is not a boxing ring, it is most of a tennis court, and it is the reason ten
 fighters read as specks who spend the first half of every match walking toward each other.
+
+It came down to 8.5 for ten fighters and went back up to **12** when the ring went to twenty
+seats (nineteen now). Twelve is not a real ring size; it is the same floor per fighter as ten in the 20 ft ring
+(about 29 square units each), which is what the pacing was tuned against. The training scenes
+still seat ten at 8.5 - the policy's positional observation is normalised by the half extent,
+so the bigger ring reads the same to it, but nineteen in one ring is outside what it trained on.
 
 Rescaling the ring means moving the drawn ring **and** `BoxerSpawnPoints._arenaHalfExtent`
 together. The walls have colliders but do not contain anyone: positions are model-driven and
@@ -31,12 +37,42 @@ together. The walls have colliders but do not contain anyone: positions are mode
 disagrees with the half extent produces fighters who stop short of the ropes or walk through
 them, with nothing logged either way.
 
+The drawn ring was moved out by the rule `RingShrinkView` already uses: walls, posts,
+turnbuckles and stools keep their authored overhang past the rope line rather than scaling
+with it. The game floor is `FloorMat_Game`, a copy with the canvas tiling scaled by 12/8.5,
+because `FloorMat` is shared with the training scenes and their floor did not grow.
+
+## Nineteen Seats
+
+`SampleScene` seats nineteen - one per contestant on the card - as `Ring/Boxers/Boxer_00..18`,
+listed in `BoxerSpawnPoints._boxers`, whose length is the seat count. It was twenty for a day,
+which put one contestant in the ring twice. Adding a seat is three things, and two of them fail silently:
+
+- **A `BoxerBody{id}` layer.** Seats 0-18 sit on layers 8-26, each ignoring itself in the
+  Physics2D matrix; `IsolatePerception` looks the layer up by name and, if it is missing, only
+  warns - after which that boxer's rays see its own face. `BoxerBody19` (27) is defined and
+  unused; 28-31 are free.
+- **Its own ray mask.** Each instance's `RayPerceptionSensorComponent2D.m_RayLayerMask` is an
+  override with that seat's own layer cleared, and the runtime only subtracts the own layer from
+  whatever was authored. Duplicate `Boxer_09` into `Boxer_10` and the new boxer is blind to
+  seat 9. The clones were made from `Boxer_00`'s overrides with layer, mask, name and the
+  shadow caster's own-collider reference rewritten per seat.
+- **A spawn that fits.** Twenty on one circle that fits inside the ropes get under 1.5 body
+  widths of arc each, and four openings in five put two fighters inside each other. Below
+  `SpawnSystem.SINGLE_CIRCLE_MIN_WIDTHS` (1.75) the seats split: even seats on the spawn circle,
+  odd seats on an inner one at 0.6 of the radius offset half a slot, *each circle spaced evenly on
+  its own*, with half the radial jitter; the angular jitter is capped at a third of a slot.
+  Spacing each circle on its own is what makes an odd count work: alternating round one circle
+  put seat 18 and seat 0 side by side on the outside with nobody between them. Ten seats have just over two widths, so every training scene opens exactly as it did -
+  same draws, same order. `_spawnRadius` 9.3 is the most that keeps the outer jitter off the
+  ropes. `AFullRingStartsClearOfEachOther` pins it at nineteen and twenty over 500 openings.
+
 ## Sudden Death
 
 The game has no bell: a ten-way runs until one fighter is left, and measured on this build that
 took minutes, with long plateaus where the last few blocked each other. So after
 `SuddenDeathMath.START_SECONDS` (60) of fighting the **ropes close in**, eased, over
-`CLOSE_SECONDS` (60) to `MIN_SCALE` (0.3 - a 5-unit square at the shipped 8.5 half extent). The
+`CLOSE_SECONDS` (60) to `MIN_SCALE` (0.3 - a 7.2-unit square at the shipped 12 half extent). The
 fight still has to be won with punches; there is just less and less room not to throw them.
 
 - **Then a bell, because the ropes alone do not guarantee an ending.** Measured against the
@@ -69,7 +105,7 @@ What actually carries a shape, and why the obvious additions are not there:
 | Torso | Kinematic | Circle r 0.64 |
 | Glove L/R | Dynamic | Circle r 0.125 |
 | FaceProbe | Kinematic | Circle r 0.80 — **trigger** |
-| Head | — | none |
+| Head | — | none (drawn 1.2 across and turned 180° - see RENDERING.md) |
 | Upper arm L/R | Dynamic | **none** |
 | Forearm L/R | Dynamic | **none** |
 
@@ -90,10 +126,10 @@ Two further traps, both measured rather than assumed:
 - **It is not a layer problem, so do not go looking there.** All of a fighter's colliders share
   one `BoxerBody{id}` layer and that layer **ignores itself**, so nothing on a boxer ever
   collides with anything else on the same boxer; every `HingeJoint2D` also has
-  `enableCollision` off. All 45 boxer-vs-boxer layer pairs *do* collide. Self-collision has
+  `enableCollision` off. All 190 boxer-vs-boxer layer pairs *do* collide. Self-collision has
   never been the cause of anything here.
 - **`FaceProbe` must stay a trigger.** It is the hit and perception volume and is far larger
-  than the drawn head — 0.80 against 0.30. Make it solid and it stops being a sensor and starts
+  than the drawn head was when it was sized — 0.80 against 0.30. Make it solid and it stops being a sensor and starts
   shoving fighters around at nearly a metre of reach.
 - **Do not separate bodies on glove contact.** The obvious reading of "body parts should
   collide" is to push two boxers apart whenever a glove enters the other's body circle. That
@@ -176,19 +212,22 @@ writing model positions into it. It is not a collider change.
 
 ## The Fight Card
 
-Eight selectable contestants live in `Assets/Config/Fighters/` as `FighterProfile` assets:
+Nineteen selectable contestants live in `Assets/Config/Fighters/` as `FighterProfile` assets:
 `HEURISTIC` (the scripted sparring brain), `STANDARD RL` (`PoRumbleBoxer.onnx` driven straight
-through) and six named fighters wearing the photographs in `Assets/Art/Sprites/Faces/`.
-The card is on the title screen: switch to **CARD** (or press **Tab**) and a tap on a tile adds
-or drops that fighter; switch back to **PICK** and a tap backs them. Leaving CARD, or pressing
-FIGHT, deals the card round the ring.
+through) and seventeen named fighters wearing the photographs in `Assets/Art/Sprites/Faces/`.
+**The card is fixed: one of each, one corner each.** Every contestant is an entrant and the ring
+seats exactly nineteen, so the deal gives everybody a single seat. The title screen's tiles are
+for backing a fighter: tap one to bet on them, **and the camera follows them from the bell** -
+`DirectorSystem.PinPick` pins the first seat holding the pick when the match goes live, the same
+pin a tap on a board row sets, and it lets go when they go down. A tap on another row mid-fight
+still moves the camera. There used to be a PICK / CARD switch (and Tab, and a NEW CARD button on
+the results) for putting fighters on and off the card; it went with `RosterSystem` and
+`RosterModel.IsOpen`. The results screen's second button is NEW PICK, which returns to the title.
 
-- **The ring always seats ten and the card is usually shorter, so entrants are dealt round the
-  corners cyclically.** With all eight selected the first two fight twice. Changing the card
-  therefore never destroys or respawns an agent — `BoxerSpawnPoints.SeatRoster` reconfigures
-  the ten boxers that already exist, swapping face, colour, controller, style and attributes.
-  A variable ring size would mean rebuilding `MatchModel`'s roster, every agent's ML-Agents
-  lifecycle and the HUD's health bars; the cyclic deal buys the same freedom for none of that.
+- **The deal is still cyclic underneath.** `RosterModel.AssignSeats` deals the entrants round the
+  seats, so a card shorter than the ring - the training scenes, or a future contestant removed -
+  seats some twice rather than leaving corners empty, and re-seating reconfigures the boxers that
+  already exist rather than respawning agents.
 - **A contestant in two corners is numbered the second time.** `RosterModel.SeatLabel` gives
   "HEURISTIC" for the first seat and "HEURISTIC 2" for the second, built once per deal. Every view
   that prints a *seat* uses it - the strip, the telemetry board, the second-fight caption, the
@@ -200,8 +239,8 @@ FIGHT, deals the card round the ring.
 - **Assigning any `_fighterProfiles` replaces the `_rosterTiers` path outright.** The training
   scenes deliberately assign none, which is what keeps a run learning against the unmodified
   policy and the checkpoints comparable across the curriculum.
-- **Six fighters, one network.** `PoRumbleBoxer.onnx` is a single set of weights, so left alone
-  ten policy boxers fight identically. `StyleModulator` bends the actions the shared network
+- **Seventeen fighters, one network.** `PoRumbleBoxer.onnx` is a single set of weights, so left
+  alone nineteen policy boxers fight identically. `StyleModulator` bends the actions the shared network
   produced on the way to the boxer — forward pressure, circling, a gate on punch volume,
   opportunist extra punches — and reaches the two mechanics that were never ML actions
   (`SetCharge`, `Dodge`). Training six separate policies is the honest answer and an enormous

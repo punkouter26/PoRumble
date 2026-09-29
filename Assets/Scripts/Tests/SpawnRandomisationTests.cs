@@ -75,13 +75,14 @@ namespace PoRumble.Tests
         }
 
         /// <summary>
-        /// The game seats twenty in a 12 half-extent ring. One circle that fits inside the ropes
-        /// has too little arc for twenty bodies plus jitter, so the seats stagger onto two.
+        /// The game seats nineteen in a 12 half-extent ring. One circle that fits inside the ropes
+        /// has too little arc for that many bodies plus jitter, so the seats stagger onto two -
+        /// and an odd count is the case that used to put two outer fighters side by side.
         /// </summary>
-        [Test]
-        public void TwentyFightersStartClearOfEachOther()
+        [TestCase(19)]
+        [TestCase(20)]
+        public void AFullRingStartsClearOfEachOther(int fullRing)
         {
-            const int fullRing = 20;
             const float gameSpawnRadius = 9.3f;
             MatchModel crowded = new() { ArenaHalfExtent = new Vector2(12f, 12f) };
             SpawnSystem spawner = new(crowded, _config);
