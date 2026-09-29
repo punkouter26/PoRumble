@@ -1,27 +1,5 @@
 {
   "dependencies": {
-    "com.annulusgames.lit-motion": {
-      "version": "2.0.2",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.burst": "1.6.0",
-        "com.unity.collections": "1.5.1",
-        "com.unity.mathematics": "1.0.1"
-      },
-      "url": "https://package.openupm.com"
-    },
-    "com.besty.unity-skills": {
-      "version": "https://github.com/Besty0728/Unity-Skills.git?path=/SkillsForUnity#v2.7.0",
-      "depth": 0,
-      "source": "git",
-      "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.0.2",
-        "com.unity.timeline": "1.7.7",
-        "com.unity.ugui": "1.0.0"
-      },
-      "hash": "c145265f5a2f3a876e171e3940d5072e55d9c604"
-    },
     "com.coplaydev.unity-mcp": {
       "version": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#v10.1.2",
       "depth": 0,
@@ -190,7 +168,7 @@
     },
     "com.unity.mathematics": {
       "version": "1.4.0",
-      "depth": 1,
+      "depth": 2,
       "source": "builtin",
       "dependencies": {}
     },
@@ -221,7 +199,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.pipeline": {
-      "version": "0.5.0-exp.1",
+      "version": "0.8.0-exp.1",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -288,49 +266,6 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
-    "com.unity.services.authentication": {
-      "version": "3.7.4",
-      "depth": 1,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.ugui": "1.0.0",
-        "com.unity.services.core": "1.18.0",
-        "com.unity.nuget.newtonsoft-json": "3.2.2",
-        "com.unity.modules.unitywebrequest": "1.0.0"
-      },
-      "url": "https://packages.unity.com"
-    },
-    "com.unity.services.cloudsave": {
-      "version": "3.4.1",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.services.core": "1.12.5",
-        "com.unity.services.authentication": "3.3.1"
-      },
-      "url": "https://packages.unity.com"
-    },
-    "com.unity.services.core": {
-      "version": "1.18.0",
-      "depth": 1,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.modules.androidjni": "1.0.0",
-        "com.unity.nuget.newtonsoft-json": "3.2.2",
-        "com.unity.modules.unitywebrequest": "1.0.0"
-      },
-      "url": "https://packages.unity.com"
-    },
-    "com.unity.services.leaderboards": {
-      "version": "2.3.4",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.services.core": "1.15.1",
-        "com.unity.services.authentication": "3.3.3"
-      },
-      "url": "https://packages.unity.com"
-    },
     "com.unity.settings-manager": {
       "version": "2.1.1",
       "depth": 2,
@@ -380,7 +315,7 @@
     },
     "com.unity.timeline": {
       "version": "6.6.0",
-      "depth": 0,
+      "depth": 1,
       "source": "builtin",
       "dependencies": {
         "com.unity.modules.director": "1.0.0",
@@ -413,14 +348,6 @@
       "depth": 0,
       "source": "builtin",
       "dependencies": {}
-    },
-    "com.unity.modules.adaptiveperformance": {
-      "version": "1.0.0",
-      "depth": 0,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.modules.subsystems": "1.0.0"
-      }
     },
     "com.unity.modules.androidjni": {
       "version": "1.0.0",
@@ -515,14 +442,6 @@
         "com.unity.modules.imageconversion": "1.0.0"
       }
     },
-    "com.unity.modules.subsystems": {
-      "version": "1.0.0",
-      "depth": 1,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.modules.jsonserialize": "1.0.0"
-      }
-    },
     "com.unity.modules.tilemap": {
       "version": "1.0.0",
       "depth": 0,
@@ -594,26 +513,6 @@
         "com.unity.modules.audio": "1.0.0",
         "com.unity.modules.assetbundle": "1.0.0",
         "com.unity.modules.imageconversion": "1.0.0"
-      }
-    },
-    "com.unity.modules.vectorgraphics": {
-      "version": "1.0.0",
-      "depth": 0,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.modules.uielements": "1.0.0",
-        "com.unity.modules.imageconversion": "1.0.0",
-        "com.unity.modules.imgui": "1.0.0"
-      }
-    },
-    "com.unity.modules.xr": {
-      "version": "1.0.0",
-      "depth": 0,
-      "source": "builtin",
-      "dependencies": {
-        "com.unity.modules.physics": "1.0.0",
-        "com.unity.modules.jsonserialize": "1.0.0",
-        "com.unity.modules.subsystems": "1.0.0"
       }
     }
   }

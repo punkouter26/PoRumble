@@ -1,14 +1,12 @@
 {
   "dependencies": {
-    "com.besty.unity-skills": "https://github.com/Besty0728/Unity-Skills.git?path=/SkillsForUnity#v2.7.0",
     "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#v10.1.2",
     "com.cysharp.messagepipe": "1.8.2",
     "com.cysharp.messagepipe.vcontainer": "1.8.2",
     "com.cysharp.unitask": "2.5.11",
-    "com.annulusgames.lit-motion": "2.0.2",
-    "com.unity.ai.inference": "2.6.1",
     "com.unity.2d.sprite": "1.0.0",
     "com.unity.2d.tooling": "4.0.0",
+    "com.unity.ai.inference": "2.6.1",
     "com.unity.burst": "2.0.0",
     "com.unity.cinemachine": "6.6.0",
     "com.unity.collections": "6.6.0",
@@ -17,17 +15,13 @@
     "com.unity.inputsystem": "1.20.0",
     "com.unity.ml-agents": "4.1.0",
     "com.unity.nuget.newtonsoft-json": "3.2.2",
-    "com.unity.pipeline": "0.5.0-exp.1",
+    "com.unity.pipeline": "0.8.0-exp.1",
     "com.unity.recorder": "5.1.7",
     "com.unity.render-pipelines.universal": "17.6.0",
-    "com.unity.services.cloudsave": "3.4.1",
-    "com.unity.services.leaderboards": "2.3.4",
     "com.unity.test-framework": "1.8.0",
-    "com.unity.timeline": "6.6.0",
     "com.unity.ugui": "2.6.0",
     "jp.hadashikick.vcontainer": "1.19.0",
     "com.unity.modules.accessibility": "1.0.0",
-    "com.unity.modules.adaptiveperformance": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
     "com.unity.modules.assetbundle": "1.0.0",
@@ -48,9 +42,7 @@
     "com.unity.modules.unitywebrequestassetbundle": "1.0.0",
     "com.unity.modules.unitywebrequestaudio": "1.0.0",
     "com.unity.modules.unitywebrequesttexture": "1.0.0",
-    "com.unity.modules.unitywebrequestwww": "1.0.0",
-    "com.unity.modules.vectorgraphics": "1.0.0",
-    "com.unity.modules.xr": "1.0.0"
+    "com.unity.modules.unitywebrequestwww": "1.0.0"
   },
   "scopedRegistries": [
     {
@@ -58,12 +50,8 @@
       "url": "https://package.openupm.com",
       "scopes": [
         "jp.hadashikick.vcontainer",
-        "com.cysharp",
-        "com.annulusgames"
+        "com.cysharp"
       ]
     }
-  ],
-  "testables": [
-    "com.besty.unity-skills"
   ]
 }
