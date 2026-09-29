@@ -17,25 +17,35 @@
   the allocator - what the performance rules set budgets for. COMBAT is the simulation: how
   often the policy is being asked for a decision, how much is being thrown, what the director
   is looking at. Neither belongs in the other's column, and stacking both would make a sheet
-  tall enough to cover the fight it is reporting on.
+  tall enough to cover the fight it is reporting on. MATCH is the third: the whole match a
+  second at a time from PerformanceLogView, with thermal state, for the slowdown a phone only
+  shows as it heats.
 
   The graph element is empty by design: its contents are painted through
   generateVisualContent with Painter2D, so there is nothing here for UXML to declare beyond
   the box it draws into and the class that gives that box its size and ground.
 
-  The tabs are Buttons and are deliberately NOT picking-mode="Ignore" - they are the only
-  thing on this sheet anyone clicks. Everything else is, because the overlay sits over a live
-  ring and must never eat a click meant for the fight card below it.
+  DEBUG opens the sheet collapsed to the verdict alone, docked above the bottom chrome row: one
+  sentence saying whether the build is healthy, which is the whole question at arm's length on a
+  phone. Tapping the verdict opens the tabs, the graph and the figures; tapping it again folds
+  them away. A developer who wants the numbers is one tap from them, and nobody else has a
+  full-width opaque sheet parked over the ring.
+
+  The tabs and the verdict are deliberately NOT picking-mode="Ignore" - they are the only
+  things on this sheet anyone clicks. Everything else is, because the overlay sits over a live
+  ring and must never eat a click meant for a panel below it.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <ui:VisualElement name="panel" class="diag">
+    <ui:VisualElement name="safe-outline" class="diag__safe diag__safe--hidden" picking-mode="Ignore" />
+    <ui:VisualElement name="panel" class="diag diag--collapsed">
         <ui:VisualElement name="tabs" class="diag__tabs">
-            <ui:Label name="title" text="DIAGNOSTICS   F3" class="diag__title" picking-mode="Ignore" />
+            <ui:Label name="title" text="DEBUG   F3" class="diag__title" picking-mode="Ignore" />
             <ui:Button name="tab-frame" text="FRAME" class="diag__tab diag__tab--on" />
             <ui:Button name="tab-combat" text="COMBAT" class="diag__tab" />
+            <ui:Button name="tab-match" text="MATCH" class="diag__tab" />
         </ui:VisualElement>
 
-        <ui:Label name="verdict" class="diag__verdict" picking-mode="Ignore" />
+        <ui:Label name="verdict" class="diag__verdict" />
         <ui:VisualElement name="graph" class="diag__graph" picking-mode="Ignore" />
         <ui:Label name="readout" class="diag__readout" picking-mode="Ignore" />
     </ui:VisualElement>

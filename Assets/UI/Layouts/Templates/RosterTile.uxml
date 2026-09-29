@@ -1,19 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  One contestant's tile on the fight card.
+  One contestant's tile on the title screen.
+
+  Compact on purpose: four to a row on the 1080 portrait reference, so a ten-fighter card is
+  three rows and the whole title screen fits between the chrome bars with room to spare. The
+  old tile was 300px wide with a 216px face and a two-line style tagline, three to a row - four
+  rows of those ran off the bottom of a phone.
 
   The portrait carries no image here. A fighter's face is a sprite on a FighterProfile asset,
   and a fighter with no face falls back to a flat plate in their trunk colour - both are set
   from C# because both come from data the layout cannot see.
 
-  Only the tile itself picks. The labels inside are ignored so a click anywhere on the tile,
-  including squarely on the name, still toggles the contestant.
+  The generation line only appears for a checkpoint fighter; for everyone else the view hides
+  it rather than leaving an empty line. The badges are what a bet on them returns, the rating,
+  and - only when a short card deals them more than one corner - how many corners they take.
+
+  Only the tile itself picks. The children are ignored so a tap anywhere on the tile, including
+  squarely on the name, lands on the tile.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="tile" class="roster-tile">
         <ui:VisualElement name="portrait" class="roster-tile__portrait" picking-mode="Ignore" />
-        <ui:Label name="name" class="text text--md text--bold roster-tile__name" picking-mode="Ignore" />
-        <ui:Label name="tagline" class="text text--xs text--muted roster-tile__tagline" picking-mode="Ignore" />
-        <ui:Label name="standing" class="text text--xs roster-tile__standing" picking-mode="Ignore" />
+        <ui:Label name="name" class="text text--sm text--bold roster-tile__name" picking-mode="Ignore" />
+        <ui:Label name="generation" class="text text--xs text--muted roster-tile__generation" picking-mode="Ignore" />
+        <ui:VisualElement name="badges" class="roster-tile__badges" picking-mode="Ignore">
+            <ui:Label name="price" class="text text--xs text--bold badge roster-tile__price" picking-mode="Ignore" />
+            <ui:Label name="standing" class="text text--xs badge badge--muted roster-tile__standing" picking-mode="Ignore" />
+            <ui:Label name="seats" class="text text--xs text--bold badge roster-tile__seats roster-tile__seats--gone" picking-mode="Ignore" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

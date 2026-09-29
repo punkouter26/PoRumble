@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  One fighter's row in the match HUD: name, then a health track with a fill inside it.
+  One fighter on the field board: name, a health track, and their live chance of winning.
 
   Cloned once per boxer slot. Slots are permanent and the contestant sitting in one is not,
   so the name label is looked up by name and rewritten whenever the card is re-dealt rather
   than baked in here.
+
+  The same three elements serve both densities of the board. In the full list they sit in a
+  row; in the fight strip the row turns into a narrow column - name over bar over percentage -
+  purely from the stylesheet, so the view never rebuilds anything when the bell rings.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="row" class="match-hud__row" picking-mode="Ignore">
@@ -12,5 +16,6 @@
         <ui:VisualElement name="track" class="bar match-hud__bar" picking-mode="Ignore">
             <ui:VisualElement name="fill" class="bar__fill bar__fill--healthy" picking-mode="Ignore" />
         </ui:VisualElement>
+        <ui:Label name="odds" class="match-hud__odds" picking-mode="Ignore" />
     </ui:VisualElement>
 </ui:UXML>

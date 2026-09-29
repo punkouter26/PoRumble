@@ -145,5 +145,73 @@ namespace PoRumble.Tests
 
             Assert.That(roster.Revision.Value, Is.GreaterThan(before));
         }
+
+        private List<FighterProfile> MakeNamedCard(params string[] names)
+        {
+            List<FighterProfile> card = new();
+
+            for (int index = 0; index < names.Length; index++)
+            {
+                FighterProfile profile = ScriptableObject.CreateInstance<FighterProfile>();
+                JsonUtility.FromJsonOverwrite($"{{\"_id\":\"f{index}\",\"_displayName\":\"{names[index]}\"}}", profile);
+                _created.Add(profile);
+                card.Add(profile);
+            }
+
+            return card;
+        }
+
+        [Test]
+        public void AContestantInTwoCornersIsNumberedTheSecondTime()
+        {
+            RosterModel roster = new();
+            roster.SetAvailable(MakeNamedCard("RED", "GREEN", "ALAN"));
+            roster.AssignSeats(5);
+
+            Assert.That(roster.SeatLabel(0), Is.EqualTo("RED"));
+            Assert.That(roster.SeatLabel(1), Is.EqualTo("GREEN"));
+            Assert.That(roster.SeatLabel(2), Is.EqualTo("ALAN"));
+            Assert.That(roster.SeatLabel(3), Is.EqualTo("RED 2"));
+            Assert.That(roster.SeatLabel(4), Is.EqualTo("GREEN 2"));
+        }
+
+        [Test]
+        public void AFullCardNumbersNobody()
+        {
+            RosterModel roster = new();
+            roster.SetAvailable(MakeNamedCard("A", "B", "C"));
+            roster.AssignSeats(3);
+
+            Assert.That(roster.SeatLabel(0), Is.EqualTo("A"));
+            Assert.That(roster.SeatLabel(2), Is.EqualTo("C"));
+            Assert.That(roster.SeatLabel(3), Is.Null, "a seat past the ring has no label");
+        }
+
+        [Test]
+        public void SeatsForMatchesTheDeal()
+        {
+            RosterModel roster = new();
+            List<FighterProfile> card = MakeNamedCard("A", "B", "C", "D", "E", "F", "G", "H");
+            roster.SetAvailable(card);
+            roster.AssignSeats(10);
+
+            for (int index = 0; index < card.Count; index++)
+            {
+                int dealt = 0;
+
+                for (int seat = 0; seat < 10; seat++)
+                {
+                    if (roster.SeatOf(seat) == card[index])
+                    {
+                        dealt++;
+                    }
+                }
+
+                Assert.That(roster.SeatsFor(card[index], 10), Is.EqualTo(dealt), card[index].DisplayName);
+            }
+
+            Assert.That(roster.SeatsFor(card[0], 10), Is.EqualTo(2));
+            Assert.That(roster.SeatsFor(card[7], 10), Is.EqualTo(1));
+        }
     }
 }

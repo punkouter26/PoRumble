@@ -8,9 +8,9 @@ namespace PoRumble.Views
     /// <summary>
     /// Clears the HUD off the screen while the fight is actually happening.
     ///
-    /// Ten panels is the right amount of information for a menu, a results screen and a fight
-    /// card. It is the wrong amount for the thing they are all describing: with the survivor
-    /// column, the telemetry board, the standings and the commentary caption all up at once,
+    /// A full HUD is the right amount of information for a menu and a results screen. It is the
+    /// wrong amount for the thing it is describing: with the survivor column, the telemetry
+    /// board and the standings all up at once,
     /// the ring - which is the whole point - is watched through the gaps between them. The
     /// panels come back the instant the fight is decided, which is when there is something to
     /// read rather than something to watch.
@@ -25,8 +25,8 @@ namespace PoRumble.Views
     /// The diagnostics overlay is deliberately exempt. It is off by default and only ever up
     /// because somebody asked for it, so it is never part of the clutter this removes - and a
     /// frame-time readout that blanked itself during the only part of the run worth measuring
-    /// would be useless. The odds board and the second-fight feed are exempt too - see
-    /// <see cref="StaysUpDuringFight"/>.
+    /// would be useless. The field strip, the chrome rows and the player's own controls are
+    /// exempt too - see <see cref="StaysUpDuringFight"/>.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HudVisibilityView : MonoBehaviour
@@ -71,7 +71,7 @@ namespace PoRumble.Views
             // of times per match, and a cached array would go stale the moment anything in the
             // scene added or removed a document.
             UIDocument[] documents = FindObjectsByType<UIDocument>(
-                FindObjectsInactive.Include, FindObjectsSortMode.None);
+                FindObjectsInactive.Include);
 
             for (int documentIndex = 0; documentIndex < documents.Length; documentIndex++)
             {
@@ -101,17 +101,31 @@ namespace PoRumble.Views
         /// <summary>
         /// The documents this view never clears.
         ///
-        /// The diagnostics overlay for the reason above. The odds board and the second-fight
-        /// feed because they are the broadcast layer for the live fight itself: a win
-        /// probability exists to be watched moving, and a feed of the other fight has nothing
-        /// to show at any other time. Both are compact and sit clear of the centre of the
-        /// ring, which is what the clearing protects.
+        /// The diagnostics overlay for the reason above. The field board and the second-fight
+        /// feed because they are the broadcast layer for the live fight itself: the board turns
+        /// into a thin strip of health and win chance for the fight, and a feed of the other
+        /// fight has nothing to show at any other time.
+        ///
+        /// The chrome bar and the commentary caption because they sit in the chrome rows, off
+        /// the ring entirely, so clearing them buys the fight nothing. The chrome bar used to be
+        /// cleared with everything else, which took MENU - the only way out of a live fight on a
+        /// phone - off the screen for exactly the phase it exists for.
+        ///
+        /// The player's own panel and the touch controls because a human cannot fight without
+        /// them. Both used to be cleared too; nothing caught it only because the shipped build
+        /// seats no human.
         /// </summary>
         private static bool StaysUpDuringFight(UIDocument document)
         {
             return document.GetComponent<DiagnosticsHudView>() != null
-                   || document.GetComponent<WinOddsHudView>() != null
-                   || document.GetComponent<PictureInPictureView>() != null;
+                   || document.GetComponent<MatchHudView>() != null
+                   || document.GetComponent<PictureInPictureView>() != null
+                   || document.GetComponent<AppChromeView>() != null
+                   || document.GetComponent<CommentaryView>() != null
+                   || document.GetComponent<PlayerStatusHudView>() != null
+                   || document.GetComponent<TouchControlsView>() != null
+                   || document.GetComponent<EliminationFeedView>() != null
+                   || document.GetComponent<FocusTagView>() != null;
         }
 
         private void OnDestroy() => _disposables.Dispose();

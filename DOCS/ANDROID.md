@@ -71,8 +71,9 @@ installs, launches and dumps the Unity log in one step.
 - **The build ships as an all-AI exhibition.** `BoxerSpawnPoints._humanBoxerId` is -1, so
   every boxer is driven by a brain profile or the trained policy and no human UI is built at
   all: `PlayerStatusHudView` and `TouchControlsView` both check for a human boxer and construct
-  nothing without one. Match-level input still works - a tap anywhere restarts at the results
-  screen, a three-finger tap toggles the diagnostics overlay.
+  nothing without one. Match-level input is buttons: FIGHT on the title screen, REMATCH / NEW
+  CARD on the results card, MENU and DEBUG on the chrome bar. A three-finger tap still toggles
+  the diagnostics overlay. There is no tap-anywhere any more - see below.
 - **Touch controls exist in code but are not in the scene.** `TouchControlsView` renders a
   floating stick plus punch and haymaker buttons, and writes `TouchInputModel`, which
   `BoxerAgentView.Heuristic` reads in the same place it reads the keyboard - so a phone and a
@@ -86,27 +87,34 @@ installs, launches and dumps the Unity log in one step.
 - **`MatchHudView` picks its prompts from the devices present,** not from a platform define, so
   the editor still reads "PRESS" while a phone reads "TAP" - and a desktop that happens to have
   a touchscreen is not told to tap when it has a keyboard sitting right there.
-- **The fight card needs a button, because `Tab` does not exist on a phone.** For a long time
-  `RosterToggleRequested` read the Tab key and nothing else, which meant the entire
-  contestant-selection screen could not be opened in the shipping build - and could not have been
-  closed if it had been. The `#open-card` button in `RosterCard.uxml` is a sibling of the panel
-  so it survives the panel being hidden, and `RosterSelectionView` shows it only while
-  `MatchFlowModel.CanOpenCard` is true. A two-finger tap is the shortcut for anyone who finds it.
-  Both are gated between matches: re-seating the roster mid-fight would swap contestants into
-  chairs that are currently mid-punch.
+- **The fight card is on the title screen, behind a PICK / CARD switch, because `Tab` does not
+  exist on a phone.** For a long time the card was a modal opened only by Tab, so it could not
+  be reached in the shipping build at all; then it was a modal behind a button, and a full card
+  ran off the bottom of the screen. Now the contestants are one grid on the title screen and the
+  switch decides whether a tap backs a fighter or puts them on or off the card. The card can only
+  change on the title screen: re-seating the roster mid-fight would swap contestants into chairs
+  that are currently mid-punch.
+- **A touch is only ever a button press.** `MatchInputView` used to read a tap anywhere straight
+  off the `Touchscreen` device, on the press. That meant the tap on a pick chip or the FIGHT CARD
+  button also started the fight, and a tap on a results-screen button changed phase before the
+  button ever saw its release. It reads the keyboard only now.
+- **`HudLayoutTests` is the phone-screen check.** It lays the real layouts out at 1080x1920 and
+  1080x2400 and fails if any panel leaves the space between the chrome rows or overlaps another.
+  Run it after any change to a layout or to `porumble.uss`.
 - **The chrome bar is the only part of the HUD that is always up, and it owns two whole rows.**
-  `AppChromeView` draws the five fixed points - title top-left, frame rate top-centre, MENU
+  `AppChromeView` draws the five fixed points - title top-left, the bout (clock, field, ropes) top-centre, MENU
   top-right, DEBUG bottom-left, version bottom-right - and its document sorts at 30, above
   every other one in the scene. Two consequences are easy to trip over. Its root is set to
   `PickingMode.Ignore` in code, because a full-screen root sorted above everything would
-  otherwise swallow the tap-anywhere restart for the entire match. And the rows it occupies are
-  reserved in `porumble.uss` by `--band-top` and `--band-bottom-card` rather than by each panel
-  dodging it: the top panels moved off `--band-edge` onto `--band-top`, and `--band-top-max`
-  came down from 36% to 31% to pay for the 96px they lost, or their bottom edge lands in the
-  standings at `--band-second-row`.
+  otherwise swallow every tap meant for the title screen and the results card. And the rows it
+  occupies are reserved in `porumble.uss` by `--band-top` and `--band-bottom-card` rather than by
+  each panel dodging it. The rows are 64px now (they were 96), and the bottom one also carries
+  the commentary caption between DEBUG and the version. It stays up through the live fight:
+  `HudVisibilityView` used to clear it with everything else, which took MENU off the screen for
+  exactly the phase the next point is about.
 - **MENU is the only way out of a live fight on a phone.** `TryRestart` is deliberately refused
   outside the results screen, so before this button existed a ten-way brawl on a device ran
-  until nine fighters were down - there is no Escape key and a tap anywhere is ignored while
+  until nine fighters were down - there is no Escape key and a tap anywhere was ignored while
   the fight is live. `MatchFlowSystem.TryReturnToTitle` is the deliberate exit, and it re-racks
   and re-arms exactly as a restart does, because a fight abandoned halfway leaves eliminated
   boxers and a decided `MatchModel` behind. It does **not** bump `MatchNumber`: an abandoned

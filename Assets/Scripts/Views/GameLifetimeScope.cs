@@ -42,6 +42,12 @@ namespace PoRumble.Views
             builder.Register<WinOddsModel>(Lifetime.Singleton);
             builder.Register<PredictionModel>(Lifetime.Singleton);
             builder.Register<DamageMapModel>(Lifetime.Singleton);
+            builder.Register<SuddenDeathModel>(Lifetime.Singleton);
+
+            // A factory, not Register<T>: the model has a capacity constructor for its tests,
+            // and VContainer picks the constructor with the most parameters - it would try to
+            // resolve an int, fail, and take every optional view down with the build callback.
+            builder.Register(_ => new PerformanceTraceModel(), Lifetime.Singleton);
 
             // Registered through a factory rather than RegisterInstance, because this one is
             // allowed to be null - a training scene assigns no bank - and RegisterInstance
@@ -62,6 +68,7 @@ namespace PoRumble.Views
             builder.Register<WinOddsSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<PredictionSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<DamageMapSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<SuddenDeathSystem>(Lifetime.Singleton).AsSelf();
 
             // The league table on disk. A plain C# class rather than a component, so it is
             // registered as an instance; RatingSystem only ever sees the interface.
@@ -125,7 +132,6 @@ namespace PoRumble.Views
                 InjectOptional<RingAtmosphereView>(container);
                 InjectOptional<DiagnosticsHudView>(container);
                 InjectOptional<TouchControlsView>(container);
-                InjectOptional<RosterSelectionView>(container);
                 InjectOptional<StandingsHudView>(container);
                 InjectOptional<KnockoutMoodView>(container);
                 InjectOptional<FightStatsHudView>(container);
@@ -135,10 +141,16 @@ namespace PoRumble.Views
                 InjectOptional<CrowdAmbienceView>(container);
                 InjectOptional<AppChromeView>(container);
                 InjectOptional<HudVisibilityView>(container);
-                InjectOptional<WinOddsHudView>(container);
-                InjectOptional<PredictionPickerView>(container);
                 InjectOptional<DamageMapView>(container);
                 InjectOptional<PictureInPictureView>(container);
+                InjectOptional<CanvasStainView>(container);
+                InjectOptional<MusicView>(container);
+                InjectOptional<HapticsView>(container);
+                InjectOptional<PerformanceLogView>(container);
+                InjectOptional<EliminationFeedView>(container);
+                InjectOptional<FocusTagView>(container);
+                InjectOptional<FightIntroView>(container);
+                InjectOptional<RingShrinkView>(container);
             });
         }
 

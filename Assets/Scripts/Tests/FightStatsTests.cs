@@ -30,6 +30,7 @@ namespace PoRumble.Tests
             builder.RegisterMessageBroker<PunchEvadedMessage>(options);
             builder.RegisterMessageBroker<BoxerDodgedMessage>(options);
             builder.RegisterMessageBroker<HaymakerThrownMessage>(options);
+            builder.RegisterMessageBroker<BoxerEliminatedMessage>(options);
             _container = builder.Build();
 
             _match = new MatchModel();
@@ -47,7 +48,27 @@ namespace PoRumble.Tests
                 _container.Resolve<ISubscriber<PunchBlockedMessage>>(),
                 _container.Resolve<ISubscriber<PunchEvadedMessage>>(),
                 _container.Resolve<ISubscriber<BoxerDodgedMessage>>(),
-                _container.Resolve<ISubscriber<HaymakerThrownMessage>>());
+                _container.Resolve<ISubscriber<HaymakerThrownMessage>>(),
+                _container.Resolve<ISubscriber<BoxerEliminatedMessage>>());
+        }
+
+        [Test]
+        public void AKnockoutIsCreditedToTheFighterWhoLandedIt()
+        {
+            _container.Resolve<IPublisher<BoxerEliminatedMessage>>()
+                .Publish(new BoxerEliminatedMessage(1, 0));
+
+            Assert.That(_stats.For(0).Knockouts, Is.EqualTo(1));
+            Assert.That(_stats.For(1).Knockouts, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void AnEliminationWithNoFinisherCreditsNobody()
+        {
+            _container.Resolve<IPublisher<BoxerEliminatedMessage>>()
+                .Publish(new BoxerEliminatedMessage(1, -1));
+
+            Assert.That(_stats.For(0).Knockouts + _stats.For(1).Knockouts, Is.EqualTo(0));
         }
 
         [TearDown]

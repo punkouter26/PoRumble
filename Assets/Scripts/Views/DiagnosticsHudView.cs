@@ -40,8 +40,18 @@ namespace PoRumble.Views
         private enum DiagnosticsPage
         {
             Frame = 0,
-            Combat = 1
+            Combat = 1,
+
+            /// <summary>
+            /// The whole match, a sample a second, from PerformanceLogView. The frame page's
+            /// history is two seconds long, which catches a stutter and cannot show a device
+            /// slowing down as it heats - this one can.
+            /// </summary>
+            Match = 2
         }
+
+        /// <summary>Seconds at each end of the trace compared for drift.</summary>
+        private const int DRIFT_WINDOW = 30;
 
         [Tooltip("Start with the overlay visible. Off by default: it is a developer tool.")]
         [SerializeField] private bool _visibleOnStart;
@@ -89,12 +99,22 @@ namespace PoRumble.Views
 
         private VisualElement _panel;
         private Label _verdict;
+        private VisualElement _safeOutline;
         private Label _readout;
         private VisualElement _graph;
         private Button _frameTab;
         private Button _combatTab;
+        private Button _matchTab;
+
+        private PerformanceTraceModel _trace;
 
         private DiagnosticsPage _page = DiagnosticsPage.Frame;
+
+        /// <summary>
+        /// Whether the sheet shows its tabs, graph and figures, or only the verdict. Starts
+        /// folded: at arm's length the one line is the question, and the rest is one tap away.
+        /// </summary>
+        private bool _expanded;
 
         private ProfilerRecorder _srpBatcherDraws;
         private ProfilerRecorder _standardDraws;
@@ -153,8 +173,10 @@ namespace PoRumble.Views
             DirectorModel director,
             RosterModel roster,
             DiagnosticsModel diagnostics,
-            DiagnosticsSystem diagnosticsSystem)
+            DiagnosticsSystem diagnosticsSystem,
+            PerformanceTraceModel trace)
         {
+            _trace = trace;
             _match = match;
             _flow = flow;
             _stats = stats;
@@ -196,11 +218,11 @@ namespace PoRumble.Views
         private void Start()
         {
             // One scene-wide search each, at startup, for values that never change afterwards.
-            _light2DCount = FindObjectsByType<Light2D>(FindObjectsSortMode.None).Length;
-            _shadowCasterCount = FindObjectsByType<ShadowCaster2D>(FindObjectsSortMode.None).Length;
+            _light2DCount = FindObjectsByType<Light2D>().Length;
+            _shadowCasterCount = FindObjectsByType<ShadowCaster2D>().Length;
 
             // The combat voice pool builds its sources in Awake, so by Start they all exist.
-            _audioSources = FindObjectsByType<AudioSource>(FindObjectsSortMode.None);
+            _audioSources = FindObjectsByType<AudioSource>();
 
             // Counted once for the same reason the lights are: the ring always seats ten and
             // re-dealing the card reconfigures those seats rather than creating new ones, so
@@ -210,7 +232,7 @@ namespace PoRumble.Views
             // searches the scene. The boxers are clones of Boxer_Template, which stays in the
             // hierarchy switched off - counting it reported eleven agents in a ten-boxer ring.
             _agentCount = FindObjectsByType<BoxerAgentView>(
-                FindObjectsInactive.Exclude, FindObjectsSortMode.None).Length;
+                FindObjectsInactive.Exclude).Length;
 
             VisualElement root = GetComponent<UIDocument>().rootVisualElement;
 
@@ -234,12 +256,18 @@ namespace PoRumble.Views
 
             _layout.CloneTree(root);
 
+            // The root spans the screen and this document sorts above the title screen, so a
+            // pickable root would swallow its taps. The tabs and the verdict still hit-test.
+            root.pickingMode = PickingMode.Ignore;
+
             _panel = root.Q<VisualElement>("panel");
             _graph = root.Q<VisualElement>("graph");
             _verdict = root.Q<Label>("verdict");
             _readout = root.Q<Label>("readout");
             _frameTab = root.Q<Button>("tab-frame");
             _combatTab = root.Q<Button>("tab-combat");
+            _matchTab = root.Q<Button>("tab-match");
+            _safeOutline = root.Q<VisualElement>("safe-outline");
 
             if (_panel == null || _graph == null || _readout == null)
             {
@@ -259,9 +287,21 @@ namespace PoRumble.Views
                 _combatTab.clicked += () => SelectPage(DiagnosticsPage.Combat);
             }
 
+            if (_matchTab != null)
+            {
+                _matchTab.clicked += () => SelectPage(DiagnosticsPage.Match);
+            }
+
             // The graph has no children: it is painted directly with Painter2D, so the
             // callback is what gives the element its contents.
             _graph.generateVisualContent += DrawGraph;
+
+            if (_verdict != null)
+            {
+                _verdict.RegisterCallback<ClickEvent>(_ => ToggleExpanded());
+            }
+
+            _panel.EnableInClassList("diag--collapsed", !_expanded);
 
             // The serialized default seeds the model rather than the element directly, so the
             // chrome bar's DEBUG button reads the right state on the first frame too.
@@ -269,12 +309,11 @@ namespace PoRumble.Views
             {
                 _diagnostics.IsVisible.Value = _visibleOnStart;
                 _diagnostics.IsVisible
-                    .Subscribe(visible => _panel.style.display =
-                        visible ? DisplayStyle.Flex : DisplayStyle.None)
+                    .Subscribe(SetSheetVisible)
                     .AddTo(_disposables);
             }
 
-            _panel.style.display = _visibleOnStart ? DisplayStyle.Flex : DisplayStyle.None;
+            SetSheetVisible(_visibleOnStart);
         }
 
         /// <summary>
@@ -294,6 +333,11 @@ namespace PoRumble.Views
             if (_combatTab != null)
             {
                 _combatTab.EnableInClassList("diag__tab--on", page == DiagnosticsPage.Combat);
+            }
+
+            if (_matchTab != null)
+            {
+                _matchTab.EnableInClassList("diag__tab--on", page == DiagnosticsPage.Match);
             }
 
             Refresh();
@@ -336,11 +380,9 @@ namespace PoRumble.Views
                 _fightSeconds = 0f;
             }
 
-            if (_panel == null || _panel.style.display == DisplayStyle.None)
-            {
-                return;
-            }
-
+            // Ticks whether or not the sheet is up. The verdict is ranked on every pass so the
+            // chrome bar's frame counter can turn amber on a problem nobody has opened DEBUG to
+            // see; only the text and the graph wait for the sheet to be visible.
             _refreshTimer += Time.unscaledDeltaTime;
 
             if (_refreshTimer < _refreshSeconds)
@@ -352,8 +394,32 @@ namespace PoRumble.Views
             _refreshTimer = 0f;
         }
 
+        private bool IsSheetVisible => _panel != null && _panel.style.display != DisplayStyle.None;
+
+        /// <summary>
+        /// Shows or hides the sheet, and the safe-area outline with it: this document's root is
+        /// inset by SafeAreaView like every other, so its edges are the rectangle the HUD is
+        /// allowed to use, and a notch regression shows on a device as the outline cutting into
+        /// the status bar.
+        /// </summary>
+        private void SetSheetVisible(bool visible)
+        {
+            _panel.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+
+            if (_safeOutline != null)
+            {
+                _safeOutline.EnableInClassList("diag__safe--hidden", !visible);
+            }
+        }
+
         private void Refresh()
         {
+            if (!IsSheetVisible)
+            {
+                RankOnly();
+                return;
+            }
+
             float averageMs = _accumulatedFrames > 0 ? _accumulatedMs / _accumulatedFrames : 0f;
             float fps = averageMs > 0f ? 1000f / averageMs : 0f;
 
@@ -379,6 +445,10 @@ namespace PoRumble.Views
             if (_page == DiagnosticsPage.Combat)
             {
                 AppendCombatPage();
+            }
+            else if (_page == DiagnosticsPage.Match)
+            {
+                AppendMatchPage();
             }
             else
             {
@@ -419,6 +489,76 @@ namespace PoRumble.Views
                 return;
             }
 
+            int found = RankFindings(averageMs);
+
+            _verdictBuilder.Clear();
+
+            // The frame rate leads the line. It used to sit top-centre on the chrome bar, which
+            // is the one place every viewer looks, and it is a developer's number.
+            _verdictBuilder.Append(averageMs > 0f ? Mathf.RoundToInt(1000f / averageMs) : 0).Append(" FPS   ");
+
+            if (found == 0)
+            {
+                DiagnosticsVerdict.AppendAllClear(_verdictBuilder);
+            }
+            else
+            {
+                // Collapsed, the sheet is one line on the chrome row: the worst finding only.
+                int shown = _expanded ? found : 1;
+
+                for (int index = 0; index < shown; index++)
+                {
+                    if (index > 0)
+                    {
+                        _verdictBuilder.Append('\n');
+                    }
+
+                    DiagnosticsVerdict.Append(_verdictBuilder, _findings[index]);
+                }
+
+                if (!_expanded && found > 1)
+                {
+                    _verdictBuilder.Append("   (+").Append(found - 1).Append(" more)");
+                }
+            }
+
+            _verdict.text = _verdictBuilder.ToString();
+
+            // Coloured off the worst finding rather than off frame time, because the worst
+            // finding is frequently not a frame-time one - a stalled policy runs at a perfect
+            // 60fps and is the most broken the build can be.
+            _verdict.EnableInClassList("diag__verdict--bad", found > 0);
+            _verdict.EnableInClassList("diag__verdict--ok", found == 0);
+        }
+
+        /// <summary>
+        /// The pass that runs while the sheet is closed: sample, rank, report the count, and
+        /// build no text at all - a closed sheet has nothing to show it on.
+        /// </summary>
+        private void RankOnly()
+        {
+            float averageMs = _accumulatedFrames > 0 ? _accumulatedMs / _accumulatedFrames : 0f;
+
+            long gcNow = System.GC.GetTotalMemory(false);
+            long delta = gcNow - _lastGcBytes;
+            _lastGcBytes = gcNow;
+
+            if (delta > 0)
+            {
+                _gcPerSecond = delta / Mathf.Max(0.001f, _refreshTimer);
+            }
+
+            SampleDecisionRate();
+            RankFindings(averageMs);
+
+            _accumulatedMs = 0f;
+            _accumulatedFrames = 0;
+            _worstMs = 0f;
+        }
+
+        /// <summary>Ranks the current sample into <see cref="_findings"/> and reports the count.</summary>
+        private int RankFindings(float averageMs)
+        {
             var sample = new DiagnosticsSample(
                 averageMs,
                 _worstMs,
@@ -437,32 +577,25 @@ namespace PoRumble.Views
 
             int found = DiagnosticsVerdict.Rank(sample, _findings);
 
-            _verdictBuilder.Clear();
-
-            if (found == 0)
+            if (_diagnosticsSystem != null)
             {
-                DiagnosticsVerdict.AppendAllClear(_verdictBuilder);
-            }
-            else
-            {
-                for (int index = 0; index < found; index++)
-                {
-                    if (index > 0)
-                    {
-                        _verdictBuilder.Append('\n');
-                    }
-
-                    DiagnosticsVerdict.Append(_verdictBuilder, _findings[index]);
-                }
+                _diagnosticsSystem.ReportFindings(found);
             }
 
-            _verdict.text = _verdictBuilder.ToString();
+            return found;
+        }
 
-            // Coloured off the worst finding rather than off frame time, because the worst
-            // finding is frequently not a frame-time one - a stalled policy runs at a perfect
-            // 60fps and is the most broken the build can be.
-            _verdict.EnableInClassList("diag__verdict--bad", found > 0);
-            _verdict.EnableInClassList("diag__verdict--ok", found == 0);
+        /// <summary>
+        /// Folds the sheet down to the verdict, or opens it out to the tabs, graph and figures.
+        /// Refreshed at once rather than at the next tick, so the verdict's line count changes
+        /// with the tap rather than a quarter-second after it.
+        /// </summary>
+        private void ToggleExpanded()
+        {
+            _expanded = !_expanded;
+            _panel.EnableInClassList("diag--collapsed", !_expanded);
+            Refresh();
+            _refreshTimer = 0f;
         }
 
         /// <summary>
@@ -583,6 +716,65 @@ namespace PoRumble.Views
         }
 
         /// <summary>
+        /// The whole match rather than the last two seconds: how long it has run, how fast on
+        /// average, whether it is getting slower, and how hot the device is.
+        ///
+        /// Drift is the line to read. A scene that is simply expensive is slow from the first
+        /// second and drifts by nothing; a phone that is throttling gets steadily slower, and
+        /// that shows as a positive drift long before the average looks bad.
+        /// </summary>
+        private void AppendMatchPage()
+        {
+            if (_trace == null || _trace.Count == 0)
+            {
+                _builder.Append("match    nothing logged yet - the trace starts at the countdown\n");
+                return;
+            }
+
+            float mean = _trace.MeanMs();
+
+            _builder.Append("match    #").Append(_trace.MatchNumber)
+                    .Append("   ").Append(_trace.Count).Append("s logged")
+                    .Append("   mean ").Append(mean.ToString("F2")).Append("ms")
+                    .Append("   ").Append((mean > 0f ? 1000f / mean : 0f).ToString("F0")).Append(" fps\n");
+
+            _builder.Append("drift    ");
+
+            if (_trace.Count >= DRIFT_WINDOW * 2)
+            {
+                float drift = _trace.DriftMs(DRIFT_WINDOW);
+
+                _builder.Append(drift >= 0f ? "+" : string.Empty).Append(drift.ToString("F2"))
+                        .Append("ms   last ").Append(DRIFT_WINDOW).Append("s against first ")
+                        .Append(DRIFT_WINDOW).Append('s')
+                        .Append(drift > _frameBudgetMs * 0.1f ? "   SLOWING" : string.Empty)
+                        .Append('\n');
+            }
+            else
+            {
+                _builder.Append("needs ").Append(DRIFT_WINDOW * 2).Append("s of match\n");
+            }
+
+            PerformanceSecond latest = _trace.Get(_trace.Count - 1);
+
+            _builder.Append("thermal  ").Append(ThermalProbe.Describe(latest.ThermalStatus))
+                    .Append("   worst ").Append(ThermalProbe.Describe(_trace.WorstThermalStatus()))
+                    .Append("   battery ");
+
+            if (float.IsNaN(latest.BatteryCelsius))
+            {
+                _builder.Append("n/a\n");
+            }
+            else
+            {
+                _builder.Append(latest.BatteryCelsius.ToString("F1")).Append("C\n");
+            }
+
+            _builder.Append("log      ")
+                    .Append(string.IsNullOrEmpty(_trace.LastLogPath) ? "written at the final bell" : _trace.LastLogPath);
+        }
+
+        /// <summary>
         /// Sums the per-fighter tallies the telemetry board already keeps.
         ///
         /// Connect rate is landed over thrown, never over the punches that reached somebody -
@@ -660,8 +852,8 @@ namespace PoRumble.Views
         /// <summary>The seated contestant's name, or the slot number when there is no card.</summary>
         private string NameOf(int boxerId)
         {
-            FighterProfile profile = _roster == null ? null : _roster.SeatOf(boxerId);
-            return profile != null ? profile.DisplayName : $"#{boxerId:00}";
+            string label = _roster == null ? null : _roster.SeatLabel(boxerId);
+            return label ?? $"#{boxerId:00}";
         }
 
         /// <summary>
@@ -702,7 +894,7 @@ namespace PoRumble.Views
         /// F3, or a three-finger tap where there is no keyboard.
         ///
         /// Three fingers rather than a screen-corner hit box: the overlay is a developer tool
-        /// and a corner tap would collide with the tap-anywhere restart.
+        /// and a corner tap would collide with the chrome bar and the panel buttons.
         /// </summary>
         private static bool TogglePressed()
         {
@@ -830,6 +1022,13 @@ namespace PoRumble.Views
                 return;
             }
 
+            if (_page == DiagnosticsPage.Match)
+            {
+                DrawTrace(context.painter2D, bounds);
+                DrawMidLine(context.painter2D, bounds);
+                return;
+            }
+
             bool combat = _page == DiagnosticsPage.Combat;
             float[] series = combat ? _decisionHistory : _frameHistory;
 
@@ -847,13 +1046,88 @@ namespace PoRumble.Views
             int head = combat ? _decisionHead : _historyHead;
 
             StrokeSeries(context.painter2D, series, head, bounds, scale, step, combat);
+            DrawMidLine(context.painter2D, bounds);
+        }
 
-            context.painter2D.strokeColor = new Color(0.95f, 0.45f, 0.35f, 0.55f);
-            context.painter2D.lineWidth = 1f;
-            context.painter2D.BeginPath();
-            context.painter2D.MoveTo(new Vector2(0f, bounds.height * 0.5f));
-            context.painter2D.LineTo(new Vector2(bounds.width, bounds.height * 0.5f));
-            context.painter2D.Stroke();
+        private static void DrawMidLine(Painter2D painter, Rect bounds)
+        {
+            painter.strokeColor = new Color(0.95f, 0.45f, 0.35f, 0.55f);
+            painter.lineWidth = 1f;
+            painter.BeginPath();
+            painter.MoveTo(new Vector2(0f, bounds.height * 0.5f));
+            painter.LineTo(new Vector2(bounds.width, bounds.height * 0.5f));
+            painter.Stroke();
+        }
+
+        /// <summary>
+        /// The match trace across the whole graph: frame time in amber against the same
+        /// twice-the-budget scale as the frame page, and thermal status as a stepped red line
+        /// on its own 0..6 scale. Squeezed rather than scrolled, so the start of the match is
+        /// always on screen to compare against - that comparison is the page's whole purpose.
+        /// </summary>
+        private void DrawTrace(Painter2D painter, Rect bounds)
+        {
+            int count = _trace == null ? 0 : _trace.Count;
+
+            if (count < 2)
+            {
+                return;
+            }
+
+            // At most one point per pixel column. A thirty-minute trace is 1800 samples and the
+            // graph is well under that wide, so every point beyond that is tessellation spent on
+            // segments shorter than a pixel.
+            int stride = Mathf.Max(1, Mathf.CeilToInt(count / Mathf.Max(1f, bounds.width)));
+            float scale = _frameBudgetMs * 2f;
+            float step = bounds.width / (count - 1);
+
+            painter.strokeColor = new Color(0.98f, 0.74f, 0.3f, 0.9f);
+            painter.lineWidth = 1.5f;
+            painter.BeginPath();
+
+            for (int index = 0; index < count; index += stride)
+            {
+                float y = bounds.height * (1f - Mathf.Clamp01(_trace.Get(index).AverageMs / scale));
+                Vector2 point = new(index * step, y);
+
+                if (index == 0)
+                {
+                    painter.MoveTo(point);
+                }
+                else
+                {
+                    painter.LineTo(point);
+                }
+            }
+
+            painter.Stroke();
+
+            if (_trace.WorstThermalStatus() < 0)
+            {
+                return;
+            }
+
+            painter.strokeColor = new Color(0.95f, 0.3f, 0.3f, 0.8f);
+            painter.lineWidth = 1f;
+            painter.BeginPath();
+
+            for (int index = 0; index < count; index += stride)
+            {
+                int status = Mathf.Max(0, _trace.Get(index).ThermalStatus);
+                float y = bounds.height * (1f - status / 6f);
+                Vector2 point = new(index * step, y);
+
+                if (index == 0)
+                {
+                    painter.MoveTo(point);
+                }
+                else
+                {
+                    painter.LineTo(point);
+                }
+            }
+
+            painter.Stroke();
         }
 
         /// <summary>Walks one ring-buffer series across the graph's box.</summary>

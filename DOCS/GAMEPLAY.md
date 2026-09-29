@@ -31,6 +31,29 @@ together. The walls have colliders but do not contain anyone: positions are mode
 disagrees with the half extent produces fighters who stop short of the ropes or walk through
 them, with nothing logged either way.
 
+## Sudden Death
+
+The game has no bell: a ten-way runs until one fighter is left, and measured on this build that
+took minutes, with long plateaus where the last few blocked each other. So after
+`SuddenDeathMath.START_SECONDS` (60) of fighting the **ropes close in**, eased, over
+`CLOSE_SECONDS` (60) to `MIN_SCALE` (0.3 - a 5-unit square at the shipped 8.5 half extent). The
+fight still has to be won with punches; there is just less and less room not to throw them.
+
+- **Two extents, on purpose.** `MatchModel.ArenaHalfExtent` is the ring as built and never
+  changes - the agents' positional observation is normalised against it, so shrinking it would
+  shift the policy's inputs out of the range it trained on. `MatchModel.RingScale` is the only
+  thing sudden death moves, and `PlayableHalfExtent` (their product) is what the clamp, the rope
+  contact feedback and `RingShrinkView` read.
+- **Game only.** `MatchDirector` steps `SuddenDeathSystem` from `FixedTick` only when the scene is
+  not a training scene, so `RingScale` stays 1 in training and every episode clamps to exactly the
+  ring it always did. Scaled time, so hitstop and the knockout hold slow the ropes with the fight.
+- **The ropes really move.** `RingShrinkView` on `Ring` moves the four walls - whose colliders
+  are what the ray sensors see - the posts and the turnbuckles to the playable extent, keeping each
+  object's authored overhang, and hides the stools. The agents perceive the ropes where the clamp
+  actually holds them.
+- The chrome warns "ROPES IN 10" and then reads "ROPES CLOSING" in amber; the knockout feed
+  announces it once. Reset on every fight introduced and on the title.
+
 ## Body Parts and Collision
 
 What actually carries a shape, and why the obvious additions are not there:
@@ -150,7 +173,9 @@ writing model positions into it. It is not a collider change.
 Eight selectable contestants live in `Assets/Config/Fighters/` as `FighterProfile` assets:
 `HEURISTIC` (the scripted sparring brain), `STANDARD RL` (`PoRumbleBoxer.onnx` driven straight
 through) and six named fighters wearing the photographs in `Assets/Art/Sprites/Faces/`.
-**Tab** between matches opens the card; clicking a tile adds or drops that fighter.
+The card is on the title screen: switch to **CARD** (or press **Tab**) and a tap on a tile adds
+or drops that fighter; switch back to **PICK** and a tap backs them. Leaving CARD, or pressing
+FIGHT, deals the card round the ring.
 
 - **The ring always seats ten and the card is usually shorter, so entrants are dealt round the
   corners cyclically.** With all eight selected the first two fight twice. Changing the card
@@ -158,6 +183,14 @@ through) and six named fighters wearing the photographs in `Assets/Art/Sprites/F
   the ten boxers that already exist, swapping face, colour, controller, style and attributes.
   A variable ring size would mean rebuilding `MatchModel`'s roster, every agent's ML-Agents
   lifecycle and the HUD's health bars; the cyclic deal buys the same freedom for none of that.
+- **A contestant in two corners is numbered the second time.** `RosterModel.SeatLabel` gives
+  "HEURISTIC" for the first seat and "HEURISTIC 2" for the second, built once per deal. Every view
+  that prints a *seat* uses it - the strip, the telemetry board, the second-fight caption, the
+  knockout feed, the follow tag, the commentary caption, the debug sheet - because two rows with
+  the same name gave no way to tell which one had just gone down. Anything about the *contestant*
+  (ratings, the bet, the tale of the tape) keeps `DisplayName`. On the title screen the tiles of
+  anyone the deal gives two corners carry an "x2" badge, from `RosterModel.SeatsFor`, which
+  answers from the entrants so it is right while the card is still being edited.
 - **Assigning any `_fighterProfiles` replaces the `_rosterTiers` path outright.** The training
   scenes deliberately assign none, which is what keeps a run learning against the unmodified
   policy and the checkpoints comparable across the curriculum.

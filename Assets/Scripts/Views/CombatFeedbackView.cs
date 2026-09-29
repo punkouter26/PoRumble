@@ -102,6 +102,55 @@ namespace PoRumble.Views
                  "makes a flurry read as a loop within seconds; four is enough to hide it.")]
         [SerializeField] private int _sfxVariants = 4;
 
+        [Header("Recorded layer")]
+        [Tooltip("Optional. Recorded one-shots for a jab. When set, each landed jab plays one " +
+                 "of these with the synthesised jab underneath it; empty falls back to the " +
+                 "synthesised bank alone, exactly as before.")]
+        [SerializeField] private AudioClip[] _recordedLightPunches;
+        [Tooltip("Optional. Recorded one-shots for a hook, a counter or a haymaker.")]
+        [SerializeField] private AudioClip[] _recordedHeavyPunches;
+        [Tooltip("Optional. Recorded one-shots for a punch stopped on the gloves.")]
+        [SerializeField] private AudioClip[] _recordedBlocks;
+        [Tooltip("Level of the recorded layer.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _recordedGain = 0.9f;
+        [Tooltip("Level of the synthesised layer under a recording. It is kept rather than " +
+                 "replaced because the recordings are dry and short: the synthesised body is " +
+                 "the low thump that makes a glove sound like it hit a person rather than a bag.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _synthGainUnderRecording = 0.45f;
+
+        [Header("Event sounds")]
+        [Tooltip("A punch stopped on the gloves makes a sound. Gated to within earshot like " +
+                 "footsteps, and quieter than a landed punch, so ten fighters trading on the " +
+                 "guard do not bury the hits that connected.")]
+        [SerializeField] private bool _blockSounds = true;
+        [Range(0f, 1f)]
+        [SerializeField] private float _blockVolume = 0.42f;
+        [Tooltip("A haymaker's wind-up is heard at the moment of commitment. Rare, and the " +
+                 "telegraph is the whole counterplay to it, so it is worth a voice.")]
+        [SerializeField] private bool _windUpSounds = true;
+        [Range(0f, 1f)]
+        [SerializeField] private float _windUpVolume = 0.5f;
+        [Tooltip("Slips and evades make a whoosh. Off by default: a whiff several times a second " +
+                 "across ten fighters is a wash, which is why the soundscape was cut to feet " +
+                 "and landed punches in the first place.")]
+        [SerializeField] private bool _slipSounds;
+        [Range(0f, 1f)]
+        [SerializeField] private float _slipVolume = 0.3f;
+
+        [Header("Zoom")]
+        [Tooltip("Optional. The camera whose zoom stretches the rolloff. Empty uses the main " +
+                 "camera.")]
+        [SerializeField] private Camera _zoomCamera;
+        [Tooltip("Orthographic size at which the rolloff is exactly as authored above.")]
+        [SerializeField] private float _zoomReferenceSize = 9f;
+        [Tooltip("How strongly zoom stretches the rolloff. 1 keeps loudness constant on screen; " +
+                 "below 1 lets a wide shot sound further away, which is what a wide shot is. " +
+                 "The listener rising with the zoom (ListenerRigView) does the rest.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _zoomDistanceExponent = 0.5f;
+
         [Header("Impact light")]
         [Tooltip("Lights authored in the scene. When set, these are used instead of creating " +
                  "them at Start, so the rig can be selected and retuned without entering Play " +
@@ -154,6 +203,9 @@ namespace PoRumble.Views
         private AudioClip[] _hookClips;
         private AudioClip[] _haymakerClips;
         private AudioClip[] _stepClips;
+        private AudioClip[] _blockClips;
+        private AudioClip[] _whooshClips;
+        private AudioClip[] _evadeClips;
 
         /// <summary>Locomotion feedback - dust, steps, breath, ropes. See BoxerBodyFeedback.</summary>
         private BoxerBodyFeedback _bodyFeedback;
@@ -213,6 +265,10 @@ namespace PoRumble.Views
                 _stepClips[variant] = ProceduralSfx.CreateFootstep(variant);
             }
 
+            // Built only when switched on: a bank nobody plays is memory and load time for nothing.
+            _blockClips = _blockSounds ? BuildBank(variants, ProceduralSfx.CreateBlock) : null;
+            _whooshClips = _windUpSounds ? BuildBank(variants, ProceduralSfx.CreateWhoosh) : null;
+            _evadeClips = _slipSounds ? BuildBank(variants, ProceduralSfx.CreateEvade) : null;
 
             _voices = new SpatialVoicePool(
                 transform, _spatialVoiceCount, _sfxMixerGroup, _audioMinDistance, _audioMaxDistance,
@@ -233,6 +289,11 @@ namespace PoRumble.Views
             if (listener != null)
             {
                 _listener = listener.transform;
+            }
+
+            if (_zoomCamera == null)
+            {
+                _zoomCamera = Camera.main;
             }
 
             // Built here rather than in Awake because it needs the listener resolved above and
@@ -270,6 +331,24 @@ namespace PoRumble.Views
             _lights.Tick(delta);
             TickChargeAura();
             _bodyFeedback?.Tick(delta);
+            TickZoom();
+        }
+
+        /// <summary>
+        /// Stretches the rolloff with the camera. A tight duel should sound close and let the
+        /// rest of the ring fall away; a wide ten-way should sound like the whole arena, a little
+        /// further off. Read from the rendering camera rather than the Cinemachine lens, so it
+        /// follows what is actually on screen including every blend and clamp.
+        /// </summary>
+        private void TickZoom()
+        {
+            if (_voices == null || _zoomCamera == null || !_zoomCamera.orthographic)
+            {
+                return;
+            }
+
+            float zoom = _zoomCamera.orthographicSize / Mathf.Max(0.1f, _zoomReferenceSize);
+            _voices.SetDistanceScale(Mathf.Pow(Mathf.Max(0.1f, zoom), _zoomDistanceExponent));
         }
 
         /// <summary>
@@ -314,14 +393,18 @@ namespace PoRumble.Views
             bool charged = message.ChargeLevel > 0.5f;
             bool heavy = message.IsCounter || charged;
 
+            bool hook = message.IsCloseRange || message.IsCounter;
+
             AudioClip clip = charged
                 ? PickFrom(_haymakerClips)
-                : message.IsCloseRange || message.IsCounter
+                : hook
                     ? PickFrom(_hookClips)
                     : PickFrom(_jabClips);
 
+            AudioClip recorded = PickFrom(charged || hook ? _recordedHeavyPunches : _recordedLightPunches);
+
             // Counters ring a little higher, so the moment is audible as well as visible.
-            PlayAt(clip, message.Position, message.IsCounter ? 1.18f : 1f);
+            PlayImpact(recorded, clip, message.Position, message.IsCounter ? 1.18f : 1f, 1f);
 
             Burst(_impactBurst, message.Position, _impactParticles + Mathf.RoundToInt(message.Damage * 2f));
             Burst(_sweatBurst, message.Position, 3 + message.Damage);
@@ -356,10 +439,24 @@ namespace PoRumble.Views
             Burst(_blockBurst, message.Position, _blockParticles);
             _lights.Flash(message.Position, new Color(0.72f, 0.85f, 1f), 1.1f, 2.2f, 0.14f);
             Shake(_jabImpulse * 0.5f);
+
+            if (_blockSounds && WithinEarshot(message.Position))
+            {
+                // Pitched down a touch: leather on leather is duller than leather on a face.
+                PlayImpact(PickFrom(_recordedBlocks), PickFrom(_blockClips), message.Position, 0.92f, _blockVolume);
+            }
         }
 
+        /// <summary>
+        /// A punch that met nothing. Heard only with slip sounds on, and only near the camera -
+        /// a whiff across the ring is the least informative sound in the game.
+        /// </summary>
         private void OnPunchEvaded(PunchEvadedMessage message)
         {
+            if (_slipSounds && WithinEarshot(message.Position))
+            {
+                PlayImpact(null, PickFrom(_evadeClips), message.Position, 1f, _slipVolume);
+            }
         }
 
         /// <summary>
@@ -369,6 +466,10 @@ namespace PoRumble.Views
         /// </summary>
         private void OnBoxerDodged(BoxerDodgedMessage message)
         {
+            if (_slipSounds && WithinEarshot(message.Position))
+            {
+                PlayImpact(null, PickFrom(_whooshClips != null ? _whooshClips : _evadeClips), message.Position, 1.25f, _slipVolume);
+            }
         }
 
         private void OnHaymakerThrown(HaymakerThrownMessage message)
@@ -379,6 +480,13 @@ namespace PoRumble.Views
             // the entire counterplay to it, so it needs to be legible from across the ring,
             // where a wind-up on a small sprite is not.
             Burst(_speedLines, message.Position, 4 + Mathf.RoundToInt(message.ChargeLevel * 6f));
+
+            if (_windUpSounds)
+            {
+                // Lower and slower the harder it is charged: a full haymaker is a heavier arm.
+                float pitch = Mathf.Lerp(1.1f, 0.82f, message.ChargeLevel);
+                PlayImpact(null, PickFrom(_whooshClips), message.Position, pitch, _windUpVolume);
+            }
         }
 
         private void OnBoxerEliminated(BoxerEliminatedMessage message)
@@ -465,10 +573,53 @@ namespace PoRumble.Views
             return (_randomState & 0xFFFFFF) / (float)0x800000 - 1f;
         }
 
-        /// <summary>A sound that happened somewhere in the ring.</summary>
-        private void PlayAt(AudioClip clip, Vector2 position, float pitch)
+        /// <summary>
+        /// A sound that happened somewhere in the ring: the recording on top when there is one,
+        /// the synthesised clip under it at a reduced level, or the synthesised clip alone.
+        /// </summary>
+        private void PlayImpact(AudioClip recorded, AudioClip synthesised, Vector2 position, float pitch, float gain)
         {
-            _voices?.PlayAt(clip, position, pitch, _sfxVolume);
+            if (_voices == null)
+            {
+                return;
+            }
+
+            if (recorded == null)
+            {
+                _voices.PlayAt(synthesised, position, pitch, _sfxVolume * gain);
+                return;
+            }
+
+            _voices.PlayLayeredAt(
+                recorded, _recordedGain, synthesised, _synthGainUnderRecording,
+                position, pitch, _sfxVolume * gain);
+        }
+
+        /// <summary>
+        /// Within the same earshot the footsteps use: on the plane, not through the listener's
+        /// height, so a camera pulled wide does not silence the ring.
+        /// </summary>
+        private bool WithinEarshot(Vector2 position)
+        {
+            if (_listener == null)
+            {
+                return true;
+            }
+
+            float earshot = _audioMaxDistance * _bodySoundEarshot;
+            return (position - (Vector2)_listener.position).sqrMagnitude <= earshot * earshot;
+        }
+
+        private static AudioClip[] BuildBank(int variants, System.Func<int, AudioClip> create)
+        {
+            AudioClip[] bank = new AudioClip[variants];
+
+            for (int variant = 0; variant < variants; variant++)
+            {
+                bank[variant] = create(variant);
+            }
+
+            return bank;
         }
 
         private void Burst(ParticleSystem system, Vector2 position, int count)

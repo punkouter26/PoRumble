@@ -128,6 +128,10 @@ namespace PoRumble.Views
             }
 
             _subtitleLayout.CloneTree(root);
+
+            // The caption sits in the chrome row beside DEBUG; its full-screen root must not
+            // take a tap meant for anything else.
+            root.pickingMode = PickingMode.Ignore;
             _subtitle = root.Q<Label>("commentary");
 
             HideSubtitle();
@@ -224,11 +228,13 @@ namespace PoRumble.Views
 
             if (nameClip != null && _roster != null)
             {
-                FighterProfile profile = _roster.SeatOf(subjectId);
+                // The caption names the seat, numbered when a contestant fights twice; the spoken
+                // clip is the contestant's name either way.
+                string label = _roster.SeatLabel(subjectId);
 
-                if (profile != null)
+                if (label != null)
                 {
-                    text = string.Concat(profile.DisplayName, " ", text);
+                    text = string.Concat(label, " ", text);
                 }
             }
 

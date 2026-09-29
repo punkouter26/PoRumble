@@ -50,7 +50,8 @@ namespace PoRumble.Systems
             ISubscriber<PunchBlockedMessage> blockedSubscriber,
             ISubscriber<PunchEvadedMessage> evadedSubscriber,
             ISubscriber<BoxerDodgedMessage> dodgedSubscriber,
-            ISubscriber<HaymakerThrownMessage> haymakerSubscriber)
+            ISubscriber<HaymakerThrownMessage> haymakerSubscriber,
+            ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber)
         {
             _match = match;
             _stats = stats;
@@ -61,6 +62,7 @@ namespace PoRumble.Systems
             evadedSubscriber.Subscribe(OnPunchEvaded).AddTo(_disposables);
             dodgedSubscriber.Subscribe(OnBoxerDodged).AddTo(_disposables);
             haymakerSubscriber.Subscribe(OnHaymakerThrown).AddTo(_disposables);
+            eliminatedSubscriber.Subscribe(OnBoxerEliminated).AddTo(_disposables);
 
             // A fresh match starts from a blank board. Driven off the phase rather than off
             // whichever path re-racked the ring, because the game restarts through
@@ -245,6 +247,20 @@ namespace PoRumble.Systems
             if (thrower != null)
             {
                 thrower.Haymakers++;
+            }
+        }
+
+        /// <summary>
+        /// Credited to whoever landed the finishing blow. A fighter who drops without one - an
+        /// id of -1 from a decision - credits nobody.
+        /// </summary>
+        private void OnBoxerEliminated(BoxerEliminatedMessage message)
+        {
+            FighterStats finisher = StatsFor(message.EliminatedById);
+
+            if (finisher != null && message.EliminatedById != message.BoxerId)
+            {
+                finisher.Knockouts++;
             }
         }
 

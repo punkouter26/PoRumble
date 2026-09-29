@@ -53,6 +53,26 @@ namespace PoRumble.Views
                  "from the last pair reads as a lighting fault rather than as a follow.")]
         [SerializeField] private float _followSpotDamping = 6f;
 
+        [Header("Lighting rig")]
+        [Tooltip("Optional. A sprite light whose cookie is the overhead rig - pools of light " +
+                 "from the lamps with the truss's shadow across them - over the whole ring. " +
+                 "Casts no shadows: its shape is in the cookie, which costs nothing like the " +
+                 "shadow pass the key light already pays for.")]
+        [SerializeField] private Light2D _rigLight;
+        [SerializeField] private float _openingRigIntensity = 0.55f;
+        [Tooltip("The rig comes down with the house, but less: the lamps over a title fight " +
+                 "are still on, the room around them is what goes dark.")]
+        [SerializeField] private float _finalRigIntensity = 0.32f;
+        [Tooltip("Haze in the beams - the light drawn over the fighters as well as onto the " +
+                 "canvas. Low, or it washes the picture out.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _rigVolume = 0.12f;
+        [Tooltip("How far the rig drifts, in world units. A rig hung from the roof moves a " +
+                 "little; one that is perfectly still reads as painted on.")]
+        [SerializeField] private float _rigSwayAmplitude = 0.22f;
+        [Tooltip("Radians per second of the drift. Slow enough to be felt rather than seen.")]
+        [SerializeField] private float _rigSwaySpeed = 0.31f;
+
         [Header("Knockout")]
         [Tooltip("What the house light falls to while the knockout is held. The hold is the " +
                  "one moment the game deliberately stops, and dropping the room around the " +
@@ -72,6 +92,12 @@ namespace PoRumble.Views
         private DirectorModel _director;
 
         private float _tension;
+
+        /// <summary>Where the rig was authored, so the sway is around it rather than around the origin.</summary>
+        private Vector3 _rigHome;
+
+        /// <summary>Unscaled seconds of sway, kept rather than read from a clock so the knockout hold cannot freeze the rig mid-swing.</summary>
+        private float _swayClock;
 
         /// <summary>
         /// 0 normally, 1 while the knockout is being held. Eased rather than switched so the
@@ -93,6 +119,12 @@ namespace PoRumble.Views
             // Snap to the opening state rather than fading up from whatever the scene was
             // authored at, so the first frame of a match already looks right.
             _tension = 0f;
+
+            if (_rigLight != null)
+            {
+                _rigHome = _rigLight.transform.position;
+            }
+
             Apply(0f);
         }
 
@@ -127,6 +159,28 @@ namespace PoRumble.Views
             }
 
             TickFollowSpot(delta);
+            TickRigSway(delta);
+        }
+
+        /// <summary>
+        /// Drifts the rig on two slow, unrelated sines, so the pools of light breathe across the
+        /// canvas without ever tracing a visible loop.
+        /// </summary>
+        private void TickRigSway(float delta)
+        {
+            if (_rigLight == null || _rigSwayAmplitude <= 0f)
+            {
+                return;
+            }
+
+            _swayClock += delta * _rigSwaySpeed;
+
+            Vector3 offset = new(
+                Mathf.Sin(_swayClock) * _rigSwayAmplitude,
+                Mathf.Sin(_swayClock * 0.71f + 1.3f) * _rigSwayAmplitude * 0.6f,
+                0f);
+
+            _rigLight.transform.position = _rigHome + offset;
         }
 
         /// <summary>
@@ -223,6 +277,18 @@ namespace PoRumble.Views
                 float radius = Mathf.Lerp(_openingKeyRadius, _finalKeyRadius, tension);
                 _keyLight.pointLightOuterRadius = Mathf.Lerp(radius, _finalKeyRadius, _blackout);
                 _keyLight.pointLightInnerRadius = _keyLight.pointLightOuterRadius * 0.25f;
+            }
+
+            if (_rigLight != null)
+            {
+                // Out with the house during the hold, like the corners: the knockout is lit by
+                // the key and the spot alone, and pools of rig light across the rest of the
+                // canvas would undo the blackout that sells it.
+                float rig = Mathf.Lerp(_openingRigIntensity, _finalRigIntensity, tension)
+                            * (1f - _blackout);
+
+                _rigLight.intensity = rig;
+                _rigLight.volumeIntensity = _rigVolume * (1f - _blackout);
             }
 
             if (_rimLights == null)

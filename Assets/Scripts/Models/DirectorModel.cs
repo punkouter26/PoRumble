@@ -90,9 +90,18 @@ namespace PoRumble.Models
 
         public bool HasSecondPair => SecondFocusId != NOBODY && SecondRivalId != NOBODY;
 
+        /// <summary>
+        /// A fighter the viewer asked to follow, or <see cref="NOBODY"/>. While set, the director
+        /// frames this fighter's best exchange instead of the ring's best one, and never drops
+        /// to the wide shot. Reactive because the field board marks the pinned row and the
+        /// follow tag changes its wording, both on the edge rather than every frame.
+        /// </summary>
+        public ReactiveProperty<int> PinnedId { get; } = new(NOBODY);
+
         /// <summary>Clears the decision for a fresh match, so no shot is inherited across the bell.</summary>
         public void Reset()
         {
+            PinnedId.Value = NOBODY;
             FocusId = NOBODY;
             RivalId = NOBODY;
             Tension = 0f;

@@ -7,8 +7,8 @@ using VContainer;
 namespace PoRumble.Systems
 {
     /// <summary>
-    /// Keeps every fighter's chance of winning current: per seat for the head-to-head bar,
-    /// and per contestant for the odds board and the book.
+    /// Keeps every fighter's chance of winning current: per seat for the field board and the
+    /// head-to-head share, and per contestant for the tile prices and the book.
     ///
     /// Entirely derived. It reads the ring and writes <see cref="WinOddsModel"/>, publishes
     /// nothing and is consulted by nothing in combat, so the fight is identical whether it

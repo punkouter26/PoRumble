@@ -165,6 +165,7 @@ namespace PoRumble.Views
             }
 
             _layout.CloneTree(_root);
+            _root.pickingMode = PickingMode.Ignore;
 
             _vignette = _root.Q<VisualElement>("vignette");
             _panel = _root.Q<VisualElement>("panel");

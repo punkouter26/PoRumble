@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The carousel's tab row: one short badge per panel that shares the portrait slot.
+
+  The slot used to rotate on a timer and nothing else, so a panel could change halfway through
+  being read and there was no way to bring back the one that had just gone. The tabs say which
+  panels are in the rotation, mark the one showing, and take a tap to hold one in place.
+
+  The tabs are Buttons built by HudCarouselView, one per configured slot, because how many
+  panels share the slot is a serialized list on the view. Only the tabs pick; the row itself
+  is ignored so the ring under the gaps between them still takes nothing.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="tabs" class="carousel-tabs carousel-tabs--hidden" picking-mode="Ignore">
+        <ui:VisualElement name="progress" class="carousel-progress" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

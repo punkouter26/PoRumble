@@ -1,28 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Match HUD structure.
+  Match HUD structure: the field board, the centre stage and the results card.
 
-  The panel and the centre stage are siblings rather than nested, and that is load-bearing:
-  the countdown and the result banner are absolutely positioned over the middle of the screen,
-  so nesting them inside the top-left panel would make the panel's own layout depend on text
-  that changes length every second.
+  The field board is the one list of the ten fighters in the game. It used to be two - a health
+  column here and a separate odds board listing the same names again with a percentage - so the
+  health, the win chance and the viewer's stake now share a row. It has two densities, set from
+  the view by a class: a full row per fighter between bouts, and a single strip of ten cells
+  under the chrome bar while the fight is live, which is the only HUD that stays over the ring.
 
-  The result banner sits in the centre stage for exactly that reason. It used to live in the
-  panel alongside the ten health rows, where it drew straight across them - a winner's name is
-  the largest text the game ever shows and the panel is the densest thing on screen.
+  The panel, the centre stage and the results stage are siblings rather than nested, and that is load-bearing:
+  the countdown and the results card are absolutely positioned over the middle of the screen,
+  so nesting them inside the board would make its layout depend on text that changes length
+  every second.
 
-  Everything here is picking-mode="Ignore". The HUD sits over a live ring and must never eat a
-  click meant for the fight card panel sorted beneath it.
+  The results card is the whole results screen: the winner's face, who won and how (knockouts,
+  damage, how much landed), what it did to their rating and to the viewer's stake, and the two
+  ways on. In portrait it sits at the foot of the screen, under the ring and in thumb reach. It
+  replaced a banner, a separate tap-anywhere prompt and a floating card button.
+
+  Its two buttons and the fighter rows are the only pickable elements in this document - a tap
+  on a row tells the camera to follow that fighter, and the view sets the rows pickable in
+  code. Everything else is picking-mode="Ignore", because the board sits over a live ring.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="panel" class="match-hud" picking-mode="Ignore">
-        <ui:Label name="survivors" class="text text--lg text--bold" picking-mode="Ignore" />
+        <ui:VisualElement name="badges" class="match-hud__badges" picking-mode="Ignore">
+            <ui:Label name="survivors" class="text text--sm text--bold badge" picking-mode="Ignore" />
+            <ui:Label name="bout" class="text text--sm text--bold badge badge--muted" picking-mode="Ignore" />
+        </ui:VisualElement>
         <ui:VisualElement name="roster" class="match-hud__roster" picking-mode="Ignore" />
+        <ui:Label name="pick" class="text text--xs match-hud__pick" picking-mode="Ignore" />
     </ui:VisualElement>
 
     <ui:VisualElement name="centre-stage" class="centre-stage" picking-mode="Ignore">
         <ui:Label name="caption" class="text text--display text--bold centre-stage__caption" picking-mode="Ignore" />
-        <ui:Label name="result" class="text text--xl text--bold result-banner" picking-mode="Ignore" />
-        <ui:Label name="prompt" class="text text--md centre-stage__prompt" picking-mode="Ignore" />
+    </ui:VisualElement>
+
+    <ui:VisualElement name="results-stage" class="results-stage" picking-mode="Ignore">
+        <ui:VisualElement name="results" class="results results--hidden" picking-mode="Ignore">
+            <ui:VisualElement name="result-portrait" class="results__portrait results__portrait--gone" picking-mode="Ignore" />
+            <ui:Label name="result" class="text text--xl text--bold results__winner" picking-mode="Ignore" />
+            <ui:Label name="result-stats" class="text text--xs text--muted results__stats results__stats--gone" picking-mode="Ignore" />
+            <ui:VisualElement name="result-badges" class="results__badges" picking-mode="Ignore">
+                <ui:Label name="result-rating" class="text text--sm text--bold badge" picking-mode="Ignore" />
+                <ui:Label name="result-pick" class="text text--sm text--bold badge" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:VisualElement name="result-actions" class="results__actions" picking-mode="Ignore">
+                <ui:Button name="rematch" text="REMATCH" class="text text--md text--bold results__button results__button--primary" />
+                <ui:Button name="new-card" text="NEW CARD" class="text text--md text--bold results__button" />
+            </ui:VisualElement>
+            <ui:Label name="prompt" class="text text--xs text--muted results__hint" picking-mode="Ignore" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

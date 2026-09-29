@@ -8,65 +8,69 @@ using VContainer;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// The five fixed points of the HUD: what this is, how fast it is running, the way back to
+    /// The five fixed points of the HUD: what this is, where the bout stands, the way back to
     /// the menu, the way into the telemetry sheet, and which build is installed.
     ///
     /// Every other panel in this project is tied to a phase and disappears with it. That is
-    /// right for the fight and wrong for these: a frame rate that is only visible behind a
-    /// developer key is not a frame rate anyone checks, a version that is only in the APK
-    /// filename is not one anyone can read off a device, and on a phone the overlay and the
-    /// exit both had gestures rather than buttons - three fingers and a key that is not there.
+    /// right for the fight and wrong for these: a version that is only in the APK filename is not
+    /// one anyone can read off a device, and on a phone the overlay and the exit both had
+    /// gestures rather than buttons - three fingers and a key that is not there.
     ///
-    /// A View, and a thin one throughout. The frame average is the only number it computes, and
-    /// it computes it because a frames-per-second readout of the last single frame is noise.
-    /// Both buttons hand straight to a System, which decides for itself whether the request is
-    /// legal right now.
+    /// The top-centre slot carried a frame rate for a long time. That is a developer's number in
+    /// the one spot every viewer looks at, so it now carries the bout - its number on the menu,
+    /// the clock and the field while the fight is live, a warning as the ropes are about to
+    /// close - and the frame rate lives at the head of the DEBUG sheet. The amber "something is
+    /// wrong with this build" signal the counter used to carry moved onto the DEBUG button.
+    ///
+    /// A View, and a thin one throughout. Both buttons hand straight to a System, which decides
+    /// for itself whether the request is legal right now.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(UIDocument))]
     public sealed class AppChromeView : MonoBehaviour
     {
+        /// <summary>Seconds before the ropes move at which the status starts counting down to them.</summary>
+        private const int ROPES_WARNING_SECONDS = 10;
+
         [Tooltip("The bar's structure. Without it nothing is drawn.")]
         [SerializeField] private VisualTreeAsset _layout;
 
         [Tooltip("The shared HUD stylesheet. Without it the bar renders unstyled.")]
         [SerializeField] private StyleSheet _styleSheet;
 
-        [Tooltip("Seconds between frame-rate refreshes. Sampling every frame makes the number " +
-                 "unreadable and turns a diagnostic into a flicker.")]
-        [SerializeField] private float _fpsRefreshSeconds = 0.25f;
-
         private readonly CompositeDisposable _disposables = new();
         private readonly StringBuilder _builder = new(32);
 
+        private MatchModel _match;
         private MatchFlowModel _flow;
         private MatchFlowSystem _flowSystem;
+        private SuddenDeathModel _suddenDeath;
         private DiagnosticsModel _diagnostics;
         private DiagnosticsSystem _diagnosticsSystem;
 
-        private Label _fps;
+        private Label _status;
         private Button _menu;
         private Button _debug;
 
-        private float _accumulatedMs;
-        private int _accumulatedFrames;
-        private float _refreshTimer;
-
         /// <summary>
-        /// The last value actually written to the label. Compared before every write so a
-        /// steady 60 does not rebuild the same string four times a second.
+        /// A digest of everything the status line shows. Compared before every write so the
+        /// line is rebuilt only when a figure on it actually changed, not every frame.
         /// </summary>
-        private int _shownFps = -1;
+        private int _shownKey = int.MinValue;
 
         [Inject]
         public void Construct(
+            MatchModel match,
             MatchFlowModel flow,
             MatchFlowSystem flowSystem,
+            SuddenDeathModel suddenDeath,
             DiagnosticsModel diagnostics,
             DiagnosticsSystem diagnosticsSystem)
         {
+            _match = match;
             _flow = flow;
             _flowSystem = flowSystem;
+            _suddenDeath = suddenDeath;
             _diagnostics = diagnostics;
             _diagnosticsSystem = diagnosticsSystem;
         }
@@ -107,10 +111,10 @@ namespace PoRumble.Views
 
             // The root is an element UXML never declared, and it spans the screen. This document
             // sorts above every other one, so leaving it pickable would swallow every tap meant
-            // for the fight card, the menu, or the tap-anywhere restart.
+            // for the title screen or the results card.
             root.pickingMode = PickingMode.Ignore;
 
-            _fps = root.Q<Label>("fps");
+            _status = root.Q<Label>("status");
             _menu = root.Q<Button>("menu");
             _debug = root.Q<Button>("debug");
 
@@ -134,41 +138,94 @@ namespace PoRumble.Views
                 _diagnostics.IsVisible
                     .Subscribe(visible => _debug.EnableInClassList("chrome__button--on", visible))
                     .AddTo(_disposables);
+
+                // Amber whenever the diagnostics verdict has anything to report, open or not, so a
+                // broken build shows on the one button that leads to the reason - including one
+                // that is broken at a perfect 60fps.
+                _diagnostics.FindingCount
+                    .Subscribe(count => _debug.EnableInClassList("chrome__button--alert", count > 0))
+                    .AddTo(_disposables);
             }
         }
 
         /// <summary>
-        /// Unscaled throughout: the knockout hold runs the world at quarter speed and a frame
-        /// counter that moved with it would report 15fps on a machine rendering 60.
+        /// Polled rather than subscribed: the line depends on the phase, the clock, the alive
+        /// count and the ropes, and folding them into one comparison is cheaper than four
+        /// subscriptions that would each rebuild the same string.
         /// </summary>
         private void Update()
         {
-            _accumulatedMs += Time.unscaledDeltaTime * 1000f;
-            _accumulatedFrames++;
-            _refreshTimer += Time.unscaledDeltaTime;
-
-            if (_fps == null || _refreshTimer < _fpsRefreshSeconds)
+            if (_status == null)
             {
                 return;
             }
 
-            float averageMs = _accumulatedFrames > 0 ? _accumulatedMs / _accumulatedFrames : 0f;
-            int fps = averageMs > 0f ? Mathf.RoundToInt(1000f / averageMs) : 0;
+            MatchFlowPhase phase = _flow.Phase.Value;
+            int seconds = _suddenDeath.FightSeconds.Value;
+            int alive = _match.CountAlive();
+            bool closing = _suddenDeath.Closing.Value;
 
-            _accumulatedMs = 0f;
-            _accumulatedFrames = 0;
-            _refreshTimer = 0f;
+            int key = ((((int)phase * 16 + alive) * 2 + (closing ? 1 : 0)) * 4096) + seconds;
 
-            if (fps == _shownFps)
+            if (key == _shownKey)
             {
                 return;
             }
 
-            _shownFps = fps;
-
+            _shownKey = key;
             _builder.Clear();
-            _builder.Append(fps).Append(" FPS");
-            _fps.text = _builder.ToString();
+
+            switch (phase)
+            {
+                case MatchFlowPhase.Fighting:
+                    AppendClock(seconds);
+                    _builder.Append("   ");
+
+                    int untilRopes = SuddenDeathMath.SecondsUntilClose(seconds);
+
+                    if (closing)
+                    {
+                        _builder.Append("ROPES CLOSING");
+                    }
+                    else if (untilRopes <= ROPES_WARNING_SECONDS)
+                    {
+                        _builder.Append("ROPES IN ").Append(untilRopes);
+                    }
+                    else
+                    {
+                        _builder.Append(alive).Append(" LEFT");
+                    }
+
+                    break;
+
+                case MatchFlowPhase.KnockoutHold:
+                case MatchFlowPhase.Results:
+                    _builder.Append("FINAL   ");
+                    AppendClock(seconds);
+                    break;
+
+                default:
+                    _builder.Append("BOUT ").Append(_flow.MatchNumber.Value);
+                    break;
+            }
+
+            _status.text = _builder.ToString();
+            _status.EnableInClassList("chrome__status--alert",
+                phase == MatchFlowPhase.Fighting && (closing || SuddenDeathMath.SecondsUntilClose(seconds) <= ROPES_WARNING_SECONDS));
+        }
+
+        private void AppendClock(int seconds)
+        {
+            _builder.Append(seconds / 60).Append(':');
+
+            int remainder = seconds % 60;
+
+            if (remainder < 10)
+            {
+                _builder.Append('0');
+            }
+
+            _builder.Append(remainder);
         }
 
         /// <summary>

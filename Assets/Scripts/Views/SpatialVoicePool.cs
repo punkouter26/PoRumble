@@ -25,8 +25,12 @@ namespace PoRumble.Views
 
         private readonly AudioSource[] _voices;
 
+        private readonly float _baseMinDistance;
+        private readonly float _baseMaxDistance;
+
         private uint _randomState = 0x2545F491;
         private int _next;
+        private float _distanceScale = 1f;
 
         /// <summary>
         /// Builds the pool, adopting voices already authored in the scene when there are any.
@@ -45,6 +49,8 @@ namespace PoRumble.Views
         {
             bool adopt = preplaced != null && preplaced.Length > 0;
             _voices = new AudioSource[adopt ? preplaced.Length : Mathf.Max(1, voiceCount)];
+            _baseMinDistance = minDistance;
+            _baseMaxDistance = maxDistance;
 
             // Air absorbs high frequencies faster than low ones, so a hit across a 40-unit ring
             // should arrive dull as well as quiet. Volume rolloff alone reads as someone turning
@@ -100,7 +106,27 @@ namespace PoRumble.Views
         /// <summary>Plays a clip at a world position on the next voice in the ring.</summary>
         internal void PlayAt(AudioClip clip, Vector2 position, float pitch, float volume)
         {
-            if (clip == null)
+            PlayLayeredAt(clip, 1f, null, 0f, position, pitch, volume);
+        }
+
+        /// <summary>
+        /// Plays two clips as one sound: the same voice, the same position, the same jitter.
+        ///
+        /// On one voice rather than two, and that is what makes it a layer rather than two
+        /// sounds. Two voices would each draw their own pitch and level jitter, so the recorded
+        /// crack and the synthesised body would drift apart by a few percent on every hit and
+        /// read as a flam - and a layered punch would cost two of fourteen voices.
+        /// </summary>
+        internal void PlayLayeredAt(
+            AudioClip primary,
+            float primaryGain,
+            AudioClip secondary,
+            float secondaryGain,
+            Vector2 position,
+            float pitch,
+            float volume)
+        {
+            if (primary == null && secondary == null)
             {
                 return;
             }
@@ -121,7 +147,43 @@ namespace PoRumble.Views
 
             // PlayOneShot rather than Play, so a stolen voice layers the new hit over the tail
             // of the old one instead of cutting it dead.
-            voice.PlayOneShot(clip, Mathf.Clamp01(gain));
+            if (primary != null)
+            {
+                voice.PlayOneShot(primary, Mathf.Clamp01(gain * primaryGain));
+            }
+
+            if (secondary != null && secondaryGain > 0f)
+            {
+                voice.PlayOneShot(secondary, Mathf.Clamp01(gain * secondaryGain));
+            }
+        }
+
+        /// <summary>
+        /// Stretches every voice's rolloff by <paramref name="scale"/>, for a camera that has
+        /// zoomed. Skipped when the change is too small to hear, so a camera easing its zoom
+        /// does not rewrite fourteen sources every frame of the ease.
+        /// </summary>
+        internal void SetDistanceScale(float scale)
+        {
+            if (Mathf.Abs(scale - _distanceScale) < 0.02f)
+            {
+                return;
+            }
+
+            _distanceScale = scale;
+
+            for (int index = 0; index < _voices.Length; index++)
+            {
+                AudioSource source = _voices[index];
+
+                if (source == null)
+                {
+                    continue;
+                }
+
+                source.minDistance = _baseMinDistance * scale;
+                source.maxDistance = _baseMaxDistance * scale;
+            }
         }
 
         internal void SetMixerGroup(AudioMixerGroup group)

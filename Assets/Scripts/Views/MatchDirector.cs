@@ -30,6 +30,7 @@ namespace PoRumble.Views
         private readonly DirectorSystem _directorSystem;
         private readonly CommentarySystem _commentarySystem;
         private readonly WinOddsSystem _winOddsSystem;
+        private readonly SuddenDeathSystem _suddenDeathSystem;
 
         /// <summary>
         /// Physics steps of margin between resolving a match on health and the point
@@ -73,7 +74,8 @@ namespace PoRumble.Views
             FightStatsSystem statsSystem,
             DirectorSystem directorSystem,
             CommentarySystem commentarySystem,
-            WinOddsSystem winOddsSystem)
+            WinOddsSystem winOddsSystem,
+            SuddenDeathSystem suddenDeathSystem)
         {
             _spawnSystem = spawnSystem;
             _boxerSystem = boxerSystem;
@@ -87,6 +89,7 @@ namespace PoRumble.Views
             _directorSystem = directorSystem;
             _commentarySystem = commentarySystem;
             _winOddsSystem = winOddsSystem;
+            _suddenDeathSystem = suddenDeathSystem;
         }
 
         /// <summary>True in a training scene, where the presentation loop is skipped.</summary>
@@ -104,6 +107,14 @@ namespace PoRumble.Views
             // Restarts the round clock on every fresh match, whichever path re-racked it.
             _match.Phase
                 .Subscribe(OnMatchPhaseChanged)
+                .AddTo(_disposables);
+
+            // And on every fight introduced, which the line above does not cover. MENU abandons a
+            // live fight through TryReturnToTitle, where BeginNewEpisode writes InProgress over
+            // InProgress - no change, so no notification - and the next bout inherited the spent
+            // clock: measured at 5313 steps before its first punch.
+            _flow.Phase
+                .Subscribe(OnFlowPhaseChanged)
                 .AddTo(_disposables);
 
             // Training has no menu and no intro: the fight is live from the first step. The
@@ -175,6 +186,13 @@ namespace PoRumble.Views
                 return;
             }
 
+            // The game has no bell, so the ropes close in instead. Never in training, which has
+            // its own MaxStep bell and must clamp to exactly the ring the policy learned in.
+            if (!IsTraining)
+            {
+                _suddenDeathSystem.Step(Time.fixedDeltaTime);
+            }
+
             _boxerSystem.Tick(Time.fixedDeltaTime);
 
             // Resolved after the tick so simultaneous knockouts both count.
@@ -240,6 +258,14 @@ namespace PoRumble.Views
         private void OnMatchPhaseChanged(MatchPhase phase)
         {
             if (phase == MatchPhase.InProgress)
+            {
+                _episodeSteps = 0;
+            }
+        }
+
+        private void OnFlowPhaseChanged(MatchFlowPhase phase)
+        {
+            if (phase == MatchFlowPhase.Introducing)
             {
                 _episodeSteps = 0;
             }

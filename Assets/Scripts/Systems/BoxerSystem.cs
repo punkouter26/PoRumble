@@ -555,11 +555,12 @@ namespace PoRumble.Systems
 
         /// <summary>
         /// Keeps a boxer inside the ropes. Positions are driven by the model rather than by
-        /// physics, so the wall colliders alone would not contain anyone.
+        /// physics, so the wall colliders alone would not contain anyone. Against the playable
+        /// extent, which sudden death closes in; training leaves it equal to the full ring.
         /// </summary>
         private Vector2 ClampToArena(Vector2 position)
         {
-            Vector2 limit = _match.ArenaHalfExtent - new Vector2(_config.BodyRadius, _config.BodyRadius);
+            Vector2 limit = _match.PlayableHalfExtent - new Vector2(_config.BodyRadius, _config.BodyRadius);
 
             return new Vector2(
                 Mathf.Clamp(position.x, -limit.x, limit.x),

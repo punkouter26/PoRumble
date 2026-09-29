@@ -143,6 +143,33 @@ namespace PoRumble.Systems
         }
 
         /// <summary>
+        /// Follows a fighter the viewer tapped, or lets go if they tap the one already followed.
+        /// Refused for a fighter who is out - there is nothing to follow - and between fights,
+        /// when the camera holds the wide shot anyway. Returns whether anything changed.
+        /// </summary>
+        public bool TogglePin(int boxerId)
+        {
+            if (_director.PinnedId.Value == boxerId)
+            {
+                _director.PinnedId.Value = DirectorModel.NOBODY;
+                return true;
+            }
+
+            if (!_flow.IsFightLive || !IsAlive(boxerId))
+            {
+                return false;
+            }
+
+            _director.PinnedId.Value = boxerId;
+
+            // Cut straight to them. Waiting out the minimum shot length reads as the tap not
+            // having registered.
+            ChooseFocus();
+            SetShot(PinnedShot(), 0f);
+            return true;
+        }
+
+        /// <summary>
         /// Scores every living pair and keeps the best, unless the pair already on screen is
         /// within <see cref="PAIR_SWITCH_MARGIN"/> of it.
         ///
@@ -221,6 +248,11 @@ namespace PoRumble.Systems
                 }
             }
 
+            if (TryFollowPinned())
+            {
+                return;
+            }
+
             // Nobody is paired up: either one fighter is left or the ring is empty. Hold on
             // whoever is still standing rather than snapping to the origin, which is the same
             // choice SpectatorCameraView makes when it cannot measure a fight.
@@ -260,6 +292,10 @@ namespace PoRumble.Systems
             if (!_flow.IsFightLive && _flow.Phase.Value != MatchFlowPhase.KnockoutHold)
             {
                 wanted = ShotType.Wide;
+            }
+            else if (_director.PinnedId.Value != DirectorModel.NOBODY)
+            {
+                wanted = PinnedShot();
             }
             else if (!_director.HasPair || _director.Tension < WIDE_TENSION)
             {
@@ -379,6 +415,15 @@ namespace PoRumble.Systems
         /// </summary>
         private void CutToImpact(int subjectId, int otherId)
         {
+            // A viewer following one fighter asked not to be taken elsewhere. Their fighter's
+            // own knockouts and haymakers still cut; everybody else's do not.
+            int pinned = _director.PinnedId.Value;
+
+            if (pinned != DirectorModel.NOBODY && pinned != subjectId && pinned != otherId)
+            {
+                return;
+            }
+
             _director.FocusId = subjectId;
             _director.RivalId = otherId;
             _impactHold = IMPACT_SHOT_SECONDS;
@@ -404,6 +449,75 @@ namespace PoRumble.Systems
 
             _director.Shot.Value = shot;
             _director.ShotElapsed = 0f;
+        }
+
+        /// <summary>
+        /// Frames the pinned fighter's best exchange from the pairs just scored. Lets go of a
+        /// pin whose fighter has gone down, so the camera goes back to the ring's best fight
+        /// rather than holding on a body on the canvas.
+        /// </summary>
+        private bool TryFollowPinned()
+        {
+            int pinned = _director.PinnedId.Value;
+
+            if (pinned == DirectorModel.NOBODY)
+            {
+                return false;
+            }
+
+            if (!IsAlive(pinned))
+            {
+                _director.PinnedId.Value = DirectorModel.NOBODY;
+                return false;
+            }
+
+            int rival = DirectorModel.NOBODY;
+            float best = float.MinValue;
+
+            for (int index = 0; index < _pairCount; index++)
+            {
+                ScoredPair pair = _pairs[index];
+
+                if (pair.IdA != pinned && pair.IdB != pinned)
+                {
+                    continue;
+                }
+
+                if (pair.Score > best)
+                {
+                    best = pair.Score;
+                    rival = pair.IdA == pinned ? pair.IdB : pair.IdA;
+                }
+            }
+
+            _director.FocusId = pinned;
+            _director.RivalId = rival;
+            _director.Tension = rival == DirectorModel.NOBODY ? 0f : best;
+            return true;
+        }
+
+        /// <summary>
+        /// Never wide while a fighter is pinned: the camera only follows a focus on a tracking
+        /// or tighter shot, so a wide pin would follow nobody.
+        /// </summary>
+        private ShotType PinnedShot()
+        {
+            return _director.HasPair && _director.Tension >= DUEL_TENSION ? ShotType.Duel : ShotType.Tracking;
+        }
+
+        private bool IsAlive(int boxerId)
+        {
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+
+            for (int index = 0; index < boxers.Count; index++)
+            {
+                if (boxers[index].Id == boxerId)
+                {
+                    return boxers[index].IsAlive.Value;
+                }
+            }
+
+            return false;
         }
 
         private bool IsCurrentPair(int idA, int idB)

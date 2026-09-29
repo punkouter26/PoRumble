@@ -77,6 +77,7 @@ namespace PoRumble.Views
         private MatchModel _match;
         private RosterModel _roster;
         private FightStatsModel _stats;
+        private WinOddsModel _odds;
         private DirectorModel _director;
         private MatchFlowModel _flow;
 
@@ -86,6 +87,11 @@ namespace PoRumble.Views
         private VisualElement _momentumB;
         private Label _nameA;
         private Label _nameB;
+        private Label _shareA;
+        private Label _shareB;
+
+        /// <summary>The head-to-head share last written, in whole points, so an unchanged figure is not rebuilt.</summary>
+        private int _shownShareA = -1;
 
         private float _refreshTimer;
 
@@ -100,12 +106,14 @@ namespace PoRumble.Views
             MatchModel match,
             RosterModel roster,
             FightStatsModel stats,
+            WinOddsModel odds,
             DirectorModel director,
             MatchFlowModel flow)
         {
             _match = match;
             _roster = roster;
             _stats = stats;
+            _odds = odds;
             _director = director;
             _flow = flow;
         }
@@ -133,6 +141,7 @@ namespace PoRumble.Views
             }
 
             _layout.CloneTree(root);
+            root.pickingMode = PickingMode.Ignore;
 
             _panel = root.Q<VisualElement>("panel");
             _spark = root.Q<VisualElement>("spark");
@@ -140,6 +149,8 @@ namespace PoRumble.Views
             _momentumB = root.Q<VisualElement>("momentum-b");
             _nameA = root.Q<Label>("name-a");
             _nameB = root.Q<Label>("name-b");
+            _shareA = root.Q<Label>("share-a");
+            _shareB = root.Q<Label>("share-b");
 
             BuildRows(root.Q<VisualElement>("rows"));
 
@@ -231,6 +242,7 @@ namespace PoRumble.Views
             {
                 _indexA = indexA;
                 _indexB = indexB;
+                _shownShareA = -1;
                 RefreshNames();
             }
 
@@ -250,6 +262,7 @@ namespace PoRumble.Views
             WriteRow(5, a.DamageDealt, b.DamageDealt);
 
             RefreshMomentum(a.Momentum, b.Momentum);
+            RefreshShares();
 
             if (_spark != null)
             {
@@ -282,6 +295,49 @@ namespace PoRumble.Views
 
             _momentumA.style.width = Length.Percent(differential > 0f ? share : 0f);
             _momentumB.style.width = Length.Percent(differential < 0f ? share : 0f);
+        }
+
+        /// <summary>
+        /// Each fighter's share of the pair's combined win chance, as a badge beside their name.
+        ///
+        /// Normalised to the two of them rather than their field odds, because 9% against 6% in
+        /// a ten-way is two small numbers; 60/40 is a fight. This used to be a second
+        /// centre-anchored bar for the same pair on a separate odds board, directly under the
+        /// momentum bar above - two bars saying which way the same exchange was going. The
+        /// momentum bar stayed because it moves with every punch; the odds became a number.
+        /// </summary>
+        private void RefreshShares()
+        {
+            if (_shareA == null || _shareB == null || _odds == null)
+            {
+                return;
+            }
+
+            if (_indexA >= _odds.SeatCount || _indexB >= _odds.SeatCount)
+            {
+                return;
+            }
+
+            float oddsA = _odds.SeatOdds(_indexA);
+            float oddsB = _odds.SeatOdds(_indexB);
+            float total = oddsA + oddsB;
+            int shareA = Mathf.RoundToInt((total > 0f ? oddsA / total : 0.5f) * 100f);
+
+            if (shareA == _shownShareA)
+            {
+                return;
+            }
+
+            _shownShareA = shareA;
+            _shareA.text = FormatWholePercent(shareA);
+            _shareB.text = FormatWholePercent(100 - shareA);
+        }
+
+        private string FormatWholePercent(int percent)
+        {
+            _builder.Clear();
+            _builder.Append(percent).Append('%');
+            return _builder.ToString();
         }
 
         /// <summary>
@@ -390,11 +446,11 @@ namespace PoRumble.Views
                 return string.Empty;
             }
 
-            FighterProfile profile = _roster.SeatOf(boxers[index].Id);
+            string label = _roster.SeatLabel(boxers[index].Id);
 
-            if (profile != null)
+            if (label != null)
             {
-                return profile.DisplayName;
+                return label;
             }
 
             _builder.Clear();

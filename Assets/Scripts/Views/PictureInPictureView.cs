@@ -264,11 +264,11 @@ namespace PoRumble.Views
 
         private void AppendName(int boxerId)
         {
-            FighterProfile profile = _roster.SeatOf(boxerId);
+            string label = _roster.SeatLabel(boxerId);
 
-            if (profile != null)
+            if (label != null)
             {
-                _builder.Append(profile.DisplayName);
+                _builder.Append(label);
                 return;
             }
 

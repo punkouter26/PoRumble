@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The tale of the tape: two contestants side by side for the few seconds between FIGHT and the
+  bell. Each side is a face, a name, a rating, a record and a price; the headline says why these
+  two were chosen.
+
+  Bottom band, the same slot the results card takes, so it clears both the full field board at
+  the top of the screen and the countdown number in the centre stage.
+
+  Faces are sprites on FighterProfile assets and are set from C#, as the title tiles are.
+  Nothing here takes a tap.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="tape tape--hidden" picking-mode="Ignore">
+        <ui:Label name="headline" class="text text--xs text--bold text--muted tape__headline" picking-mode="Ignore" />
+        <ui:VisualElement name="row" class="tape__row" picking-mode="Ignore">
+            <ui:VisualElement name="side-a" class="tape__side" picking-mode="Ignore">
+                <ui:VisualElement name="portrait-a" class="tape__portrait" picking-mode="Ignore" />
+                <ui:Label name="name-a" class="text text--md text--bold tape__name" picking-mode="Ignore" />
+                <ui:Label name="rating-a" class="text text--xs tape__line" picking-mode="Ignore" />
+                <ui:Label name="record-a" class="text text--xs text--muted tape__line" picking-mode="Ignore" />
+                <ui:Label name="price-a" class="text text--xs text--bold tape__line tape__price" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Label name="vs" text="VS" class="text text--lg text--bold tape__vs" picking-mode="Ignore" />
+            <ui:VisualElement name="side-b" class="tape__side" picking-mode="Ignore">
+                <ui:VisualElement name="portrait-b" class="tape__portrait" picking-mode="Ignore" />
+                <ui:Label name="name-b" class="text text--md text--bold tape__name" picking-mode="Ignore" />
+                <ui:Label name="rating-b" class="text text--xs tape__line" picking-mode="Ignore" />
+                <ui:Label name="record-b" class="text text--xs text--muted tape__line" picking-mode="Ignore" />
+                <ui:Label name="price-b" class="text text--xs text--bold tape__line tape__price" picking-mode="Ignore" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -19,6 +19,7 @@ namespace PoRumble.Models
         private readonly List<FighterProfile> _available = new();
         private readonly List<FighterProfile> _entrants = new();
         private FighterProfile[] _seats = System.Array.Empty<FighterProfile>();
+        private string[] _seatLabels = System.Array.Empty<string>();
 
         public IReadOnlyList<FighterProfile> Available => _available;
         public IReadOnlyList<FighterProfile> Entrants => _entrants;
@@ -122,6 +123,7 @@ namespace PoRumble.Models
             if (_seats.Length != seatCount)
             {
                 _seats = new FighterProfile[seatCount];
+                _seatLabels = new string[seatCount];
             }
 
             for (int seat = 0; seat < seatCount; seat++)
@@ -129,6 +131,7 @@ namespace PoRumble.Models
                 _seats[seat] = _entrants.Count == 0 ? null : _entrants[seat % _entrants.Count];
             }
 
+            WriteSeatLabels();
             Revision.Value++;
         }
 
@@ -136,6 +139,69 @@ namespace PoRumble.Models
         public FighterProfile SeatOf(int boxerId)
         {
             return boxerId >= 0 && boxerId < _seats.Length ? _seats[boxerId] : null;
+        }
+
+        /// <summary>
+        /// The name to print for a boxer slot: the contestant's name, numbered when the same
+        /// contestant fills more than one corner. Eight entrants in ten seats put two of them
+        /// in the ring twice, and a field board reading HEURISTIC, HEURISTIC gave no way to
+        /// tell which one had just gone down. The first seat keeps the plain name; the second
+        /// is "HEURISTIC 2". Null when nothing is seated.
+        /// </summary>
+        public string SeatLabel(int boxerId)
+        {
+            return boxerId >= 0 && boxerId < _seatLabels.Length ? _seatLabels[boxerId] : null;
+        }
+
+        /// <summary>
+        /// How many of <paramref name="seatCount"/> corners a contestant fills under the current
+        /// selection, using the same round-robin deal as <see cref="AssignSeats"/>. Answered from
+        /// the entrants rather than the dealt seats, so the title screen can say who fights twice
+        /// while the card is still being edited and nothing has been dealt yet.
+        /// </summary>
+        public int SeatsFor(FighterProfile profile, int seatCount)
+        {
+            int index = profile == null ? -1 : _entrants.IndexOf(profile);
+
+            if (index < 0 || seatCount <= 0)
+            {
+                return 0;
+            }
+
+            int count = _entrants.Count;
+            return seatCount / count + (index < seatCount % count ? 1 : 0);
+        }
+
+        /// <summary>
+        /// Built once per deal rather than per read: labels are printed from several views
+        /// several times a second, and composing "NAME 2" on each read would allocate every time.
+        /// </summary>
+        private void WriteSeatLabels()
+        {
+            for (int seat = 0; seat < _seats.Length; seat++)
+            {
+                FighterProfile profile = _seats[seat];
+
+                if (profile == null)
+                {
+                    _seatLabels[seat] = null;
+                    continue;
+                }
+
+                int occurrence = 1;
+
+                for (int earlier = 0; earlier < seat; earlier++)
+                {
+                    if (_seats[earlier] == profile)
+                    {
+                        occurrence++;
+                    }
+                }
+
+                _seatLabels[seat] = occurrence == 1
+                    ? profile.DisplayName
+                    : string.Concat(profile.DisplayName, " ", occurrence.ToString());
+            }
         }
     }
 }

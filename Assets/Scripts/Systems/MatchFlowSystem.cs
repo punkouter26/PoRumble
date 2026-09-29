@@ -172,7 +172,7 @@ namespace PoRumble.Systems
         ///
         /// <see cref="TryRestart"/> deliberately only works on the results screen, so that a
         /// mashed key cannot cut a fight short. That left the shipping build with no way out
-        /// of a live fight at all: the phone has no Escape key, a tap anywhere is refused
+        /// of a live fight at all: the phone has no Escape key, a tap anywhere was refused
         /// outside Results, and a ten-way brawl runs until nine of them are down. This is the
         /// deliberate exit the chrome bar's MENU button drives, which is why it is a separate
         /// method rather than a relaxed guard on the other one.

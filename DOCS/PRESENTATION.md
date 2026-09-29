@@ -15,18 +15,16 @@ every one of them.
 | `CameraRig` | `SpectatorCameraView` | Frames the living fighters; tightens as the field thins |
 | `PlayerStatusHud` | `PlayerStatusHudView` | Player health, breath, haymaker meter, hit vignette, behind-you warning |
 | `DiagnosticsHud` | `DiagnosticsHudView` | **F3** telemetry overlay |
-| `MatchInput` | `MatchInputView` | The restart key |
-| `MatchHud` | `MatchHudView` | Survivors, per-fighter health, countdown, result banner |
-| `RosterCard` | `RosterSelectionView` | The fight card — pick who is in the ring (**Tab**) |
+| `MatchInput` | `MatchInputView` | The keys: **Enter** fight / rematch, **R** menu, **Tab** PICK / CARD on the title screen |
+| `MatchHud` | `MatchHudView` | The field board (health + live win chance + your stake, one row per fighter; a strip during the fight), countdown, the results card |
 | `KnockoutMood` | `KnockoutMoodView` | Blends a desaturated, vignetted grade **and** the mixer's `Knockout` snapshot for the knockout hold |
 | `Standings` | `StandingsHudView` | Top three of the Elo table |
 | `FightStats` | `FightStatsHudView` | The telemetry board — thrown/landed/connect/blocked/slips/damage for the pair the director is watching, plus a momentum bar and sparkline |
 | `CameraRig` | `CameraDirectorView` | Owns `ImpactCam` and hands it the frame on a knockout or a landed haymaker |
 | `Commentary` | `CommentaryView` | Speaks the baked commentary and prints the subtitle |
-| `MainMenu` | `MainMenuView` | The title screen — owns the `Title` phase outright |
+| `MainMenu` | `MainMenuView` | The title screen — the contestant grid, PICK / CARD, the bank, FIGHT. Owns the `Title` phase outright |
 | `Crowd` | `CrowdAmbienceView` | The crowd bed and its reaction swells |
-| `WinOdds` | `WinOddsHudView` | The odds board — live win probability, the head-to-head bar for the director's pair, the viewer's stake |
-| `PredictionPicker` | `PredictionPickerView` | The pick strip on the title screen — back a contestant for the next bell |
+| `HudCarousel` | `HudCarouselView` | Portrait only: the telemetry board and the standings share one slot under TAPE / TABLE tabs |
 | `SecondFightFeed` | `PictureInPictureView` | The corner feed on the second fight, filmed by `CameraRig/SecondFightCamera` |
 | `DamageMap` | `DamageMapView` | The fight map — the canvas lit where the damage was done, on the results screen |
 
@@ -106,15 +104,16 @@ the broadcast layer, so training never runs it.
   health is a quarter the strength; momentum can tip a close call but never outweigh a health
   lead). Fitting them needs logged match states and outcomes, which this project does not
   collect yet.
-- **The board is per contestant, not per seat.** The cyclic deal seats some fighters twice, and
-  a board listing BIGGIE on two lines at 12% each misstates who a viewer is backing. The
-  head-to-head bar is per seat, because it describes the two bodies on camera, and it splits
-  their share of *each other's* chances: 9% against 6% in a ten-way is two small numbers, 60/40
-  is a fight.
-- **The odds board and the second-fight feed are the only panels up during a live fight.**
-  `HudVisibilityView.StaysUpDuringFight` exempts them alongside the diagnostics overlay. A win
-  probability exists to be watched moving; hiding it for exactly the phase in which it moves
-  would make it pointless.
+- **The odds are shown per seat, on the field board.** There used to be a separate odds board,
+  per contestant, under the health column - which listed the same fighters a second time. The
+  field board's rows are seats (the bodies in the ring), so a contestant the cyclic deal seats
+  twice shows twice, each with that body's chance; the stake marker lights every seat the backed
+  contestant fills. The head-to-head share on the telemetry board splits the pair's share of
+  *each other's* chances: 9% against 6% in a ten-way is two small numbers, 60/40 is a fight.
+- **The field strip is up during the live fight, and the odds are on it.**
+  `HudVisibilityView.StaysUpDuringFight` exempts the field board alongside the diagnostics
+  overlay and the second-fight feed. A win probability exists to be watched moving; hiding it for
+  exactly the phase in which it moves would make it pointless.
 - **Trends are signed numbers, not arrows,** because every font atlas is baked over printable
   ASCII and a triangle glyph renders as a missing-glyph box. The same goes for `x` in prices
   and `-` separators throughout the new panels.
@@ -312,6 +311,13 @@ nobody, so a physics callback would miss the clamp entirely.
 
 ## The sound palette is deliberately two sounds
 
+> **Since 2026-09-28 it is two sounds plus three switches.** Blocks and the haymaker wind-up
+> are back, behind `CombatFeedbackView._blockSounds` / `_windUpSounds`; the slip and evade
+> whoosh is behind `_slipSounds` and stays **off**, for exactly the reason below. Blocks are
+> gated to the footsteps' earshot and play at 0.42, so a guard exchange across the ring does not
+> become the wash this section describes. There is also a score now - see **Music** below. The
+> crowd bed is still off.
+
 **Footsteps and landed punches. That is the whole of it**, plus the commentator. Everything
 else that used to make a noise has been cut: the crowd bed and its reaction swells, blocks,
 evades, the slip whoosh, the haymaker wind-up, the knockout, breath, the rope thud, the bell
@@ -382,10 +388,18 @@ standings by about 74. Only `_humanBoxerId: -1` hid the second one in the shippi
 The `--band-*` and `--col` tokens in `:root` are the fix. Two columns of `--col` with
 `--band-gap` between them come to exactly 100%, so no pair of panels sharing a band can overlap
 however long their content gets; `--band-top-max` caps how far the top band may grow, which is
-what keeps the middle of the screen clear for the ring. The bottom stack is three tokens read
-bottom-up: the card button on the floor, the player's panel above it, the commentary caption
-above that. `.commentary-band` used to be a bare `bottom: 430px` measured against the panel
-heights of the day and silently wrong the moment any of them moved.
+what keeps the middle of the screen clear for the ring. The bottom stack is read bottom-up: the
+chrome row on the floor (`--band-bottom-card`), the player's panel above it. The commentary
+caption used to hold a third band there; it lives inside the chrome row now.
+
+**`HudLayoutTests` is what holds all of this.** It lays the real UXML and `porumble.uss` out in an
+editor panel at 1080x1920 and 1080x2400, filled to the worst case (ten fighters, long names,
+every line populated), and asserts each panel sits between the chrome rows and clear of every
+other panel up at the same time - title screen, live fight, results, opened debug sheet. Every
+overlap described in this section was found by looking at a device; the test found the next one
+(the folded debug sheet across the second-fight feed) before a screen did. It applies each
+phase's classes by hand rather than running the views, so a view that starts adding a new
+layout class needs its scenario updated to match.
 
 Two consequences worth knowing. **Panel-internal widths had to become flexible with it** — a
 fixed 190px name beside a fixed 300px bar can exceed a panel that is now a percentage of the
@@ -394,17 +408,33 @@ screen, and a `Label` overflows rather than shrinking, so `.match-hud__name` and
 right column's second row**, which is what actually removed the bottom-band conflict rather than
 papering over it.
 
-**The fight card's grid fits three tiles per row, not two.** At `max-width: 700px` only two fit,
-which turned eight contestants into four rows about 1530px tall — with the title and footer on
-top, the card ran off the bottom of a phone. It survived at exactly eight and would have
-overflowed silently at nine.
+**The fight card is part of the title screen, not a modal.** It was a full-screen document of
+its own with 300px tiles three to a row: a full ten-fighter card came to four rows of about 430px,
+roughly 1,870px of a 1,920 screen once the title and footer were added, under both chrome bars.
+It also duplicated the pick strip, which offered prices on the same contestants as chips along
+the bottom of the menu. Now `MainMenuView` draws one grid of compact tiles (`--tile-width` 23%,
+four to a row, a 128px face, a price badge and a rating badge) and a PICK / CARD switch decides
+what a tap does. The switch *is* `RosterModel.IsOpen`, so Tab still flips it and `RosterSystem`
+still gates it; leaving CARD commits the card through `BoxerSpawnPoints.SeatRoster`, as closing
+the modal did. The FIGHT button and the phase change both close CARD first, because Enter can
+start a fight without passing through the button.
 
 **`MainMenuView` owns `MatchFlowPhase.Title` outright.** The phase and the loop that returns to
 it already existed; what it had was a caption and a line of instruction text drawn onto the match
 HUD's centre stage, naming a key that does not exist on a phone. `MatchHudView`'s `Title` branch
-is now deliberately blank, and `RosterSelectionView` hides its floating `#open-card` button on
-that phase specifically — the menu carries its own, and with both live the screen showed two
-FIGHT CARD buttons. The results phase still needs the floating one, because no menu is up then.
+is deliberately blank.
+
+**The results screen is one card.** A winner banner, a "tap to continue" prompt, a floating
+fight-card button and a stake line on the odds board became the results card in `MatchHud.uxml`:
+winner, a rating badge (Elo after the bout and its change), a pick badge (won / lost / refunded
+and the bank), and REMATCH / NEW CARD. REMATCH is `TryRestart` then `TryStartFight`; NEW CARD is
+`TryRestart` and opens CARD. There is no knockout replay on it: the knockout hold is the slow-motion
+of the live punch, and nothing records a fight to play back.
+
+**No touch input outside UI Toolkit.** `MatchInputView` used to read a tap anywhere straight off
+the `Touchscreen` device, which fired on the press: a tap on a pick chip or FIGHT CARD also
+started the fight, and a tap on a results button changed phase before the button saw its release.
+It is keyboard-only now; every touch action is a button.
 
 **Owning the phase means the other panels have to be told.** `MatchHudView`'s branch going blank
 was only half of it: the match panel itself, the tale of the tape and the standings all carried
@@ -425,9 +455,15 @@ against whatever the panels happened to be that day.
 
 **`SafeAreaView` insets every panel, and nothing did before.** The survivor count sat 20px from
 the top of a 1920-tall screen, underneath the status bar on any phone that has one. It writes
-padding on each document's *root* rather than margins on the panels: the HUD anchors its panels
-absolutely, an absolutely positioned child resolves against its parent's padding box, so one
-write moves every corner-anchored panel at once. Two things it has to get right.
+**margins** on each document's *root*, which shrinks the root itself to the safe rectangle, so
+every absolutely anchored panel inside it moves at once. It wrote *padding* for a long time, and
+padding does nothing here: an absolute child's `top`/`left` are measured from the parent's padding
+edge, so the padding read back correctly while every panel - and the chrome row with MENU on it -
+stayed under the status bar. Measured on a Simulator device with a 92px cutout: chrome at y=0,
+field board at y=80, against a 116-unit inset. The insets are measured on the *panel*
+(`root.panel.visualTree.layout`), not the root, because the margins shrink the root and a second
+pass would compound them. `HudLayoutTests` now applies margins the same way and runs every layout
+with and without a 120px notch, asserting the chrome clears it. Two more things it has to get right.
 `Screen.safeArea` can be larger than `Screen.width/height` - in the Editor it reports the whole
 display while `Screen` reports the Game view - so the fractions are clamped to [0, 0.5] or the
 insets come out negative and silently lose the base inset too. And it must keep retrying until
@@ -528,3 +564,147 @@ art changes, and this project just took on a normal map per sprite and an SDF at
 weight) and counts `Light2D` and `ShadowCaster2D` directly at `Start`, since neither set changes
 during a session and Unity's own shadow counter reads zero for 2D casters.
 
+
+## Recorded Punches
+
+`CombatFeedbackView` takes three optional banks - `_recordedLightPunches`,
+`_recordedHeavyPunches`, `_recordedBlocks` - filled from Kenney's CC0 packs in `Assets/Audio/Sfx/`
+(attribution in `Assets/Audio/ATTRIBUTION_Kenney.md`). A landed punch plays a recording **with
+the synthesised clip underneath it** at `_synthGainUnderRecording` (0.45): the recordings are dry
+and short, and the synthesised body is the low thump that makes a glove sound like it hit a person.
+
+- **Both layers go out on one voice** (`SpatialVoicePool.PlayLayeredAt`). Two voices would draw
+  their own pitch and level jitter, drift a few percent apart on every hit and read as a flam -
+  and a punch would cost two of the fourteen voices.
+- **Empty banks fall back to the synthesised bank alone**, so the training scenes and any build
+  without the audio assets behave exactly as before.
+
+## Music
+
+`MusicView` plays a loop synthesised at load by `ProceduralMusic`: four bars in A minor at 112bpm,
+split into three stems - **pulse** (kick and a side-chained bass), **drive** (hats and snare),
+**stabs** (detuned chord stabs and a turnaround tom fill). `MusicMath` is the rule.
+
+- **All three stems play from the first frame, locked to one DSP start, and only their levels
+  move.** That is what lets the score build without ever cutting. They are `PlayScheduled`
+  together because three `Play` calls can land in different audio buffers and flam on every kick.
+  They start in `OnEnable`, not `Awake`: disabling the object stops every source under it, and a
+  score started in `Awake` stayed silent after being switched off and on.
+- **Intensity is the largest of three measures**, as the crowd's is: the field thinning, the
+  director's tension on its pair, and the card's peak momentum. A live fight never drops below
+  0.34, which keeps the drive in; the stabs arrive past 0.62. Title plays the pulse alone, the
+  knockout hold drops to almost nothing - the `Knockout` snapshot is muffling the mix, and a band
+  playing through it reads as a fault.
+- **It has its own mixer group, `Master -> Music`**, created through `AudioMixerController` like
+  the rest of the chain. It ducks on the commentator's cue exactly as the crowd does.
+- **Stings are recordings**: `jingles_STEEL00` at the introduction and a winner's sting from the
+  17 `jingles_HIT*` clips, picked by an FNV hash of the winner's display name
+  (`MusicMath.StableIndex`) so a fighter always wins to the same notes. `string.GetHashCode` is
+  allowed to differ between runtimes and would change it on the phone. The winner's sting waits
+  for `Results`, because the knockout hold between is muffled.
+
+## Zoom-Aware Listening and Haptics
+
+**The listener lives on `Main Camera/Ears`, not on the camera**, and `ListenerRigView` raises it
+with the orthographic size (`_heightPerOrthoSize` 1.1). Panning is set by the angle from the ears
+to a punch, so ears at a fixed height made a tight duel pan hard and a wide ten-way barely pan at
+all; ears that rise with the zoom make the edge of the screen pan the same amount at every zoom.
+`CombatFeedbackView` also stretches the pool's rolloff by `(ortho / 9)^0.5`, so a wide shot sounds
+further away without going silent. Body-sound and block earshot are measured on the plane, so the
+height does not gate them.
+
+**`HapticsView` vibrates on knockouts, and on counters and landed haymakers involving the
+director's pair only.** A phone buzzing for every heavy punch anywhere in a ten-way is buzzing for
+punches the viewer never saw. `AndroidHaptics` uses `VibrationEffect.createOneShot` (API 26+) for
+sized pulses and falls back to `Handheld.Vibrate` for knockouts on older devices - which is also
+the reference that makes Unity add the `VIBRATE` permission. Silent everywhere else.
+
+## The Portrait Carousel
+
+`HudCarouselView` puts the telemetry board and the standings into **one top-right slot in
+portrait, a turn each** (6s), through two classes appended to `porumble.uss`
+(`hud-carousel--slotted`, `hud-carousel--off`), under a row of tabs (TAPE / TABLE) drawn in its
+own `UIDocument`. A tap on a tab holds that panel for `_manualHoldSeconds` (30s) before the
+rotation resumes - the timer alone changed panels mid-read and gave no way back. The tab row only
+shows with two or more panels eligible: a single tab is a heading, which is what the tabs
+replaced. In landscape the classes are removed and the grid is unchanged. Only panels that want
+to be up take a turn - one carrying its own `--hidden` class, or whose document
+`HudVisibilityView` has cleared, is skipped. Each panel's own view still owns its content and
+visibility; none of them knows the carousel exists.
+
+A **drain bar** under the tabs shows how much of the current turn is left (full and draining
+through the 30s hold after a tap), and a **horizontal swipe** on the slotted panel turns it -
+left for the next panel, right for the previous - exactly as a tapped tab does. Only the panel
+on show is pickable: the others share its rectangle at zero opacity and would catch the press.
+The outgoing panel vanishes instantly (`.hud-carousel--off` carries `transition-duration: 0s`):
+`.stats` fades its opacity and `.standings` does not, so a swap used to snap the table in while
+the tape was still fading out, and the two translucent panels overprinted each other.
+
+## Broadcast Additions
+
+Added together on 2026-09-28 from a UI/UX review of the portrait loop. Each is its own view and,
+where it draws, its own `UIDocument` built in the scene, so none of them grew `MatchHudView`.
+
+| Piece | View / document (sort) | What it does |
+|---|---|---|
+| Knockout feed | `EliminationFeedView` / `EliminationFeed` (6) | "BIGGIE KO'D BY ALAN    7 LEFT" under the fight strip; green when the viewer's pick scored it, red when the pick fell. Also announces sudden death. Three reused labels, each fading after 4s unscaled |
+| Tale of the tape | `FightIntroView` / `FightIntro` (7) | During Introducing and Countdown: the viewer's pick against the favourite (or the two favourites), with face, Elo, record and what a bet returns. Chosen by `HeadlineMath` |
+| Follow tag | `FocusTagView` / `FocusTag` (8) | "FOLLOWING DUPEE" / "PINNED ALAN" over the head of whoever the camera is on. Hidden on the wide shot and the impact cut, clamped inside the screen and below the strip. Tapping it pins or releases |
+| Pinning | `DirectorSystem.TogglePin`, `DirectorModel.PinnedId` | A tap on a fighter's cell in the strip, or on the tag, makes the director frame that fighter's best exchange and never go wide. Released when they go down; other fighters' knockouts no longer cut away |
+| Results card | `MatchHudView`, `results-stage` | The winner's face, "3 KNOCKOUTS 64 DAMAGE 41% LANDED", the bet in words. Its own stage now, anchored to the bottom band in portrait |
+| Chrome status | `AppChromeView` | Top-centre is the bout, not the frame rate: BOUT n, then "1:42  7 LEFT", "ROPES IN 8" and "ROPES CLOSING" in amber, then FINAL. The frame rate leads the DEBUG verdict; the amber findings signal is on the DEBUG button |
+| Safe-area outline | `DiagnosticsHudView`, `safe-outline` | Drawn while DEBUG is open. The diagnostics root is inset like every other, so its edges are the safe rectangle |
+
+Betting copy is in words throughout: tiles read "WINS 1239" (what a 100 bet returns, stake
+included, with the same rounding `PredictionSystem` settles with) instead of "11.0x"; the bank line
+reads "RIGHT 1 OF 3" instead of "1/3 CALLED"; the strip's stake line reads "YOUR 100 ON ALAN
+WINS 1239 CHANCE 8%"; the results card says "YOUR 100 ON ALAN WON 1239" or "LOST".
+
+In portrait the title panel and the results card sit on the **bottom band**, in thumb reach,
+where the empty space under the letterboxed ring was. `HudLayoutTests.AssertInThumbReach` pins it.
+
+## Portrait Density
+
+- **The chrome rows are 64px, down from 96.** At 96 a third of each row was margin around 28px
+  labels. The buttons shrank with them: 64px is about 3.9mm on a modern phone, under what a
+  primary control wants; MENU and DEBUG are chrome, and keep a 200px width.
+- **The commentary caption lives in the bottom chrome row**, between DEBUG and the version, two
+  lines at most. It used to hold a band over the ring and was cleared for the whole fight as a
+  result - when most lines are spoken.
+- **Headings became badges.** STANDINGS, WIN PROBABILITY, TALE OF THE TAPE, PICK A WINNER and
+  SELECT THE CARD each spent a row naming a panel; the carousel tabs and `.badge` plates carry the
+  same information in a word.
+- **`.portrait` tightens the larger spacing steps** (`--space-3/4/5` to 16/24/32).
+  `SafeAreaView` sets the class on every document root, since it already visits all of them on
+  every screen change.
+- **On a touchscreen the player's meters move onto the buttons.** Breath is a ring around PUNCH,
+  the haymaker charge a ring around POWER (`TouchControlsView`, `Painter2D`); health is the
+  player's own cell on the field strip, marked blue. The player panel keeps only its two
+  callouts. None of this is in the shipped build, which seats no human.
+- **DEBUG opens folded.** The sheet shows the verdict's worst finding, docked above DEBUG in the
+  left column; tapping it opens the tabs, graph and figures. The verdict is ranked whether or not
+  the sheet is open (`DiagnosticsModel.FindingCount`), and the chrome bar's FPS counter turns amber
+  whenever it is non-zero. In the Editor it usually is - editor-side allocation trips the
+  allocation finding - so amber there is not by itself a build problem.
+- **Four documents that sat above the ring are exempt from the fight clear now**: the chrome bar
+  (MENU was cleared with everything else, for exactly the phase it exists for), the commentary,
+  and the player's panel and touch controls, which a human cannot fight without.
+
+## The Performance Log
+
+`PerformanceLogView` records the match **a sample per second** into `PerformanceTraceModel` -
+frame time, peak, allocation, draw calls, SetPass, fighters alive, and on Android the
+`PowerManager` thermal status (API 29+) and battery temperature (`ThermalProbe`, polled every 5s
+because JNI allocates). It starts at the countdown and writes
+`persistentDataPath/perf/match_<time>_<n>.csv` at the results screen, keeping the last 20. A fight
+abandoned through MENU writes nothing.
+
+The diagnostics sheet's **MATCH** tab draws the whole trace, squeezed rather than scrolled so
+the start is always there to compare against, with thermal status as a stepped red line. **Drift
+is the number to read**: the mean of the last 30s minus the first 30s. An expensive scene is slow
+from the first second and drifts by nothing; a throttling phone gets slower.
+
+`PerformanceTraceModel` is registered through a factory in `GameLifetimeScope`, not
+`Register<T>`: it has a capacity constructor for its tests, VContainer picks the constructor with
+the most parameters, and resolving an `int` failed the whole build callback - taking every
+optional view after it down with it.

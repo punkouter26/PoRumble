@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The knockout feed, under the live fight strip: who went down, who put them there, and how
+  many are left. Three lines, newest on top, each fading on its own timer.
+
+  Three toast labels declared here and reused by EliminationFeedView, rather than a line cloned
+  per knockout, so a busy exchange allocates nothing. They are transparent until written to, so
+  the panel never changes height over the ring.
+
+  Nothing here takes a tap; the feed sits over a live ring.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="feed" picking-mode="Ignore">
+        <ui:Label name="toast-0" class="text text--sm text--bold feed__toast" picking-mode="Ignore" />
+        <ui:Label name="toast-1" class="text text--xs text--bold feed__toast" picking-mode="Ignore" />
+        <ui:Label name="toast-2" class="text text--xs text--bold feed__toast" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

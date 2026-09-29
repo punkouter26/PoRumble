@@ -7,21 +7,22 @@
   side of one label and lets the eye compare them. The pair shown is the director's, so the
   board is always reporting on the fight that is actually in frame.
 
+  No title. It used to open on a line reading TALE OF THE TAPE, which on a phone was a full row
+  spent naming the panel; the carousel tab above it names it now.
+
+  The share badges beside the names are the head-to-head odds. They used to be a second bar on a
+  separate odds board, drawn from the centre for the same two fighters as the momentum bar here -
+  two bars saying who is winning the same exchange. One bar stays; the other became a number.
+
   Everything is picking-mode="Ignore". The board sits over a live ring and must never eat a
-  click meant for the fight card sorted beneath it.
+  click meant for a panel beneath it.
 -->
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="panel" class="stats" picking-mode="Ignore">
-        <!--
-          The title sits on its own line rather than between the two names. Sharing the row
-          cost it about 190px of the panel's 480, which left a contestant's name barely wider
-          than the word STANDARD and truncated half the card to an ellipsis. A name is the one
-          thing on this panel that has to be readable.
-        -->
-        <ui:Label name="title" class="text text--xs text--muted stats__title" text="TALE OF THE TAPE" picking-mode="Ignore" />
-
         <ui:VisualElement name="header" class="stats__header" picking-mode="Ignore">
             <ui:Label name="name-a" class="text text--md text--bold stats__name" picking-mode="Ignore" />
+            <ui:Label name="share-a" class="text text--xs text--bold badge stats__share" picking-mode="Ignore" />
+            <ui:Label name="share-b" class="text text--xs text--bold badge stats__share" picking-mode="Ignore" />
             <ui:Label name="name-b" class="text text--md text--bold stats__name stats__name--right" picking-mode="Ignore" />
         </ui:VisualElement>
 

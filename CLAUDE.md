@@ -25,10 +25,10 @@ Renderer, so 3D lit materials will not light correctly.
 | Task | How |
 |---|---|
 | Play | Open `Assets/Scenes/SampleScene.unity` → Play. 10 boxers, HUD, boxer #0 on keyboard |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay · tap a chip on the title screen to back a winner |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** flips the title screen between PICK and CARD · **Enter** fight / rematch · **R** back to the menu from the results · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 221 PoRumble EditMode tests (the `com.besty.unity-skills` testables add their own, two of which fail upstream) |
+| Tests | `unity command run_tests --mode EditMode` — 295 PoRumble EditMode tests (the `com.besty.unity-skills` testables add their own, two of which fail upstream). `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
@@ -73,6 +73,7 @@ first place to look before changing any of these areas.
 | [DOCS/GAMEPLAY.md](DOCS/GAMEPLAY.md) | Haymaker, guard, counter, slip; the fight card, Elo and the brain tiers |
 | [DOCS/ANDROID.md](DOCS/ANDROID.md) | The portrait build, the camera framing rules orientation forces, touch input |
 | [DOCS/RUNTIME_REPORT.md](DOCS/RUNTIME_REPORT.md) | The last full runtime verification pass: errors, telemetry, frame budget |
+| [DOCS/TOOLS.md](DOCS/TOOLS.md) | Add-on packages, vendored CC0 packs, and the tools outside the project (Piper TTS, OBS) |
 
 ---
 
@@ -107,6 +108,12 @@ silent failures - nothing errors, and the thing simply does not work.
 - **The flow loop runs on unscaled time.** The knockout hold sets `Time.timeScale`, which is
   global and outlives Play mode; anything that touches it must restore it.
   → `DOCS/ARCHITECTURE.md`
+- **The safe area is a margin on each document root, never padding.** Every HUD panel is
+  absolutely positioned, and absolute children ignore their parent's padding - padding read back
+  correctly while MENU sat under the status bar. → `DOCS/PRESENTATION.md`
+- **Sudden death moves `RingScale`, never `ArenaHalfExtent`.** The agents' positional
+  observation is normalised against the built ring, and training must never step
+  `SuddenDeathSystem`. → `DOCS/GAMEPLAY.md`
 - **Changing a `[SerializeField]` default does not retune an object that already exists.**
   The serialized value in the scene wins. This fails quietly every time.
 - **Sprite pixels-per-unit equals the sprite's pixel width**, so one sprite is one world unit.

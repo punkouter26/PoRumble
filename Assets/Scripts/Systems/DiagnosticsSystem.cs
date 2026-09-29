@@ -25,5 +25,20 @@ namespace PoRumble.Systems
         {
             _diagnostics.IsVisible.Value = !_diagnostics.IsVisible.Value;
         }
+
+        /// <summary>
+        /// Records how many problems the verdict found on its latest pass. Only a change is
+        /// written, so the chrome bar's subscriber is not woken four times a second to be told
+        /// the same number.
+        /// </summary>
+        public void ReportFindings(int count)
+        {
+            int clamped = count < 0 ? 0 : count;
+
+            if (_diagnostics.FindingCount.Value != clamped)
+            {
+                _diagnostics.FindingCount.Value = clamped;
+            }
+        }
     }
 }

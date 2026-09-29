@@ -102,32 +102,44 @@
        element and the panels that must clear it are four, and four hand-tuned offsets is how
        the overlaps this grid was written to fix got there in the first place.
 
-       --band-top-max came down from 36% to pay for it. The top panels start 96px lower now, and
-       a max-height that did not move would have pushed their bottom edge from 707px to 787px on
-       the 1920 reference - straight through the standings panel at --band-second-row. */
-    --chrome-bar: 96px;
-    --band-top: 112px;
+       --band-top-max came down from 36% to pay for it when the bar was 96px.
+
+       The bar is 64px now. At 96 it was a third of its height in empty margin around 28px
+       labels, and the two rows together spent 10% of a 1920 screen on five small items. The
+       buttons shrank with it, which is a real trade: 64px is about 3.9mm on a modern phone,
+       under the 7-9mm a primary control wants. MENU and DEBUG are chrome rather than game
+       controls, and both are wide (--chrome-button-width), which is most of what makes a
+       thin target findable. */
+    --chrome-bar: 64px;
+    --band-top: 80px;
+    --chrome-button-width: 200px;
 
     /* Where the stacked right-hand column's second panel starts. Just below --band-top-max,
        so the standings sit under the telemetry board rather than beside the match panel. */
     --band-second-row: 38%;
 
-    /* The bottom stack, measured from the bottom edge upward. Ordered so that reading down
-       the list walks up the screen: the card button sits on the floor, the player's panel
-       above it, the commentary caption above that. Each gap is wide enough for the panel
-       below it at its tallest. */
-    --band-bottom-card: 112px;
+    /* Where the portrait carousel's slot starts: under its own tab row, which takes the top of
+       the right-hand column at --band-top. The tab row is 56px plus an 8px gap. */
+    --band-slot-top: 144px;
+
+    /* The bottom stack, measured from the bottom edge upward: the floor is the bottom chrome
+       row, and the player's own panel sits above it. The commentary caption used to hold a
+       third band here, a third of the way up the screen; it lives inside the chrome row now. */
+    --band-bottom-card: 80px;
     --band-bottom-player: 14%;
-    --band-bottom-commentary: 30%;
 
     /* The clear middle of the screen, between the second row of panels and the bottom stack.
        The centre stage used to span the whole height and centre its content at 50%, which put
        the result banner - the largest text the game ever shows - straight through the standings
        panel starting at --band-second-row. Both are visible at once on every results screen, so
        that was not an edge case; it was the results screen. Bounding the stage by the same
-       tokens the panels use makes the clearance structural rather than measured. */
+       tokens the panels use makes the clearance structural rather than measured.
+
+       The bottom edge came down from 32% once the commentary band and the floating card button
+       left the bottom stack: the results card is the whole results screen now and has the
+       room those two used to hold. */
     --band-centre-top: 52%;
-    --band-centre-bottom: 32%;
+    --band-centre-bottom: 24%;
 
     /* Touch controls. Sized generously: a thumb is far less precise than a cursor. */
     --touch-surface: rgba(244, 246, 250, 0.14);
@@ -138,12 +150,26 @@
     --touch-charge-down: rgba(255, 107, 51, 0.70);
     --touch-button-size: 220px;
 
-    /* Roster card. The tile is sized so a face reads at a glance rather than as a thumbnail. */
-    --tile-width: 300px;
-    --portrait-size: 216px;
+    /* Title-screen tiles. Four to a row, so a ten-fighter card is three rows and the title
+       screen fits between the chrome bars. The face is still large enough to recognise. */
+    --tile-width: 23%;
+    --portrait-size: 128px;
     --tile-idle: rgba(244, 246, 250, 0.06);
     --tile-in: rgba(102, 217, 112, 0.16);
     --tile-in-border: rgb(102, 217, 112);
+}
+
+/* Portrait tightening. SafeAreaView puts this class on every document root while the screen is
+   taller than it is wide. The larger steps of the spacing scale were chosen against a landscape
+   monitor, where 48px of margin is a sliver; on a 1080-wide phone the same margins were the
+   difference between the title screen fitting and not. The small steps stay as they are - they
+   are what keeps text off the panel edges, and shrinking them reads as cramped rather than dense.
+
+   After :root on purpose, so that on an element matching both the later rule wins the tie. */
+.portrait {
+    --space-3: 16px;
+    --space-4: 24px;
+    --space-5: 32px;
 }
 
 /* ----------------------------------------------------------------- primitives */
@@ -200,6 +226,29 @@
 
 .stack > * { margin-bottom: var(--space-1); }
 
+/* A badge: a short fact on its own small plate. Replaces the full-width heading rows the panels
+   used to open with ("WIN PROBABILITY", "STANDINGS", "SURVIVORS  10 / 10") - a heading spends a
+   row naming a panel, a badge spends a word stating what it says. */
+.badge {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    margin-right: var(--space-1);
+    letter-spacing: 1px;
+    background-color: var(--surface-track);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+}
+
+.badge--muted { color: var(--text-secondary); }
+.badge--good { color: var(--state-healthy); }
+.badge--bad { color: var(--state-hurt); }
+.badge--pick { color: var(--state-charge); }
+.badge--empty { display: none; }
+
 .row {
     flex-direction: row;
     align-items: center;
@@ -249,154 +298,22 @@
     text-shadow: 1px 1px 2px var(--text-shadow);
 }
 
-/* ----------------------------------------------------------------- roster card */
-/* Full-screen because picking a fight card is a modal decision, and because the tiles
-   need the room to show a face large enough to recognise. */
-.roster {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(6, 7, 11, 0.88);
-}
+/* ----------------------------------------------------------------- title screen */
+/* Full-screen and modal. The scrim is what lets the display face sit on a controlled ground
+   instead of over a bright green canvas, and it makes the controls the only live things on
+   screen at a moment when the ring behind them is racked and still.
 
-.roster__title {
-    letter-spacing: 4px;
-    margin-bottom: var(--space-4);
-}
-
-/* Wide enough for three tiles per row on the 1080 portrait reference: a tile is --tile-width
-   plus two --space-2 margins, so three come to 996px and a fourth cannot fit.
-   At 700px only two fit, which turned eight contestants into four rows roughly 1530px tall -
-   and with the title and footer on top of that, the card ran off the bottom of a phone. It
-   was survivable at exactly eight and would have overflowed silently at nine. */
-.roster__grid {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    max-width: 1000px;
-}
-
-.roster__footer {
-    margin-top: var(--space-4);
-    color: var(--text-secondary);
-    letter-spacing: 2px;
-}
-
-.roster-tile {
-    width: var(--tile-width);
-    margin: var(--space-2);
-    padding-top: var(--space-3);
-    padding-bottom: var(--space-3);
-    padding-left: var(--space-2);
-    padding-right: var(--space-2);
-    align-items: center;
-    background-color: var(--tile-idle);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
-
-    /* Declared at full width on every tile so that selecting one changes only the colour.
-       A border that appears on selection would shift the whole grid by two pixels. */
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-color: rgba(0, 0, 0, 0);
-}
-
-/* An unselected fighter is dimmed rather than hidden: the card still has to show who is
-   available, not only who was picked. */
-.roster-tile { opacity: 0.45; }
-
-.roster-tile {
-    transition-property: opacity, background-color, border-color, scale;
-    transition-duration: var(--motion-base);
-    transition-timing-function: ease-out;
-}
-
-/* The card is the one screen with a pointer on it, so it is the one place a hover state
-   earns its keep - it tells you which tile the click will land on before you commit. */
-.roster-tile:hover { scale: 1.04; }
-
-.roster-tile--in {
-    opacity: 1;
-    background-color: var(--tile-in);
-    border-color: var(--tile-in-border);
-}
-
-.roster-tile__portrait {
-    width: var(--portrait-size);
-    height: var(--portrait-size);
-    margin-bottom: var(--space-2);
-    background-color: var(--surface-track);
-    -unity-background-scale-mode: scale-and-crop;
-    border-top-left-radius: 50%;
-    border-top-right-radius: 50%;
-    border-bottom-left-radius: 50%;
-    border-bottom-right-radius: 50%;
-}
-
-.roster-tile__name { letter-spacing: 2px; }
-
-.roster-tile__tagline {
-    white-space: normal;
-    -unity-text-align: middle-center;
-    margin-top: var(--space-1);
-    min-height: 28px;
-}
-
-.roster-tile__standing {
-    margin-top: var(--space-1);
-    color: var(--state-charge);
-    letter-spacing: 1px;
-}
-
-/* The way into the fight card on a phone. Anchored bottom-centre, thumb-sized, and shown
-   only between matches - during a fight there is nothing it could usefully do. */
-.card-button {
-    position: absolute;
-    bottom: var(--band-bottom-card);
-    left: 50%;
-    translate: -50% 0;
-    min-width: 380px;
-    height: 108px;
-    color: var(--text-primary);
-    background-color: var(--surface-panel);
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-color: var(--state-charge);
-    border-right-color: var(--state-charge);
-    border-top-color: var(--state-charge);
-    border-bottom-color: var(--state-charge);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
-    letter-spacing: 3px;
-    transition-property: scale, background-color;
-    transition-duration: var(--motion-fast);
-}
-
-.card-button:hover { background-color: var(--tile-in); }
-.card-button:active { scale: 0.96; }
-
-/* ----------------------------------------------------------------- title menu */
-/* Full-screen and modal, like the fight card. The scrim is what lets the display face sit on
-   a controlled ground instead of over a bright green canvas, and it makes the two buttons the
-   only live things on screen at a moment when the ring behind them is racked and still. */
+   Padded clear of both chrome rows rather than centred over the whole screen, so however tall
+   the grid gets it is the space between MENU and DEBUG that it has to fit in - which is what the
+   layout test measures it against. */
 .menu-screen {
     position: absolute;
     left: 0;
     right: 0;
     top: 0;
     bottom: 0;
+    padding-top: var(--band-top);
+    padding-bottom: var(--band-bottom-card);
     align-items: center;
     justify-content: center;
     background-color: rgba(6, 7, 11, 0.82);
@@ -404,7 +321,8 @@
 
 .menu {
     align-items: center;
-    max-width: 900px;
+    width: 100%;
+    max-width: 1000px;
 }
 
 /* The one place --text-display is used. Anton at 150px is roughly 14% of a 1080-wide phone,
@@ -418,17 +336,69 @@
 
 .menu__tagline {
     letter-spacing: 4px;
-    margin-bottom: var(--space-5);
+    margin-bottom: var(--space-4);
     -unity-text-align: middle-center;
 }
 
-/* Sized off the touch-button token rather than the type ramp: these are the two elements in
-   the game a thumb has to find, and a button sized to its label is a button sized for a
-   mouse. Full width of the panel so neither can be missed. */
+/* PICK / CARD: what a tap on a tile does. Two buttons rather than a long-press, because a
+   gesture nobody is told about is a feature nobody finds, and this switch replaced a whole
+   screen that at least had a button. */
+.menu__modes {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: var(--space-2);
+}
+
+.menu__mode {
+    min-width: 180px;
+    min-height: 80px;
+    margin-right: var(--space-1);
+    color: var(--text-secondary);
+    background-color: var(--surface-panel);
+    letter-spacing: 3px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-color: rgba(244, 246, 250, 0.22);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: background-color, border-color, color;
+    transition-duration: var(--motion-fast);
+}
+
+.menu__mode--on {
+    color: var(--text-primary);
+    border-color: var(--state-charge);
+    background-color: rgba(250, 199, 64, 0.22);
+}
+
+.menu__bank { margin-left: var(--space-1); }
+
+.menu__grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+.menu__hint {
+    margin-top: var(--space-2);
+    letter-spacing: 2px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+/* Sized off the touch-button scale rather than the type ramp: this is the element in the game a
+   thumb most has to find, and a button sized to its label is a button sized for a mouse. Full
+   width of the panel so it cannot be missed. */
 .menu__button {
     width: 100%;
-    min-height: 132px;
-    margin-bottom: var(--space-3);
+    min-height: 120px;
+    margin-top: var(--space-2);
     color: var(--text-primary);
     background-color: var(--surface-panel);
     letter-spacing: 4px;
@@ -446,8 +416,6 @@
     transition-timing-function: ease-out;
 }
 
-/* One primary action, marked by colour rather than by size. Two buttons of equal weight make
-   a player read both before choosing; the fight is what they came for. */
 .menu__button--primary {
     border-color: var(--state-charge);
     background-color: rgba(250, 199, 64, 0.14);
@@ -456,12 +424,91 @@
 .menu__button:hover { background-color: var(--tile-in); }
 .menu__button:active { scale: 0.97; }
 
-.menu__hint {
-    margin-top: var(--space-2);
-    letter-spacing: 2px;
-    -unity-text-align: middle-center;
-    white-space: normal;
+/* ----------------------------------------------------------------- contestant tiles */
+.roster-tile {
+    width: var(--tile-width);
+    margin: 1%;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    align-items: center;
+    background-color: var(--tile-idle);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+
+    /* Declared at full width on every tile so that selecting one changes only the colour.
+       A border that appears on selection would shift the whole grid by two pixels. */
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+
+    transition-property: opacity, background-color, border-color, scale;
+    transition-duration: var(--motion-base);
+    transition-timing-function: ease-out;
 }
+
+.roster-tile:hover { scale: 1.04; }
+.roster-tile:active { scale: 0.96; }
+
+/* CARD mode: everyone is shown, and who is on the card is lit. An unselected fighter is dimmed
+   rather than hidden - the card has to show who is available, not only who was picked. */
+.roster-tile--in {
+    background-color: var(--tile-in);
+    border-color: var(--tile-in-border);
+}
+
+.roster-tile--off { opacity: 0.4; }
+
+/* PICK mode: only the card is shown, since nobody off it can be backed. */
+.roster-tile--hidden { display: none; }
+
+/* The backed fighter, in the charge colour the HUD uses for "yours" everywhere else. */
+.roster-tile--pick {
+    border-color: var(--state-charge);
+    background-color: rgba(250, 199, 64, 0.22);
+}
+
+.roster-tile__portrait {
+    width: var(--portrait-size);
+    height: var(--portrait-size);
+    margin-bottom: var(--space-1);
+    background-color: var(--surface-track);
+    -unity-background-scale-mode: scale-and-crop;
+    border-top-left-radius: 50%;
+    border-top-right-radius: 50%;
+    border-bottom-left-radius: 50%;
+    border-bottom-right-radius: 50%;
+}
+
+/* Full width and centred rather than sized to the text with a max-width. The max-width form
+   under-measured in TextCore and cut ALAN down to "AL..." inside a tile with room for it four
+   times over; a definite width gives the ellipsis a real box to measure against. */
+.roster-tile__name {
+    width: 100%;
+    -unity-text-align: middle-center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 1px;
+}
+
+.roster-tile__generation { margin-top: 2px; }
+
+.roster-tile__badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.roster-tile__price { color: var(--state-charge); }
+
+/* The last badge in a row carries no trailing gap, or the pair sits visibly off-centre. */
+.roster-tile__standing { margin-right: 0; }
 
 /* ----------------------------------------------------------------- standings */
 /* Right column, second row - directly under the telemetry board rather than bottom-right.
@@ -490,11 +537,6 @@
     flex-direction: column;
 }
 
-.standings__title {
-    color: var(--text-secondary);
-    letter-spacing: 2px;
-    margin-bottom: var(--space-2);
-}
 
 .standings__row {
     letter-spacing: 1px;
@@ -511,17 +553,17 @@
    seeing an unresolved panel and waiting on it for ever. */
 .standings--hidden { opacity: 0; }
 
-/* ----------------------------------------------------------------- match HUD */
-/* Top band, left column. Capped in height as well as width: ten health rows is the tallest
-   this panel ever gets, and without the cap a larger roster would grow it down over the ring
-   with nothing to stop it. */
-/* It carries the panel surface now, and it is the only one that ever went without. Every
-   other panel in the HUD sits on --surface-panel; this one was bare labels and bars drawn
-   straight onto the ring, relying on the text shadow alone. That was survivable while the
-   spectator camera sat at its widest, and stopped being survivable once the camera started
-   framing exchanges tightly - fighters pass directly behind the health column and read
-   through it, which is the one place in the HUD where ten similar rows have to be told
-   apart at a glance. */
+/* ----------------------------------------------------------------- field board */
+/* The one list of the ten fighters: name, health and live win chance on one row. It used to be
+   two panels - this health column and an odds board under it naming the same fighters again -
+   and the viewer's stake line lived on the second.
+
+   Top band, left column between bouts. Capped in height as well as width: ten rows is the
+   tallest this panel ever gets, and without the cap a larger roster would grow it down over
+   the ring with nothing to stop it.
+
+   It carries the panel surface because fighters pass directly behind it once the camera frames
+   exchanges tightly, and ten similar rows have to be told apart at a glance. */
 .match-hud {
     position: absolute;
     top: var(--band-top);
@@ -537,30 +579,45 @@
     border-top-right-radius: var(--radius);
     border-bottom-left-radius: var(--radius);
     border-bottom-right-radius: var(--radius);
+    transition-property: opacity;
+    transition-duration: var(--motion-slow);
 }
 
 /* Faded on the title screen, where there is no fight for the count to describe. Opacity
    rather than display, for the reason .standings--hidden gives. */
 .match-hud--hidden { opacity: 0; }
 
-.match-hud__roster { margin-top: var(--space-2); }
+.match-hud__badges { flex-direction: row; }
+
+.match-hud__roster { margin-top: var(--space-1); }
 
 .match-hud__row {
     flex-direction: row;
     align-items: center;
-    margin-bottom: var(--space-1);
+    margin-bottom: 4px;
+    padding-left: var(--space-1);
+    border-left-width: 4px;
+    border-left-color: rgba(0, 0, 0, 0);
+    transition-property: opacity;
+    transition-duration: var(--motion-slow);
 }
 
-/* A share of the row rather than 190 fixed pixels. The panel is now a percentage of the
-   screen, so a fixed name column plus a fixed bar could add up to more than the panel is
-   wide - which overflows rather than shrinking, because a Label does not shrink below its
-   text by default. flex-shrink with a zero basis is what lets the two divide whatever
-   width the band actually gave them. */
+/* The viewer's backed fighter, in the charge colour the HUD uses for "yours". A human's own
+   seat is marked in the stamina blue instead, so the two can never be confused. */
+.match-hud__row--pick { border-left-color: var(--state-charge); }
+.match-hud__row--pick .match-hud__name { color: var(--state-charge); }
+.match-hud__row--you { border-left-color: var(--state-stamina); }
+.match-hud__row--you .match-hud__name { color: var(--state-stamina); }
+.match-hud__row--out { opacity: 0.4; }
+
+/* A share of the row rather than fixed pixels. The panel is a percentage of the screen, so a
+   fixed name column plus a fixed bar could add up to more than the panel is wide - which
+   overflows rather than shrinking, because a Label does not shrink below its text by default. */
 .match-hud__name {
     flex-grow: 0;
     flex-shrink: 1;
-    flex-basis: 38%;
-    width: 38%;
+    flex-basis: 34%;
+    width: 34%;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text-secondary);
@@ -577,7 +634,93 @@
     height: 20px;
 }
 
-/* The result banner and the countdown live dead centre and must never take a click. */
+/* Tabular figures: the percentages tick four times a second and a proportional face makes
+   the digits crawl sideways every time a 1 becomes a 4. */
+.match-hud__odds {
+    width: 76px;
+    flex-shrink: 0;
+    -unity-text-align: middle-right;
+    color: var(--text-secondary);
+    -unity-font-definition: var(--font-mono);
+    font-size: var(--text-xs);
+    text-shadow: 1px 1px 2px var(--text-shadow);
+}
+
+.match-hud__odds--up { color: var(--state-healthy); }
+.match-hud__odds--down { color: var(--state-critical); }
+
+.match-hud__pick {
+    margin-top: var(--space-1);
+    letter-spacing: 1px;
+    white-space: normal;
+    color: var(--text-secondary);
+}
+
+.match-hud__pick--won { color: var(--state-healthy); }
+.match-hud__pick--lost { color: var(--state-hurt); }
+.match-hud__pick--gone { display: none; }
+
+/* The fight strip: the same board while the fight is live, as one row of ten narrow cells
+   under the chrome bar. Everything else in the HUD clears off the ring for the fight, and this
+   is what stays - health and win chance are the two things worth reading while it moves, and
+   a strip across the top costs about 90px of ring rather than a third of the screen. */
+.match-hud--compact {
+    left: var(--band-edge);
+    right: var(--band-edge);
+    width: auto;
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+}
+
+.match-hud--compact .match-hud__badges,
+.match-hud--compact .match-hud__pick { display: none; }
+
+.match-hud--compact .match-hud__roster {
+    flex-direction: row;
+    margin-top: 0;
+}
+
+.match-hud--compact .match-hud__row {
+    flex-direction: column;
+    align-items: stretch;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    width: 0;
+    margin-bottom: 0;
+    margin-left: 3px;
+    margin-right: 3px;
+    padding-left: 0;
+    border-left-width: 0;
+    border-bottom-width: 3px;
+    border-bottom-color: rgba(0, 0, 0, 0);
+}
+
+.match-hud--compact .match-hud__row--pick { border-bottom-color: var(--state-charge); }
+.match-hud--compact .match-hud__row--you { border-bottom-color: var(--state-stamina); }
+
+.match-hud--compact .match-hud__name {
+    flex-basis: auto;
+    width: auto;
+    -unity-text-align: middle-center;
+}
+
+.match-hud--compact .match-hud__bar {
+    flex-grow: 0;
+    flex-basis: auto;
+    height: 10px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+.match-hud--compact .match-hud__odds {
+    width: auto;
+    -unity-text-align: middle-center;
+}
+
+/* The countdown and the results card live in the middle of the screen. */
 .centre-stage {
     position: absolute;
     left: 0;
@@ -593,14 +736,17 @@
     letter-spacing: 4px;
 }
 
-.centre-stage__prompt {
-    margin-top: var(--space-3);
-    /* Full-strength text, not the muted token: this sits over a bright canvas rather than a
-       panel, and the secondary grey was close to illegible against it. */
-    color: var(--text-primary);
-    letter-spacing: 2px;
-    padding-top: var(--space-1);
-    padding-bottom: var(--space-1);
+/* ----------------------------------------------------------------- results card */
+/* The whole results screen on one card: the winner, what it did to their rating and to the
+   viewer's stake, and the two ways on. It replaced a bare banner, a "tap to continue" prompt,
+   a floating fight-card button at the foot of the screen and a stake line on the odds board. */
+.results {
+    align-items: center;
+    max-width: 960px;
+    margin-left: var(--band-edge);
+    margin-right: var(--band-edge);
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-3);
     padding-left: var(--space-3);
     padding-right: var(--space-3);
     background-color: var(--surface-panel);
@@ -610,20 +756,70 @@
     border-bottom-right-radius: var(--radius);
 }
 
-.result-banner {
-    margin-top: var(--space-4);
+.results--hidden { display: none; }
+
+.results__winner {
+    -unity-text-align: middle-center;
+    white-space: normal;
+    letter-spacing: 2px;
+}
+
+.results__badges {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: var(--space-1);
+}
+
+.results__actions {
+    flex-direction: row;
+    justify-content: center;
+    margin-top: var(--space-3);
+}
+
+.results__button {
+    min-width: 300px;
+    min-height: 108px;
+    margin-left: var(--space-1);
+    margin-right: var(--space-1);
+    color: var(--text-primary);
+    background-color: var(--surface-panel);
+    letter-spacing: 3px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-color: rgba(244, 246, 250, 0.22);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: scale, background-color;
+    transition-duration: var(--motion-fast);
+}
+
+.results__button--primary {
+    border-color: var(--state-charge);
+    background-color: rgba(250, 199, 64, 0.14);
+}
+
+.results__button:hover { background-color: var(--tile-in); }
+.results__button:active { scale: 0.97; }
+
+.results__hint {
+    margin-top: var(--space-1);
     letter-spacing: 2px;
 }
 
 /* ----------------------------------------------------------------- player HUD */
-/* Bottom band, full width. It was bottom-left against a 620px minimum, which on a 1080-wide
-   phone left 460px for the standings panel that wanted 470 - so the two overlapped whenever a
-   human was seated. Spanning the whole band instead means it no longer has a neighbour to
-   collide with, and the bars get more room than they had. */
+/* Bottom band, left column. It spanned the full width while the standings sat bottom-right and
+   the two were the only panels down there; the second-fight feed holds the bottom of the right
+   column now, and a full-width panel drew straight through it whenever a human was seated. The
+   standings moved up into the right column long ago, so the left column is free. */
 .player-hud {
     position: absolute;
     left: var(--band-edge);
-    right: var(--band-edge);
+    width: var(--col);
     bottom: var(--band-bottom-player);
 }
 
@@ -797,15 +993,39 @@
 
 .diag__readout--over { color: var(--state-hurt); }
 
+/* Collapsed: the verdict alone, docked on the bottom chrome row rather than over the top of the
+   ring. DEBUG opens the sheet like this; tapping the verdict opens the rest.
+
+   Left column only, directly above the DEBUG button that opened it. At full width it sat across
+   the second-fight feed, which holds the bottom of the right column - the layout test found
+   that one before a screen did. */
+.diag--collapsed {
+    top: auto;
+    right: auto;
+    width: var(--col);
+    bottom: var(--band-bottom-card);
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
+}
+
+.diag--collapsed .diag__tabs,
+.diag--collapsed .diag__graph,
+.diag--collapsed .diag__readout { display: none; }
+
+.diag--collapsed .diag__verdict { margin-bottom: 0; }
+
+/* The verdict is the sheet's expand control, so it answers a pointer like one. */
+.diag__verdict:hover { background-color: var(--surface-track); }
+
 /* ----------------------------------------------------------------- touch controls */
 /* The whole left half is the stick's catchment; the circle is only drawn where the thumb
    actually lands, so there is no painted target to hunt for first. */
 .touch-stick-zone {
     position: absolute;
     left: 0;
-    bottom: 0;
+    bottom: var(--band-bottom-card);
     width: 50%;
-    height: 62%;
+    height: 56%;
 }
 
 .touch-stick__base {
@@ -826,10 +1046,12 @@
     border-bottom-right-radius: 50%;
 }
 
+/* Clear of the bottom chrome row: the cluster used to sit 48px off the floor, which is inside
+   the row the version label and the commentary caption now share. */
 .touch-buttons {
     position: absolute;
     right: var(--space-5);
-    bottom: var(--space-5);
+    bottom: var(--band-bottom-card);
     flex-direction: column;
     align-items: flex-end;
 }
@@ -877,11 +1099,23 @@
 .touch-button--charge.touch-button--down { background-color: var(--touch-charge-down); }
 .touch-button--dodge.touch-button--down { background-color: var(--touch-surface-strong); }
 
-/* The player panel normally sits bottom-left, which is exactly where the stick lives. */
+/* On a touchscreen the player's bars leave the panel altogether. Breath and the haymaker charge
+   are drawn as rings around PUNCH and POWER by TouchControlsView - where the thumbs already are -
+   and health is the player's own cell on the field strip, marked in blue. What stays here is
+   the two callouts, which are warnings rather than meters and have to be read mid-exchange:
+   centred just below the middle of the screen, clear of the stick and the button cluster. */
 .player-hud--touch {
     bottom: auto;
     top: 42%;
+    left: var(--band-edge);
+    right: var(--band-edge);
+    width: auto;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0);
 }
+
+.player-hud--touch .player-hud__title,
+.player-hud--touch .player-hud__bar-row { display: none; }
 
 /* ----------------------------------------------------------------- telemetry board */
 /* Top band, right column - the match panel holds the left. It used to be 480 fixed pixels
@@ -933,10 +1167,13 @@
 
 .stats__name--right { -unity-text-align: middle-right; }
 
-.stats__title {
-    letter-spacing: 3px;
-    -unity-text-align: middle-center;
-    margin-bottom: 2px;
+/* Each fighter's share of the pair's win chance, beside their name. Fixed to its text so the
+   two names still split the rest of the row evenly and the midpoint stays over the momentum
+   bar's centre line. */
+.stats__share {
+    flex-shrink: 0;
+    margin-left: 4px;
+    margin-right: 4px;
 }
 
 .stats__momentum {
@@ -1014,34 +1251,38 @@
 }
 
 /* ----------------------------------------------------------------- commentary subtitle */
-/* Top of the bottom stack, above the player's panel and the fight-card button - a
-   match-ending line is on screen at the same instant as both.
-   It used to be a bare `bottom: 430px`, a number measured against the panel heights of the
-   day and silently wrong the moment any of them moved. It is now the same token scale as the
-   two panels it has to clear, so the three move together. */
+/* Inside the bottom chrome row, between DEBUG on the left and the version on the right. The
+   insets are the button's width plus the edge and one gap, so the caption can never run under
+   either. It used to hold a band of its own a third of the way up the screen, over the ring -
+   which is why it was cleared off for the whole fight, when most of the lines are spoken. */
 .commentary-band {
     position: absolute;
-    left: var(--band-edge);
-    right: var(--band-edge);
-    bottom: var(--band-bottom-commentary);
+    left: 232px;
+    right: 232px;
+    bottom: 0;
+    height: var(--chrome-bar);
     align-items: center;
+    justify-content: center;
+    overflow: hidden;
 }
 
 /* Fades rather than appearing. A line that snaps on at full opacity reads as a UI error at
    the exact moment the player is looking somewhere else in the frame; a 280ms fade reads as
    a broadcast caption. It is also the reason the label is never emptied - clearing the text
    would collapse the box mid-fade. */
+/* Two lines at most: the row is 64px and a line of the xs face is about 29. */
 .commentary {
     opacity: 0;
-    max-width: 900px;
+    max-height: var(--chrome-bar);
+    overflow: hidden;
     -unity-text-align: middle-center;
     white-space: normal;
     letter-spacing: 1px;
     color: var(--text-primary);
-    padding-top: var(--space-1);
-    padding-bottom: var(--space-1);
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
     background-color: var(--surface-panel);
     border-top-left-radius: var(--radius);
     border-top-right-radius: var(--radius);
@@ -1089,7 +1330,7 @@
    difference, which is enough to read as a mistake on the one element whose whole job is to
    sit in the middle. */
 .chrome__title,
-.chrome__fps,
+.chrome__status,
 .chrome__version {
     position: absolute;
     letter-spacing: 2px;
@@ -1107,23 +1348,30 @@
 .chrome__title { left: var(--band-edge); }
 .chrome__version { right: var(--band-edge); }
 
-/* Centred by translate rather than by left/right:0 plus a centred text alignment, so the panel
-   background is the width of the reading and not the width of the screen. */
-.chrome__fps {
+/* The bout, centred: its number on the menu, the clock and the field while the fight is live.
+   Centred by translate rather than by left/right:0 plus a centred text alignment, so the panel
+   background is the width of the reading and not the width of the screen. Mono for the digits,
+   so the clock does not jitter as it ticks. */
+.chrome__status {
     left: 50%;
     translate: -50% 0;
     -unity-font-definition: var(--font-mono);
     -unity-text-align: middle-center;
     min-width: 180px;
+    transition-property: color;
+    transition-duration: var(--motion-base);
 }
 
-/* Sized as a thumb target, not as a label. 96px at the 1080-wide reference is about 5.8mm on a
-   modern phone - not the 9mm a primary control would want, but this is chrome rather than a
-   game control, and a taller bar starts eating the ring it sits over. */
+/* The ropes are about to move, or moving. Amber, like every warning that is not a fighter's
+   health, which owns red. */
+.chrome__status--alert { color: var(--state-charge); }
+
+/* Sized as a thumb target, not as a label - see --chrome-bar for what the 64px height costs.
+   The width is the half of the target that did not have to shrink. */
 .chrome__button {
     position: absolute;
     height: var(--chrome-bar);
-    min-width: 200px;
+    min-width: var(--chrome-button-width);
     letter-spacing: 3px;
     color: var(--text-primary);
     background-color: var(--surface-panel);
@@ -1165,232 +1413,14 @@
     opacity: 0.32;
 }
 
-/* ----------------------------------------------------------------- odds board */
-/* Left column, second row: the one slot in the grid nothing else claims. The match panel owns
-   the top of this column and the standings the same row on the right, so the odds sit under
-   the survivors and beside the league table on the results screen - the three things a viewer
-   compares when a fight ends.
-
-   It is one of the two panels that stay up through the live fight (HudVisibilityView), which is
-   why it is short: a title, a head-to-head bar, four rows and a stake line. */
-.odds {
-    position: absolute;
-    left: var(--band-edge);
-    top: var(--band-second-row);
-    width: var(--col);
-    background-color: var(--surface-panel);
-    padding-top: var(--space-2);
-    padding-bottom: var(--space-2);
-    padding-left: var(--space-3);
-    padding-right: var(--space-3);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
-    transition-property: opacity;
-    transition-duration: var(--motion-slow);
-    transition-timing-function: ease-out;
-}
-
-/* Opacity rather than display, for SafeAreaView's sake - see .standings--hidden. */
-.odds--hidden { opacity: 0; }
-
-.odds__title {
-    color: var(--text-secondary);
-    letter-spacing: 3px;
-    margin-bottom: var(--space-1);
-}
-
-.odds__duel { margin-bottom: var(--space-2); }
-.odds__duel--hidden { display: none; }
-
-.odds__duel-names {
-    flex-direction: row;
-    margin-bottom: 4px;
-}
-
-.odds__duel-name {
-    flex-grow: 1;
-    flex-basis: 0;
-    width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: 1px;
-}
-
-.odds__duel-name--right { -unity-text-align: middle-right; }
-
-/* One fill from the left over a track in the other fighter's colour, so the split point is
-   the only thing that moves - a chess engine's evaluation bar, turned sideways. */
-.odds__duel-track {
-    height: 14px;
-    background-color: var(--state-hurt);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
-    overflow: hidden;
-}
-
-/* Eased, unlike the momentum bar: odds move in steps four times a second, so a transition
-   turns a jump into a readable swing rather than trailing a value that moves every frame. */
-.odds__duel-fill {
-    height: 100%;
-    width: 50%;
-    background-color: var(--state-healthy);
-    transition-property: width;
-    transition-duration: var(--motion-slow);
-    transition-timing-function: ease-out;
-}
-
-.odds__rows { flex-direction: column; }
-
-.odds__row {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 4px;
-    padding-left: var(--space-1);
-    border-left-width: 4px;
-    border-left-color: rgba(0, 0, 0, 0);
-}
-
-/* The viewer's own fighter, marked in the charge colour the HUD already uses for "yours". */
-.odds__row--pick { border-left-color: var(--state-charge); }
-.odds__row--pick .odds__name { color: var(--state-charge); }
-.odds__row--out { opacity: 0.4; }
-
-.odds__name {
-    flex-basis: 34%;
-    flex-shrink: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: 1px;
-}
-
-.odds__track {
-    flex-grow: 1;
-    height: 12px;
-    margin-left: var(--space-1);
-    margin-right: var(--space-1);
-    background-color: var(--surface-track);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
-    overflow: hidden;
-}
-
-.odds__fill {
-    height: 100%;
-    width: 0;
-    background-color: var(--state-stamina);
-    transition-property: width;
-    transition-duration: var(--motion-slow);
-    transition-timing-function: ease-out;
-}
-
-.odds__row--pick .odds__fill { background-color: var(--state-charge); }
-
-.odds__value {
-    width: 76px;
-    -unity-text-align: middle-right;
-}
-
-.odds__trend {
-    width: 56px;
-    -unity-text-align: middle-right;
-    color: var(--text-secondary);
-}
-
-.odds__trend--up { color: var(--state-healthy); }
-.odds__trend--down { color: var(--state-critical); }
-
-.odds__pick {
-    margin-top: var(--space-1);
-    letter-spacing: 1px;
-    white-space: normal;
-    color: var(--text-secondary);
-}
-
-.odds__pick--won { color: var(--state-healthy); }
-.odds__pick--lost { color: var(--state-hurt); }
-
-/* ----------------------------------------------------------------- pick strip */
-/* The bottom band on the title screen, where the floating card button would be if the menu
-   did not carry its own. Full width between the edges so eight chips wrap onto two rows on the
-   portrait reference rather than one row of slivers. */
-.picker {
-    position: absolute;
-    left: var(--band-edge);
-    right: var(--band-edge);
-    bottom: var(--band-bottom-card);
-    align-items: center;
-}
-
-.picker__title {
-    color: var(--text-secondary);
-    letter-spacing: 3px;
-    margin-bottom: var(--space-1);
-}
-
-.picker__chips {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-/* Thumb-sized, like every other control on the title screen. */
-.picker__chip {
-    min-width: 220px;
-    min-height: 96px;
-    margin: 6px;
-    padding-left: var(--space-2);
-    padding-right: var(--space-2);
-    align-items: center;
-    justify-content: center;
-    color: var(--text-primary);
-    background-color: var(--surface-panel);
-    border-top-width: 2px;
-    border-bottom-width: 2px;
-    border-left-width: 2px;
-    border-right-width: 2px;
-    border-color: rgba(244, 246, 250, 0.22);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    border-bottom-left-radius: var(--radius);
-    border-bottom-right-radius: var(--radius);
-    transition-property: scale, background-color, border-color;
-    transition-duration: var(--motion-fast);
-    transition-timing-function: ease-out;
-}
-
-.picker__chip:hover { background-color: var(--tile-in); }
-.picker__chip:active { scale: 0.96; }
-
-.picker__chip--on {
-    border-color: var(--state-charge);
-    background-color: rgba(250, 199, 64, 0.22);
-}
-
-.picker__chip-name { letter-spacing: 2px; }
-
-.picker__chip-price {
-    color: var(--state-charge);
-    letter-spacing: 1px;
-}
-
-.picker__bank {
-    margin-top: var(--space-1);
-    letter-spacing: 2px;
-}
-
 /* ----------------------------------------------------------------- second-fight feed */
-/* Bottom-right while the fight is live, when the bottom stack is cleared. The frame's height is
-   set from its width in C#, since USS has no aspect-ratio. */
+/* Bottom-right while the fight is live, above the bottom chrome row - it used to sit on the
+   floor, straight over the version label. The frame's height is set from its width in C#, since
+   USS has no aspect-ratio. */
 .pip {
     position: absolute;
     right: var(--band-edge);
-    bottom: var(--band-edge);
+    bottom: var(--band-bottom-card);
     width: var(--col);
     padding-top: 6px;
     padding-bottom: 6px;
@@ -1429,3 +1459,328 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* ----------------------------------------------------------------- portrait carousel */
+/* In portrait, HudCarouselView moves the telemetry board and the standings into the one
+   top-right slot and shows them a turn at a time, under a row of tabs naming them. Two columns
+   of panels start a second row over a third of the way down a 1080x1920 screen, so on a phone
+   the ring was being watched through the gaps; one slot hands the second row back to the ring
+   and means nothing can ever need to scroll.
+
+   Last in the file on purpose: these override the panels' own top/left/right at the same
+   specificity, so they have to come after them. */
+.carousel-tabs {
+    position: absolute;
+    top: var(--band-top);
+    right: var(--band-edge);
+    width: var(--col);
+    height: 56px;
+    flex-direction: row;
+}
+
+.carousel-tabs--hidden { display: none; }
+
+.carousel-tab {
+    flex-grow: 1;
+    flex-basis: 0;
+    margin-left: 0;
+    margin-right: 4px;
+    color: var(--text-secondary);
+    background-color: var(--surface-panel);
+    letter-spacing: 2px;
+    border-top-width: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 3px;
+    border-bottom-color: rgba(0, 0, 0, 0);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    transition-property: color, border-bottom-color;
+    transition-duration: var(--motion-fast);
+}
+
+.carousel-tab:hover { background-color: var(--surface-track); }
+
+/* An underline, like the diagnostics tabs: the tab row sits over the ring and a lit fill on the
+   current tab would be brighter than the panel it names. */
+.carousel-tab--on {
+    color: var(--text-primary);
+    border-bottom-color: var(--state-charge);
+}
+
+/* A panel with nothing to show this phase takes no tab. */
+.carousel-tab--off { display: none; }
+
+.hud-carousel--slotted {
+    top: var(--band-slot-top);
+    right: var(--band-edge);
+    left: auto;
+    max-height: 28%;
+    overflow: hidden;
+}
+
+/* Opacity, like every other panel's hidden state, so SafeAreaView keeps a resolved layout.
+   Instant on the way out: .stats fades its opacity over --motion-slow and .standings does not,
+   so a swap snapped the table in while the tape was still fading out, and the two translucent
+   panels overprinted each other in the one slot. The incoming panel keeps its own fade. */
+.hud-carousel--off {
+    opacity: 0;
+    transition-duration: 0s;
+}
+
+/* ================================================================= broadcast additions */
+/* Declared here rather than in the band block at the top so everything the knockout feed, the
+   follow tag and the tale of the tape need sits in one place. A later :root merges with the
+   first one. */
+:root {
+    /* Under the live fight strip, which is --band-top plus its own height (130 at the reference). */
+    --band-feed-top: 224px;
+    --tape-portrait-size: 140px;
+    --result-portrait-size: 160px;
+}
+
+/* ----------------------------------------------------------------- thumb reach (portrait) */
+/* On a phone the title screen's controls sat in the middle of the screen, a stretch away for a
+   thumb, while the bottom third was dim backdrop. The panel now sits on the bottom band: FIGHT
+   is the lowest thing on screen above DEBUG, and the title reads above the grid. */
+.portrait .menu-screen { justify-content: flex-end; }
+
+/* The results card's own stage. It shared the centre stage with the countdown, which pinned it
+   to the middle of the screen - over the ring, with the empty band under the ring going
+   unused. Landscape keeps the old middle band; portrait anchors the card to the bottom band. */
+.results-stage {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--band-centre-top);
+    bottom: var(--band-centre-bottom);
+    align-items: center;
+    justify-content: center;
+}
+
+.portrait .results-stage {
+    top: auto;
+    bottom: var(--band-bottom-card);
+    justify-content: flex-end;
+}
+
+/* ----------------------------------------------------------------- results card: the winner */
+.results__portrait {
+    width: var(--result-portrait-size);
+    height: var(--result-portrait-size);
+    margin-bottom: var(--space-1);
+    -unity-background-scale-mode: scale-and-crop;
+    border-top-left-radius: 50%;
+    border-top-right-radius: 50%;
+    border-bottom-left-radius: 50%;
+    border-bottom-right-radius: 50%;
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top-width: 3px;
+    border-bottom-width: 3px;
+    border-color: var(--state-charge);
+}
+
+.results__portrait--gone { display: none; }
+
+.results__stats {
+    margin-top: 4px;
+    letter-spacing: 2px;
+    -unity-text-align: middle-center;
+}
+
+.results__stats--gone { display: none; }
+
+/* ----------------------------------------------------------------- title tiles: corners */
+/* "x2" on a contestant a short card deals two corners. Amber like the price, because it is the
+   other thing on the tile that changes what a bet on them means. */
+.roster-tile__seats {
+    color: var(--text-primary);
+    background-color: rgba(250, 199, 64, 0.30);
+    margin-left: 4px;
+    margin-right: 0;
+}
+
+.roster-tile__seats--gone { display: none; }
+
+/* ----------------------------------------------------------------- field board: pinned */
+/* The fighter the viewer told the camera to follow. Blue, the colour the board already uses for
+   "this one is yours", and a fill rather than the underline the pick and the human carry, so a
+   pinned pick still shows both. */
+.match-hud__row--pinned { background-color: rgba(115, 184, 242, 0.28); }
+
+/* ----------------------------------------------------------------- knockout feed */
+/* Under the fight strip, centred. Three lines, newest on top; each fades on its own timer.
+   Opacity rather than display, so the feed's height never changes under the ring. */
+.feed {
+    position: absolute;
+    left: var(--band-edge);
+    right: var(--band-edge);
+    top: var(--band-feed-top);
+    align-items: center;
+}
+
+.feed__toast {
+    margin-bottom: 4px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    letter-spacing: 2px;
+    background-color: var(--surface-panel);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: var(--motion-slow);
+}
+
+.feed__toast--on { opacity: 1; }
+.feed__toast--good { color: var(--state-healthy); }
+.feed__toast--bad { color: var(--state-critical); }
+.feed__toast--alert { color: var(--state-charge); }
+
+/* ----------------------------------------------------------------- follow tag */
+/* Over the head of whoever the camera is on. Positioned from C# at the point above the fighter;
+   the translate hangs the tag from that point, centred, so it never covers the fighter. */
+.focus-tag {
+    position: absolute;
+    translate: -50% -100%;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    background-color: var(--surface-panel);
+    border-bottom-width: 3px;
+    border-bottom-color: var(--text-secondary);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: var(--motion-base);
+}
+
+.focus-tag--on { opacity: 1; }
+.focus-tag--pinned { border-bottom-color: var(--state-stamina); }
+
+/* ----------------------------------------------------------------- tale of the tape */
+/* The bottom band during the intro and the countdown: clear of the full field board above and
+   of the countdown number in the centre stage. */
+.tape {
+    position: absolute;
+    left: var(--band-edge);
+    right: var(--band-edge);
+    bottom: var(--band-bottom-card);
+    align-items: center;
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    background-color: var(--surface-panel);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: opacity;
+    transition-duration: var(--motion-base);
+}
+
+.tape--hidden { opacity: 0; }
+
+.tape__headline {
+    letter-spacing: 4px;
+    margin-bottom: var(--space-1);
+}
+
+.tape__row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.tape__side {
+    width: 42%;
+    align-items: center;
+}
+
+.tape__portrait {
+    width: var(--tape-portrait-size);
+    height: var(--tape-portrait-size);
+    margin-bottom: var(--space-1);
+    -unity-background-scale-mode: scale-and-crop;
+    border-top-left-radius: 50%;
+    border-top-right-radius: 50%;
+    border-bottom-left-radius: 50%;
+    border-bottom-right-radius: 50%;
+}
+
+.tape__name {
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    letter-spacing: 2px;
+}
+
+.tape__line {
+    -unity-text-align: middle-center;
+    letter-spacing: 1px;
+}
+
+.tape__price { color: var(--state-charge); }
+
+.tape__vs {
+    width: 16%;
+    -unity-text-align: middle-center;
+    color: var(--state-charge);
+}
+
+/* ----------------------------------------------------------------- carousel: time left */
+/* How long until the slot turns over, as a bar under the tabs, so the swap is not a surprise
+   halfway through reading a board. Drains; a tap or a swipe refills it for the long hold. */
+.carousel-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    width: 0;
+    background-color: var(--state-charge);
+    opacity: 0.7;
+}
+
+/* ----------------------------------------------------------------- DEBUG: findings, safe area */
+/* The amber "this build has something wrong with it" signal, on the button that leads to the
+   reason. It rode on the frame counter while that sat top-centre. */
+.chrome__button--alert {
+    color: var(--state-hurt);
+    border-left-color: var(--state-hurt);
+    border-right-color: var(--state-hurt);
+    border-top-color: var(--state-hurt);
+    border-bottom-color: var(--state-hurt);
+}
+
+/* The safe area, outlined while the sheet is open: this document's root is inset by
+   SafeAreaView like every other, so its edges are the safe rectangle. A notch regression shows
+   up on a device as the outline cutting into the status bar. */
+.diag__safe {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-color: rgba(115, 184, 242, 0.8);
+}
+
+.diag__safe--hidden { display: none; }

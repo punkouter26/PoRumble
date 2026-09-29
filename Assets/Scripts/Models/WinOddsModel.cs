@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace PoRumble.Models
 {
     /// <summary>
-    /// One line of the odds board: a contestant, or a bare seat when there is no card.
+    /// One contestant in the book, or a bare seat when there is no card.
     ///
     /// A class rather than a struct because the board keeps the same entry objects for a
     /// whole match and only re-sorts them. The trend is measured against each entry's own

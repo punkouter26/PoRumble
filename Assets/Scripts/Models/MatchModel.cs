@@ -19,8 +19,22 @@ namespace PoRumble.Models
 
         public IReadOnlyList<BoxerModel> Boxers => _boxers;
 
-        /// <summary>Half width/height of the ring interior. Boxers are clamped inside it.</summary>
+        /// <summary>
+        /// Half width/height of the ring as built. The agents' positional observation is
+        /// normalised against this, so it never changes during a match - see
+        /// <see cref="PlayableHalfExtent"/> for where the ropes currently are.
+        /// </summary>
         public Vector2 ArenaHalfExtent { get; set; } = new(20f, 20f);
+
+        /// <summary>
+        /// How far in the ropes have closed, 1 for the full ring. Only sudden death moves it,
+        /// and only in the game: training never touches it, so a training episode clamps to
+        /// exactly the ring it always did.
+        /// </summary>
+        public float RingScale { get; set; } = 1f;
+
+        /// <summary>Where the ropes are now. Boxers are clamped inside this.</summary>
+        public Vector2 PlayableHalfExtent => ArenaHalfExtent * RingScale;
         public ReactiveProperty<MatchPhase> Phase { get; } = new(MatchPhase.InProgress);
         public int WinnerId { get; private set; } = NO_WINNER;
 

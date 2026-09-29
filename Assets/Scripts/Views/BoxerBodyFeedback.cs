@@ -263,7 +263,7 @@ namespace PoRumble.Views
                 return;
             }
 
-            Vector2 extent = _match.ArenaHalfExtent;
+            Vector2 extent = _match.PlayableHalfExtent;
             Vector2 position = boxer.Position;
 
             bool intoVertical = Mathf.Abs(position.x) >= extent.x - _tuning.RopeContactMargin

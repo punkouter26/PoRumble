@@ -76,6 +76,23 @@ namespace PoRumble.Tests
         }
 
         [Test]
+        public void ClosingRopesPushAStandingBoxerIn()
+        {
+            _match.Boxers[0].Position = new Vector2(7f, -7f);
+            _match.RingScale = 0.5f;
+
+            // Standing still: the clamp has to move them anyway, or sudden death would leave a
+            // fighter outside the ropes for as long as they chose not to walk.
+            RunFor(0.1f);
+
+            BoxerModel boxer = _match.Boxers[0];
+            float limit = 4f - _config.BodyRadius;
+
+            Assert.That(boxer.Position.x, Is.LessThanOrEqualTo(limit + 0.001f));
+            Assert.That(boxer.Position.y, Is.GreaterThanOrEqualTo(-limit - 0.001f));
+        }
+
+        [Test]
         public void BoxerPinnedToTheRopesCanStillMoveAlongThem()
         {
             _boxerSystem.SetMoveInput(0, Vector2.right);

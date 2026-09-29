@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using PoRumble.Models;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -42,9 +43,39 @@ namespace PoRumble.Views
                  "Editor, where the mouse drives them.")]
         [SerializeField] private bool _forceVisible;
 
+        [Header("Meter rings")]
+        [Tooltip("Stroke width of the breath and charge rings, in reference pixels.")]
+        [SerializeField] private float _ringWidth = 10f;
+
+        [Tooltip("The unfilled part of a ring.")]
+        [SerializeField] private Color _ringTrackColor = new(0f, 0f, 0f, 0.45f);
+
+        [Tooltip("Breath above the low threshold.")]
+        [SerializeField] private Color _breathColor = new(0.45f, 0.72f, 0.95f);
+
+        [Tooltip("Breath at or below the low threshold - matches the player panel's red.")]
+        [SerializeField] private Color _breathLowColor = new(0.92f, 0.32f, 0.28f);
+
+        [Tooltip("Breath below this turns the ring red.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _lowBreathThreshold = 0.3f;
+
+        [Tooltip("The haymaker winding up.")]
+        [SerializeField] private Color _chargeColor = new(0.98f, 0.78f, 0.25f);
+
+        [Tooltip("The haymaker worth releasing.")]
+        [SerializeField] private Color _chargeReadyColor = new(1f, 0.42f, 0.2f);
+
+        private readonly CompositeDisposable _disposables = new();
+
         private TouchInputModel _touch;
         private MatchFlowModel _flow;
         private BoxerSpawnPoints _spawnPoints;
+        private MatchModel _match;
+        private BoxerConfig _config;
+        private BoxerModel _player;
+        private VisualElement _punchButton;
+        private VisualElement _chargeButton;
 
         private VisualElement _root;
         private VisualElement _stickZone;
@@ -56,11 +87,18 @@ namespace PoRumble.Views
         private float _stickRadius = 120f;
 
         [Inject]
-        public void Construct(TouchInputModel touch, MatchFlowModel flow, BoxerSpawnPoints spawnPoints)
+        public void Construct(
+            TouchInputModel touch,
+            MatchFlowModel flow,
+            BoxerSpawnPoints spawnPoints,
+            MatchModel match,
+            BoxerConfig config)
         {
             _touch = touch;
             _flow = flow;
             _spawnPoints = spawnPoints;
+            _match = match;
+            _config = config;
         }
 
         private void Start()
@@ -89,10 +127,115 @@ namespace PoRumble.Views
             }
 
             _layout.CloneTree(_root);
+            _root.pickingMode = PickingMode.Ignore;
             _touch.IsActive = true;
 
             BindStick();
             BindButtons();
+            BindRings();
+        }
+
+        /// <summary>
+        /// Draws breath around PUNCH and the haymaker charge around POWER.
+        ///
+        /// Those two meters used to be bars in the player's panel, which on a phone meant looking
+        /// away from both thumbs and the fight to read them. Around the buttons they are where
+        /// the player is already looking when the numbers matter: breath is what a punch costs,
+        /// and the charge ring is the one that says when to let go. Health is not drawn here - it
+        /// is the player's own cell on the field strip, marked in blue.
+        /// </summary>
+        private void BindRings()
+        {
+            _player = FindPlayer();
+
+            if (_player == null)
+            {
+                return;
+            }
+
+            _punchButton = _root.Q<VisualElement>("punch");
+            _chargeButton = _root.Q<VisualElement>("charge");
+
+            if (_punchButton != null)
+            {
+                _punchButton.generateVisualContent += DrawBreathRing;
+                _player.Stamina.Subscribe(_ => _punchButton.MarkDirtyRepaint()).AddTo(_disposables);
+            }
+
+            if (_chargeButton != null)
+            {
+                _chargeButton.generateVisualContent += DrawChargeRing;
+                _player.Charge.Subscribe(_ => _chargeButton.MarkDirtyRepaint()).AddTo(_disposables);
+            }
+        }
+
+        private BoxerModel FindPlayer()
+        {
+            if (_spawnPoints == null || _match == null)
+            {
+                return null;
+            }
+
+            int humanId = _spawnPoints.HumanBoxerId;
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+
+            for (int index = 0; index < boxers.Count; index++)
+            {
+                if (boxers[index].Id == humanId)
+                {
+                    return boxers[index];
+                }
+            }
+
+            return null;
+        }
+
+        private void DrawBreathRing(MeshGenerationContext context)
+        {
+            float breath = Mathf.Clamp01(_player.Stamina.Value);
+            DrawRing(context, breath, breath <= _lowBreathThreshold ? _breathLowColor : _breathColor);
+        }
+
+        private void DrawChargeRing(MeshGenerationContext context)
+        {
+            float charge = Mathf.Clamp01(_player.Charge.Value);
+            bool ready = _config != null && charge >= _config.MinChargeToRelease;
+            DrawRing(context, charge, ready ? _chargeReadyColor : _chargeColor);
+        }
+
+        /// <summary>
+        /// A full track and a filled arc from twelve o'clock, clockwise. Drawn just inside the
+        /// button's edge so the ring shows around a thumb resting in the middle of it.
+        /// </summary>
+        private void DrawRing(MeshGenerationContext context, float fraction, Color color)
+        {
+            Rect bounds = context.visualElement.contentRect;
+            float radius = Mathf.Min(bounds.width, bounds.height) * 0.5f - _ringWidth * 0.5f - 2f;
+
+            if (radius <= 0f)
+            {
+                return;
+            }
+
+            Painter2D painter = context.painter2D;
+            Vector2 centre = bounds.center;
+
+            painter.lineWidth = _ringWidth;
+            painter.strokeColor = _ringTrackColor;
+            painter.BeginPath();
+            painter.Arc(centre, radius, Angle.Degrees(0f), Angle.Degrees(360f));
+            painter.Stroke();
+
+            if (fraction <= 0f)
+            {
+                return;
+            }
+
+            painter.strokeColor = color;
+            painter.lineCap = LineCap.Round;
+            painter.BeginPath();
+            painter.Arc(centre, radius, Angle.Degrees(-90f), Angle.Degrees(-90f + 360f * fraction));
+            painter.Stroke();
         }
 
         /// <summary>
@@ -268,6 +411,18 @@ namespace PoRumble.Views
 
         private void OnDestroy()
         {
+            _disposables.Dispose();
+
+            if (_punchButton != null)
+            {
+                _punchButton.generateVisualContent -= DrawBreathRing;
+            }
+
+            if (_chargeButton != null)
+            {
+                _chargeButton.generateVisualContent -= DrawChargeRing;
+            }
+
             if (_touch != null)
             {
                 _touch.IsActive = false;

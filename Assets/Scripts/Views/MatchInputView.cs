@@ -7,116 +7,79 @@ using VContainer;
 namespace PoRumble.Views
 {
     /// <summary>
-    /// Match-level input: the restart key, or a tap on a touchscreen.
+    /// Match-level keys: Enter to fight or rematch, R back to the menu, Tab to flip the title
+    /// screen between picking a winner and editing the card.
     ///
     /// Separate from the per-boxer controls in <see cref="BoxerAgentView"/> because this is
     /// not a boxer's input - it belongs to the match, works while the player's boxer is lying
     /// on the canvas, and must keep working when there is no human boxer at all.
     ///
-    /// A View, per the input rules: it reads a key and calls a System. No logic of its own -
-    /// whether a restart is legal right now is entirely MatchFlowSystem's decision, which is
-    /// what makes it safe to accept a tap anywhere on screen rather than hit-testing a button:
-    /// outside the results screen the call is simply refused.
+    /// Keyboard only. It used to take a tap anywhere on a touchscreen as well, read straight off
+    /// the device rather than through the UI, and that was a bug on every screen that has buttons:
+    /// the press that landed on a pick chip or the FIGHT CARD button also started the fight, and a
+    /// press on a results-screen button changed phase before the button ever saw its release. On
+    /// a phone every one of these actions is now a button, which is the only thing a touch should
+    /// ever mean.
+    ///
+    /// A View, per the input rules: it reads a key and calls a System. Whether any request is
+    /// legal right now is entirely the System's decision; each is refused outside its phase.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class MatchInputView : MonoBehaviour
     {
         private MatchFlowSystem _flowSystem;
         private RosterSystem _rosterSystem;
-        private RosterModel _roster;
         private MatchFlowModel _flow;
 
         [Inject]
         public void Construct(
             MatchFlowSystem flowSystem,
             RosterSystem rosterSystem,
-            RosterModel roster,
             MatchFlowModel flow)
         {
             _flowSystem = flowSystem;
             _rosterSystem = rosterSystem;
-            _roster = roster;
             _flow = flow;
         }
 
         private void Update()
         {
-            if (_flowSystem == null)
+            Keyboard keyboard = Keyboard.current;
+
+            if (_flowSystem == null || keyboard == null)
             {
                 return;
             }
 
-            // The card, before anything else: opening it must not also be read as a request to
-            // start or restart a match.
-            if (RosterToggleRequested())
+            // The card is part of the title screen, so Tab only means something there. At the
+            // results it used to open a modal over the ring; there is no modal any more.
+            if (keyboard.tabKey.wasPressedThisFrame && _flow.Phase.Value == MatchFlowPhase.Title)
             {
                 _rosterSystem.Toggle();
                 return;
             }
 
-            // wasPressedThisFrame throughout, not isPressed: a held key or finger would
-            // otherwise restart the match again on every frame of the results screen.
-            if (!ConfirmRequested())
+            // wasPressedThisFrame throughout, not isPressed: a held key would otherwise restart
+            // the match again on every frame of the results screen.
+            if (keyboard.enterKey.wasPressedThisFrame)
             {
+                // Rematch at the results, fight at the title. Each is refused outside its own
+                // phase, so one press can never both dismiss the results and start a bout it was
+                // not meant to.
+                if (_flowSystem.TryRestart())
+                {
+                    _flowSystem.TryStartFight();
+                    return;
+                }
+
+                _flowSystem.TryStartFight();
                 return;
             }
 
-            // One gesture, two meanings, resolved by phase rather than by asking the player to
-            // learn two. Each is refused outside its own phase, so a single tap can never both
-            // dismiss the results and start the next bout.
-            if (_flowSystem.TryRestart())
+            if (keyboard.rKey.wasPressedThisFrame)
             {
-                return;
+                _flowSystem.TryRestart();
             }
-
-            _flowSystem.TryStartFight();
-        }
-
-        private bool RosterToggleRequested()
-        {
-            Keyboard keyboard = Keyboard.current;
-
-            if (keyboard != null && keyboard.tabKey.wasPressedThisFrame)
-            {
-                return true;
-            }
-
-            // A phone has no Tab key, and for a long time that meant the fight card - the whole
-            // contestant-selection screen - simply could not be opened in the shipping build.
-            // The on-screen button in the card panel is the discoverable way in; this two-finger
-            // tap is the shortcut for anyone who finds it.
-            //
-            // Only between matches: mid-fight the roster must not be re-seated underneath the
-            // fighters currently swinging.
-            Touchscreen touchscreen = Touchscreen.current;
-
-            if (touchscreen == null || !_flow.CanOpenCard)
-            {
-                return false;
-            }
-
-            return touchscreen.touches.Count > 1
-                   && touchscreen.touches[1].press.wasPressedThisFrame;
-        }
-
-        private bool ConfirmRequested()
-        {
-            Keyboard keyboard = Keyboard.current;
-
-            if (keyboard != null &&
-                (keyboard.rKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame))
-            {
-                return true;
-            }
-
-            // Touch is the only confirmation on a phone, where there is no keyboard at all.
-            // Ignored while the card is up, or the tap that picked a fighter would also start
-            // the fight.
-            Touchscreen touchscreen = Touchscreen.current;
-
-            return touchscreen != null
-                   && !_roster.IsOpen.Value
-                   && touchscreen.primaryTouch.press.wasPressedThisFrame;
         }
     }
 }

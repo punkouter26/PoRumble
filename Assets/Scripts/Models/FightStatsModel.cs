@@ -40,6 +40,9 @@ namespace PoRumble.Models
         public int DamageDealt { get; set; }
         public int DamageTaken { get; set; }
 
+        /// <summary>Opponents this fighter put out of the match.</summary>
+        public int Knockouts { get; set; }
+
         /// <summary>
         /// Exponentially decayed damage differential — dealt minus taken, in hit points, over
         /// roughly the last few seconds. Positive means this fighter is winning the exchange
@@ -68,6 +71,7 @@ namespace PoRumble.Models
             Haymakers = 0;
             DamageDealt = 0;
             DamageTaken = 0;
+            Knockouts = 0;
             Momentum = 0f;
         }
     }

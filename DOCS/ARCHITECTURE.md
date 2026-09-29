@@ -45,8 +45,8 @@ punch messages that were already being published.
 
 ```
 MatchFlowSystem ─► MatchFlowModel.Phase ─┬─► MatchDirector   (gates BoxerSystem.Tick)
-                                         ├─► MatchHudView    (countdown, result, restart prompt)
-                                         ├─► MainMenuView    (the Title phase, and only it)
+                                         ├─► MatchHudView    (field board, countdown, the results card)
+                                         ├─► MainMenuView    (the Title phase: card, picks, FIGHT)
                                          ├─► RingAtmosphereView (the knockout blackout)
                                          ├─► CrowdAmbienceView  (the room goes quiet at Title)
                                          └─► CombatFeedbackView (bell, countdown beeps)
@@ -72,7 +72,9 @@ DirectorSystem ─► DirectorModel ──┬─► SpectatorCameraView (which p
                                   ├─► CameraDirectorView  (the hard cut to ImpactCam)
                                   └─► PictureInPictureView (the second fight, in a corner)
 
-WinOddsSystem ─► WinOddsModel ──┬─► WinOddsHudView       (live odds, head-to-head, stake)
+WinOddsSystem ─► WinOddsModel ──┬─► MatchHudView         (per-seat odds on the field board, stake)
+                                ├─► FightStatsHudView    (the head-to-head share badges)
+                                ├─► MainMenuView         (the price on each tile)
                                 └─► PredictionSystem ─► PredictionModel (the book)
 
 DamageMapSystem ─► DamageMapModel ─► DamageMapView (the fight map on the results screen)
@@ -103,7 +105,9 @@ DamageMapSystem ─► DamageMapModel ─► DamageMapView (the fight map on the
   punch is on its way out. Feed `MoveInput` straight through and a boxer sprints backwards as
   fast as it advances while pivoting mid-swing to track a target that already stepped off.
 - **Boxers are clamped to the ring in `BoxerSystem`.** Positions are model-driven, so the
-  wall colliders alone contain nobody.
+  wall colliders alone contain nobody. The clamp reads `MatchModel.PlayableHalfExtent`, which
+  sudden death shrinks through `RingScale`; the agents' observation reads `ArenaHalfExtent`, which
+  never changes. Keep the two apart - see *Sudden Death* in [GAMEPLAY.md](GAMEPLAY.md).
 - **Arm segments are siblings of the torso, never children.** A nested `Rigidbody2D` is moved
   twice — once by physics, once by the hierarchy — which makes jointed limbs drift.
 - **`CombatSystem` and `MatchSystem` are resolved eagerly** in `GameLifetimeScope`. They only

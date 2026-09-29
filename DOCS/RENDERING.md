@@ -116,6 +116,25 @@ URP **2D Renderer**. The pieces that are easy to get wrong:
   the ring dressing. The tiling `ring_canvas` and `ring_rope` are deliberately outside it:
   they are sampled by a material with Repeat wrapping, which atlasing breaks.
 
+- **The canvas stains live, from the fight map's data.** `Ring/CanvasStains` (`CanvasStainView`)
+  resamples `DamageMapModel`'s 64x64 grid into a 128x128 texture a few times a second while
+  anything new has landed, breaks the edges with baked value noise, and colours by
+  `CanvasStainMath`: saturating opacity (a patch darkens as punishment accumulates and each punch
+  adds less), sweat-dark below 4 HP in a cell, blood-red by 14. **Absolute, not normalised to the
+  peak** like the results-screen map - normalising would paint the first jab at full strength and
+  fade it back out as the peak moved. It is a sprite on `Floor` at order **9**, one under the fight
+  map, with **`Sprite-Lit-Default`**, so unlike the map it dims with the house lights. Outside the
+  atlas like the map: one draw call, only once something has landed, and cleared with the grid when
+  the next match goes `InProgress`.
+- **The lighting rig is a sprite light, not more shadows.** `RingLighting/RigLight` is a `Light2D`
+  of type Sprite whose cookie `ring_rig_cookie.png` (generated, 512px at PPU 512, scaled 46 to
+  cover the ring and fall off past the ropes) draws a 4x4 grid of lamp pools crossed by the truss's
+  shadow. It casts no shadows - the shape is in the cookie, which costs nothing like the key
+  light's shadow pass - and carries a 0.12 volumetric term for haze. It was made by
+  `CopySerialized` from `FollowSpot`, so it inherits the full sorting-layer list and `Fast` normal
+  maps. `RingAtmosphereView` sways it on two slow unrelated sines, dims it with the house (0.55 to
+  0.32) and puts it out for the knockout hold with the corners.
+
 ### Custom shader
 
 `PoRumble/SpriteLitFX` is a variant of URP's Sprite-Lit-Default adding six effects the stock

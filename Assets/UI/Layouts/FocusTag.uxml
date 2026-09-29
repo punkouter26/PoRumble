@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The name tag over whoever the camera is following. FocusTagView positions it every frame at a
+  point above the fighter's head, and the stylesheet hangs it from that point, centred.
+
+  The tag is the one element here that takes a tap: it pins the fighter it names, or lets go.
+  It is only pickable while it is shown, which the view sets.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Label name="tag" class="text text--xs text--bold focus-tag" picking-mode="Ignore" />
+</ui:UXML>
