@@ -141,6 +141,10 @@ namespace PoRumble.Views
                 // Injected one at a time here rather than found by RegisterComponentInHierarchy,
                 // because each boxer is bound to its own model in the same pass.
                 _resolver.InjectGameObject(view.gameObject);
+
+                // This object marks the centre of its ring. The game's sits at the origin; the
+                // spar scene lays several arenas out side by side, one scope each.
+                view.SetArenaOrigin(transform.position);
                 view.Bind(boxer);
 
                 // The agent lives on the Torso child, not the prefab root, because its ray

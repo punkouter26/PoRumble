@@ -31,6 +31,11 @@ behaviors:
       lambd: 0.95
       num_epoch: 3
       learning_rate_schedule: linear
+      # Held, not decayed. Left unset, beta follows the learning rate's linear schedule to
+      # zero, and in pr_ffa_0929 entropy fell 1.95 -> 0.43 while every one of its matches
+      # still went to the bell: the policy committed hard to a local optimum it had no
+      # exploration left to climb out of. The learning rate still anneals, so updates settle.
+      beta_schedule: constant
     network_settings:
       normalize: false
       hidden_units: 256
@@ -38,20 +43,26 @@ behaviors:
       vis_encode_type: simple
     reward_signals:
       extrinsic:
-        # An episode is MaxStep 1500 physics steps at DecisionPeriod 5, so 300 decisions.
-        # At gamma 0.99 the +2 win bonus is worth 0.99^300 = 0.05 at the opening bell, which
-        # is far too faint to shape the early game; 0.995 doubles the horizon to ~200
-        # decisions (20s) and leaves the win worth 0.22 from the first step.
-        gamma: 0.995
+        # MaxStep on the prefab is 2500 physics steps at DecisionPeriod 5, so a match that goes
+        # to the bell is 500 decisions. At the spar's 0.995 the horizon is ~200 decisions and a
+        # knockout win at the end of a ten-way is worth 0.995^500 = 0.08 from the opening bell -
+        # the terminal reward barely reaches the decisions that set it up. 0.998 makes the
+        # horizon the whole match (~500 decisions) and leaves the +2 worth 0.74 from the first
+        # step. The spar keeps 0.995: its knockouts land in ~100 decisions.
+        gamma: 0.998
         strength: 1.0
     # Keeps the whole run, not a trailing window. Reward alone is a poor guide to the best
     # model here - it stayed flat at ~6.05 across 3M steps while the rate at which matches
     # actually finished peaked near 1M and then slid from 50% back to 34%. At five, the peak
     # checkpoint had already been rotated away by the time that was visible.
-    keep_checkpoints: 45
+    keep_checkpoints: 30
     checkpoint_interval: 1000000
-    # Sized to an overnight run: about 1,750 steps/s from six headless arenas for 6.5 hours.
-    max_steps: 40000000
+    # Was 40M. In pr_ffa_0929 the last 16M steps - 2.5 of its 6.2 hours - moved windowed
+    # reward from 6.20 to 6.31 and the finish rate not at all. 24M keeps the part of the
+    # curve that was still climbing and hands the rest of the night back. Knocked-out
+    # boxers no longer send experience, so each of these steps is a live decision; the
+    # ten-way used to spend a share of every batch on corpses.
+    max_steps: 24000000
     time_horizon: 128
     summary_freq: 20000
     threaded: true

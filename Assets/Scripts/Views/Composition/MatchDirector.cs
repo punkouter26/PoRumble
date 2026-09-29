@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using PoRumble.Models;
 using PoRumble.Systems;
+using Unity.MLAgents;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -37,6 +38,10 @@ namespace PoRumble.Views
         /// director has to notice, and the win has to be awarded, all before the cut.
         /// </summary>
         private const int TIMEOUT_MARGIN_STEPS = 5;
+
+        private const string FINISHED_STAT = "Match/Finished By Knockout";
+        private const string KNOCKOUTS_STAT = "Match/Knockouts";
+        private const string LENGTH_STAT = "Match/Length Seconds";
 
         private readonly CompositeDisposable _disposables = new();
 
@@ -227,9 +232,14 @@ namespace PoRumble.Views
         {
             IReadOnlyList<BoxerAgentView> agents = _spawnPoints.Agents;
 
+            // One boxer or none standing is a finish; anything more means the bell decided it.
+            int survivors = _match.CountAlive();
+            bool knockout = survivors <= 1;
+            RecordMatchStats(survivors, knockout);
+
             for (int agentIndex = 0; agentIndex < agents.Count; agentIndex++)
             {
-                agents[agentIndex].AwardMatchResult(_match.WinnerId);
+                agents[agentIndex].AwardMatchResult(_match.WinnerId, knockout);
             }
 
             for (int agentIndex = 0; agentIndex < agents.Count; agentIndex++)
@@ -240,6 +250,23 @@ namespace PoRumble.Views
             _spawnSystem.ResetRoster(_spawnPoints.BoxerCount, _spawnPoints.SpawnRadius);
             _match.BeginNewEpisode();
             _episodeSteps = 0;
+        }
+
+        /// <summary>
+        /// Puts the numbers a model is actually selected on into TensorBoard.
+        ///
+        /// Models here are picked on how often a match finishes, not on reward, and until now
+        /// that was only readable by inference from Episode Length. It no longer can be: a
+        /// knocked-out boxer stops deciding, so Episode Length measures survival rather than
+        /// the match. The overnight ten-way of 0929 sat at the 2,500-step bell for all 40M
+        /// steps, and nothing in the run's own scalars said so outright.
+        /// </summary>
+        private void RecordMatchStats(int survivors, bool knockout)
+        {
+            StatsRecorder stats = Academy.Instance.StatsRecorder;
+            stats.Add(FINISHED_STAT, knockout ? 1f : 0f);
+            stats.Add(KNOCKOUTS_STAT, _spawnPoints.BoxerCount - survivors);
+            stats.Add(LENGTH_STAT, _episodeSteps * Time.fixedDeltaTime);
         }
 
         /// <summary>

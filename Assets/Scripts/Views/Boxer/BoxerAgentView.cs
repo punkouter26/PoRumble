@@ -29,15 +29,23 @@ namespace PoRumble.Views
         [Header("Reward shaping")]
         [Tooltip("Per point of damage landed on an opponent's face. The face arc is the only " +
                  "way to score, so this is the core objective.")]
-        [SerializeField] private float _damageDealtReward = 0.35f;
+        [SerializeField] private float _damageDealtReward = 0.2f;
         [Tooltip("For slipping a punch that nearly landed.")]
         [SerializeField] private float _evadeReward = 0.03f;
         [Tooltip("For stopping a punch on the gloves. Less than slipping it: the punch still " +
                  "arrived, it just did not get through.")]
         [SerializeField] private float _blockReward = 0.015f;
         [SerializeField] private float _damageTakenPenalty = 0.02f;
-        [SerializeField] private float _eliminationReward = 0.5f;
-        [SerializeField] private float _eliminatedPenalty = 1.0f;
+        [SerializeField] private float _eliminationReward = 1f;
+        [SerializeField] private float _eliminatedPenalty = 0.75f;
+
+        [Tooltip("For being the last one standing.")]
+        [SerializeField] private float _knockoutWinReward = 2f;
+
+        [Tooltip("For leading on health when the bell decides it. Less than a knockout win: at " +
+                 "the same value, a leader late in a ten-way was paid exactly as much for " +
+                 "backing off and running out the clock as for finishing the fight.")]
+        [SerializeField] private float _decisionWinReward = 1f;
 
         [Header("Dense shaping")]
         [Tooltip("Reward per step for pointing at the nearest opponent. Without this the agent " +
@@ -51,6 +59,13 @@ namespace PoRumble.Views
 
         [Tooltip("Extra reward per step for sitting at the distance a punch can actually land.")]
         [SerializeField] private float _rangeShapingWeight = 0.4f;
+
+        [Tooltip("Penalty for time spent pressed on the ropes, spread over MaxStep like the other " +
+                 "shaping, so a whole match on the ropes costs this much. Being cornered is the " +
+                 "worst place in a boxing ring, and the shipped policy spent most of a ten-way " +
+                 "piled into one corner. Kept below aim plus range (1.0) so that holding range on " +
+                 "someone against the ropes is still worth more than walking away from the fight.")]
+        [SerializeField] private float _ropesPenaltyWeight = 0.5f;
 
         [Tooltip("Penalty per punch thrown, so flailing is not free.")]
         [SerializeField] private float _punchCost = 0.002f;
@@ -125,6 +140,31 @@ namespace PoRumble.Views
         private IDisposable _eliminatedSubscription;
 
         private int _boxerId = -1;
+
+        // Per-episode tallies for TensorBoard. Reward is a poor read of skill here, so these
+        // say directly whether the punches are finding anything.
+        private int _punchesThrown;
+        private int _punchesLanded;
+        private int _damageDealt;
+        private int _stepsStanding;
+        private int _stepsOnRopes;
+
+        private const string PUNCH_ACCURACY_STAT = "Boxer/Punch Accuracy";
+        private const string DAMAGE_DEALT_STAT = "Boxer/Damage Dealt";
+        private const string ON_ROPES_STAT = "Boxer/Share On Ropes";
+
+        /// <summary>
+        /// How close to the ropes counts as on them, in world units. The body is clamped a
+        /// little inside the half extent, so this sits just outside that clamp.
+        /// </summary>
+        private const float ROPES_MARGIN = 1.25f;
+
+        /// <summary>
+        /// False once this boxer is knocked out, which is what stops
+        /// <see cref="BoxerDecisionRequester"/> asking it for decisions. True before binding,
+        /// so an unbound agent behaves as it always did.
+        /// </summary>
+        internal bool IsStanding => _model == null || _model.IsAlive.Value;
 
         [Inject]
         public void Construct(
@@ -413,6 +453,7 @@ namespace PoRumble.Views
             _boxerId = model.Id;
             _actionStep = 0;
             _modulatedIntent = BoxerIntent.Idle;
+            ResetEpisodeTallies();
 
             // Heuristic runs once per decision period, not once per physics tick, so the
             // brain needs to know the interval it is really deciding over.
@@ -534,11 +575,13 @@ namespace PoRumble.Views
             if (intent.PunchLeft && _boxerSystem.Punch(_boxerId, ArmSide.Left))
             {
                 AddReward(-_punchCost);
+                _punchesThrown++;
             }
 
             if (intent.PunchRight && _boxerSystem.Punch(_boxerId, ArmSide.Right))
             {
                 AddReward(-_punchCost);
+                _punchesThrown++;
             }
 
             // Existential penalty. The ring does not shrink, so without a standing cost for
@@ -546,6 +589,7 @@ namespace PoRumble.Views
             AddReward(-1f / Mathf.Max(1, MaxStep));
 
             ApplyShapingRewards();
+            ApplyRopes();
         }
 
         public override void Heuristic(in ActionBuffers actionsOut)
@@ -706,6 +750,8 @@ namespace PoRumble.Views
             if (message.AttackerId == _boxerId)
             {
                 AddReward(_damageDealtReward * message.Damage);
+                _punchesLanded++;
+                _damageDealt += message.Damage;
             }
             else if (message.TargetId == _boxerId)
             {
@@ -743,13 +789,79 @@ namespace PoRumble.Views
             }
         }
 
-        /// <summary>Called by the arena when the match resolves, before episodes are ended.</summary>
-        public void AwardMatchResult(int winnerId)
+        /// <summary>
+        /// Called by the training arena when the match resolves, before episodes are ended.
+        /// <paramref name="knockout"/> is true when the match ended with one boxer or none
+        /// left standing, false when the bell decided it on health.
+        /// </summary>
+        public void AwardMatchResult(int winnerId, bool knockout)
         {
             if (winnerId == _boxerId)
             {
-                AddReward(2f);
+                AddReward(knockout ? _knockoutWinReward : _decisionWinReward);
             }
+
+            RecordEpisodeStats();
+        }
+
+        /// <summary>
+        /// Reports this learner's accuracy and output for the episode. Scripted and human
+        /// seats are left out: they send no experience, and averaging the hand-written brain
+        /// into the learners' numbers would hide what the policy is doing.
+        /// </summary>
+        private void RecordEpisodeStats()
+        {
+            if (!_scriptedBot && !_humanControlled)
+            {
+                StatsRecorder stats = Academy.Instance.StatsRecorder;
+
+                // An episode with nothing thrown has no accuracy, and counting it as zero
+                // would read as a policy that misses everything.
+                if (_punchesThrown > 0)
+                {
+                    stats.Add(PUNCH_ACCURACY_STAT, _punchesLanded / (float)_punchesThrown);
+                }
+
+                stats.Add(DAMAGE_DEALT_STAT, _damageDealt);
+
+                if (_stepsStanding > 0)
+                {
+                    stats.Add(ON_ROPES_STAT, _stepsOnRopes / (float)_stepsStanding);
+                }
+            }
+
+            ResetEpisodeTallies();
+        }
+
+        /// <summary>
+        /// Charges for, and counts, the steps spent pressed against the ropes. This project has
+        /// already had one policy learn to huddle on a wall to farm shaping reward, and the
+        /// shipped model, run in the game-size ring, spends most of a ten-way piled into one
+        /// corner. Reward does not show that; the tally does.
+        /// </summary>
+        private void ApplyRopes()
+        {
+            Vector2 half = _match.ArenaHalfExtent;
+            Vector2 position = _model.Position;
+
+            _stepsStanding++;
+
+            if (Mathf.Abs(position.x) <= half.x - ROPES_MARGIN && Mathf.Abs(position.y) <= half.y - ROPES_MARGIN)
+            {
+                return;
+            }
+
+            _stepsOnRopes++;
+            AddReward(-_ropesPenaltyWeight / Mathf.Max(1, MaxStep));
+        }
+
+        private void ResetEpisodeTallies()
+        {
+            _punchesThrown = 0;
+            _punchesLanded = 0;
+            _damageDealt = 0;
+            _stepsStanding = 0;
+            _stepsOnRopes = 0;
         }
 
         protected override void OnDisable()

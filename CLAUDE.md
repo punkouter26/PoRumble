@@ -213,6 +213,10 @@ They override defaults; where one clashes with something above, this section win
 - **For a training run of 30+ minutes, close the Unity Editor first** (saving work), let the
   run have the machine, and tell the user explicitly when it has finished and the Editor can
   be reopened.
+- **Once a run has gone 30+ minutes, review the three most consequential TensorBoard charts in
+  an HTML file**: screenshots, plus each chart explained at three levels (toddler, child, adult).
+  The legacy Scalars tab screenshots cleanly from headless Chrome; the Time Series tab draws its
+  lines with WebGL and comes out blank.
 
 ### Roster conventions for RL projects
 
@@ -239,6 +243,11 @@ They override defaults; where one clashes with something above, this section win
 - **Joint speed and force resemble a human's** when the trained agent is a human.
 
 ### Physics engines outside Unity
+
+None of this section applies to PoRumble: it trains with ML-Agents, and the standing rule is
+that the MuJoCo and Isaac Lab instructions are ignored whenever ML-Agents is used. For other
+projects: train in MuJoCo or Newton, and ask the user for a skinned mesh first, importing its
+rig into the simulator.
 
 - **MuJoCo on Android** builds from <https://github.com/joanllobera/mujoco-bin/>.
 - **Show the simulator's UI during and after training** (MuJoCo, Isaac Lab, or Newton where

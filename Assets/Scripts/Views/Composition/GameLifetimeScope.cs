@@ -77,8 +77,20 @@ namespace PoRumble.Views
             // The viewer's bank, beside the league table and for the same reason.
             builder.Register<IPredictionStore>(_ => new FilePredictionStore(), Lifetime.Singleton);
 
-            // Scene components the systems depend on.
-            builder.RegisterComponentInHierarchy<BoxerSpawnPoints>();
+            // Scene components the systems depend on. A scope that owns its ring as a child binds
+            // to that one: the spar scene runs several arenas in one player, one scope each, and
+            // a scene-wide search would hand every scope the first ring it found. The game keeps
+            // its scope beside the ring, not above it, and falls through to the search.
+            BoxerSpawnPoints ownRing = GetComponentInChildren<BoxerSpawnPoints>(true);
+
+            if (ownRing != null)
+            {
+                builder.RegisterComponent(ownRing);
+            }
+            else
+            {
+                builder.RegisterComponentInHierarchy<BoxerSpawnPoints>();
+            }
 
             builder.RegisterEntryPoint<MatchDirector>();
 

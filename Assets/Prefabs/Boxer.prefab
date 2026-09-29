@@ -1450,9 +1450,9 @@ GameObject:
   - component: {fileID: 3282016818635141995}
   - component: {fileID: 4042561304196917967}
   - component: {fileID: 6402569166224856250}
-  - component: {fileID: 2830912935214447116}
   - component: {fileID: 6784481105936320676}
   - component: {fileID: 7446848903476554774}
+  - component: {fileID: 1448975151879245709}
   m_Layer: 0
   m_Name: Torso
   m_TagString: Boxer
@@ -1595,27 +1595,14 @@ MonoBehaviour:
   _damageTakenPenalty: 0.02
   _eliminationReward: 1
   _eliminatedPenalty: 0.75
+  _knockoutWinReward: 2
+  _decisionWinReward: 1
   _aimShapingWeight: 0.6
   _approachShapingWeight: 0.25
   _rangeShapingWeight: 0.4
   _punchCost: 0.002
   _humanControlled: 0
   _scriptedBot: 0
---- !u!114 &2830912935214447116
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6652157053363623272}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.ML-Agents::Unity.MLAgents.DecisionRequester
-  DecisionPeriod: 5
-  DecisionStep: 0
-  TakeActionsBetweenDecisions: 1
 --- !u!114 &6784481105936320676
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1721,6 +1708,21 @@ MonoBehaviour:
           rid: -2
         m_Provider2DCache:
           rid: -2
+--- !u!114 &1448975151879245709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6652157053363623272}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0842ad52e4c234b408a9004ca05b48d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.BoxerDecisionRequester
+  DecisionPeriod: 5
+  DecisionStep: 0
+  TakeActionsBetweenDecisions: 1
 --- !u!1 &6790045736977580218
 GameObject:
   m_ObjectHideFlags: 0

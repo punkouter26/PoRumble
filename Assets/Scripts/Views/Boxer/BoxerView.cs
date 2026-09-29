@@ -104,6 +104,14 @@ namespace PoRumble.Views
 
         private BoxerConfig _config;
         private BoxerModel _model;
+
+        /// <summary>
+        /// Where this boxer's ring sits in the world. Models are arena-local - positions, the
+        /// ropes and the agent's observations are all measured from the ring's centre - so the
+        /// view is the only thing that needs to know where the ring was built. Zero in the game,
+        /// which has one ring at the origin; the spar scene stacks several arenas side by side.
+        /// </summary>
+        private Vector2 _arenaOrigin;
         private MaterialPropertyBlock _propertyBlock;
         private Color _aliveColor = Color.white;
 
@@ -228,6 +236,12 @@ namespace PoRumble.Views
             Tint(_model == null || _model.IsAlive.Value);
         }
 
+        /// <summary>Called by the spawner, before <see cref="Bind"/>, with its ring's centre.</summary>
+        public void SetArenaOrigin(Vector2 origin)
+        {
+            _arenaOrigin = origin;
+        }
+
         /// <summary>Called by the spawner once the model exists.</summary>
         public void Bind(BoxerModel model)
         {
@@ -260,17 +274,18 @@ namespace PoRumble.Views
             PushFatigue();
 
             float facingDegrees = Mathf.Atan2(_model.Facing.y, _model.Facing.x) * Mathf.Rad2Deg - 90f;
+            Vector2 worldPosition = _arenaOrigin + _model.Position;
 
             // Moved through physics rather than by assigning a transform, because the fists are
             // jointed rigid bodies. Teleporting a transform would fight their SliderJoint2D.
             if (_bodyRigidbody != null)
             {
-                _bodyRigidbody.MovePosition(_model.Position);
+                _bodyRigidbody.MovePosition(worldPosition);
                 _bodyRigidbody.MoveRotation(facingDegrees);
                 return;
             }
 
-            transform.SetPositionAndRotation(_model.Position, Quaternion.Euler(0f, 0f, facingDegrees));
+            transform.SetPositionAndRotation(worldPosition, Quaternion.Euler(0f, 0f, facingDegrees));
         }
 
         /// <summary>

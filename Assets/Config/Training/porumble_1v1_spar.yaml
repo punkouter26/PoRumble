@@ -27,15 +27,19 @@ behaviors:
       vis_encode_type: simple
     reward_signals:
       extrinsic:
-        # An episode is MaxStep 1500 physics steps at DecisionPeriod 5, so 300 decisions.
-        # At gamma 0.99 the +2 win bonus is worth 0.99^300 = 0.05 at the opening bell, which
-        # is far too faint to shape the early game; 0.995 doubles the horizon to ~200
-        # decisions (20s) and leaves the win worth 0.22 from the first step.
+        # MaxStep on the prefab is 2500 physics steps at DecisionPeriod 5, so a match that goes
+        # to the bell is 500 decisions. 0.995 gives a ~200-decision (20s) horizon: the +2
+        # knockout win is worth 0.995^500 = 0.08 from the opening bell, but a 1v1 spar finishes
+        # in ~100 decisions, where it is worth 1.2. Raising gamma for the ten-way is a
+        # candidate experiment, deliberately not bundled with the changes of 2026-09-29.
         gamma: 0.995
         strength: 1.0
     keep_checkpoints: 15
     checkpoint_interval: 250000
-    max_steps: 1500000
+    # Was 1.5M. pr_spar_0929 had reached 8.94 of its final 8.98 reward by 0.8M and was
+    # knocking the partner out in 105 decisions by 1.1M against 99 at the end. It is a warm
+    # start for the ten-way, not the product, and at ~450 steps/s the tail cost 18 minutes.
+    max_steps: 1000000
     time_horizon: 128
     summary_freq: 10000
     # Trainer updates overlap environment stepping. Measured CPU-bound on the environments

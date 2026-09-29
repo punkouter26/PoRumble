@@ -34,7 +34,7 @@ override defaults. Project detail lives in `CLAUDE.md` and `DOCS/`.
 ## UI changes
 
 - **After any UI change, take an annotated screenshot showing the old UI and the new one, with
-  the changes marked.**
+  the changes marked, and put it in an HTML file.**
 
 ## Training
 
@@ -45,11 +45,17 @@ override defaults. Project detail lives in `CLAUDE.md` and `DOCS/`.
 - **For training of 30+ minutes, close the Unity or Unreal Editor** if that speeds training up
   materially, having saved and committed first. Say explicitly when training is over and the
   Editor can be reopened.
-- **For training of 30+ minutes, screenshot the three most consequential TensorBoard charts,**
-  review them, and explain in plain terms what each one shows.
+- **Once training has run 30+ minutes, screenshot the three most consequential TensorBoard
+  charts,** review them, and put the screenshots and the review in an HTML file. Explain each chart
+  at three levels: **1. toddler, 2. child, 3. adult.**
 
 ## Physics engines outside Unity
 
+- **Train in MuJoCo or Newton** - unless the app uses ML-Agents, in which case every MuJoCo and
+  Isaac Lab rule in this section is ignored. PoRumble uses ML-Agents, so none of this section
+  applies to it.
+- **Before training, ask the user for a skinned mesh.** Take the rig structure from that model
+  and import it into MuJoCo or Newton to train against.
 - **Compile MuJoCo for Android phones from <https://github.com/joanllobera/mujoco-bin/>.**
 - **When training in MuJoCo or Isaac Lab, show that app's UI** so the creature's movement can be
   watched during and after training. Use Newton for the view instead where it is the better option.
