@@ -55,6 +55,10 @@ function Invoke-Stage([string]$name, [string[]]$arguments) {
     $proc = Start-Process -FilePath $learn -ArgumentList $arguments -RedirectStandardOutput $out `
         -RedirectStandardError "$out.err" -WindowStyle Hidden -PassThru
 
+    # Touching the handle now keeps it open; without this, a process started with redirected
+    # output reports an empty ExitCode once it has gone, and a clean finish reads as a failure.
+    $null = $proc.Handle
+
     while (-not $proc.HasExited) {
         if ((Get-Date) -gt $deadline) {
             Write-Log "$name hit the deadline; stopping it. The last checkpoint stands."
