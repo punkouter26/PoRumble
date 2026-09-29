@@ -55,5 +55,8 @@
         "com.cysharp"
       ]
     }
+  ],
+  "testables": [
+    "com.besty.unity-skills"
   ]
 }
