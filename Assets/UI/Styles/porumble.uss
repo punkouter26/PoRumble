@@ -1164,3 +1164,268 @@
 .chrome__button:disabled {
     opacity: 0.32;
 }
+
+/* ----------------------------------------------------------------- odds board */
+/* Left column, second row: the one slot in the grid nothing else claims. The match panel owns
+   the top of this column and the standings the same row on the right, so the odds sit under
+   the survivors and beside the league table on the results screen - the three things a viewer
+   compares when a fight ends.
+
+   It is one of the two panels that stay up through the live fight (HudVisibilityView), which is
+   why it is short: a title, a head-to-head bar, four rows and a stake line. */
+.odds {
+    position: absolute;
+    left: var(--band-edge);
+    top: var(--band-second-row);
+    width: var(--col);
+    background-color: var(--surface-panel);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: opacity;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: ease-out;
+}
+
+/* Opacity rather than display, for SafeAreaView's sake - see .standings--hidden. */
+.odds--hidden { opacity: 0; }
+
+.odds__title {
+    color: var(--text-secondary);
+    letter-spacing: 3px;
+    margin-bottom: var(--space-1);
+}
+
+.odds__duel { margin-bottom: var(--space-2); }
+.odds__duel--hidden { display: none; }
+
+.odds__duel-names {
+    flex-direction: row;
+    margin-bottom: 4px;
+}
+
+.odds__duel-name {
+    flex-grow: 1;
+    flex-basis: 0;
+    width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 1px;
+}
+
+.odds__duel-name--right { -unity-text-align: middle-right; }
+
+/* One fill from the left over a track in the other fighter's colour, so the split point is
+   the only thing that moves - a chess engine's evaluation bar, turned sideways. */
+.odds__duel-track {
+    height: 14px;
+    background-color: var(--state-hurt);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    overflow: hidden;
+}
+
+/* Eased, unlike the momentum bar: odds move in steps four times a second, so a transition
+   turns a jump into a readable swing rather than trailing a value that moves every frame. */
+.odds__duel-fill {
+    height: 100%;
+    width: 50%;
+    background-color: var(--state-healthy);
+    transition-property: width;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: ease-out;
+}
+
+.odds__rows { flex-direction: column; }
+
+.odds__row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 4px;
+    padding-left: var(--space-1);
+    border-left-width: 4px;
+    border-left-color: rgba(0, 0, 0, 0);
+}
+
+/* The viewer's own fighter, marked in the charge colour the HUD already uses for "yours". */
+.odds__row--pick { border-left-color: var(--state-charge); }
+.odds__row--pick .odds__name { color: var(--state-charge); }
+.odds__row--out { opacity: 0.4; }
+
+.odds__name {
+    flex-basis: 34%;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 1px;
+}
+
+.odds__track {
+    flex-grow: 1;
+    height: 12px;
+    margin-left: var(--space-1);
+    margin-right: var(--space-1);
+    background-color: var(--surface-track);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    overflow: hidden;
+}
+
+.odds__fill {
+    height: 100%;
+    width: 0;
+    background-color: var(--state-stamina);
+    transition-property: width;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: ease-out;
+}
+
+.odds__row--pick .odds__fill { background-color: var(--state-charge); }
+
+.odds__value {
+    width: 76px;
+    -unity-text-align: middle-right;
+}
+
+.odds__trend {
+    width: 56px;
+    -unity-text-align: middle-right;
+    color: var(--text-secondary);
+}
+
+.odds__trend--up { color: var(--state-healthy); }
+.odds__trend--down { color: var(--state-critical); }
+
+.odds__pick {
+    margin-top: var(--space-1);
+    letter-spacing: 1px;
+    white-space: normal;
+    color: var(--text-secondary);
+}
+
+.odds__pick--won { color: var(--state-healthy); }
+.odds__pick--lost { color: var(--state-hurt); }
+
+/* ----------------------------------------------------------------- pick strip */
+/* The bottom band on the title screen, where the floating card button would be if the menu
+   did not carry its own. Full width between the edges so eight chips wrap onto two rows on the
+   portrait reference rather than one row of slivers. */
+.picker {
+    position: absolute;
+    left: var(--band-edge);
+    right: var(--band-edge);
+    bottom: var(--band-bottom-card);
+    align-items: center;
+}
+
+.picker__title {
+    color: var(--text-secondary);
+    letter-spacing: 3px;
+    margin-bottom: var(--space-1);
+}
+
+.picker__chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Thumb-sized, like every other control on the title screen. */
+.picker__chip {
+    min-width: 220px;
+    min-height: 96px;
+    margin: 6px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    background-color: var(--surface-panel);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-color: rgba(244, 246, 250, 0.22);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: scale, background-color, border-color;
+    transition-duration: var(--motion-fast);
+    transition-timing-function: ease-out;
+}
+
+.picker__chip:hover { background-color: var(--tile-in); }
+.picker__chip:active { scale: 0.96; }
+
+.picker__chip--on {
+    border-color: var(--state-charge);
+    background-color: rgba(250, 199, 64, 0.22);
+}
+
+.picker__chip-name { letter-spacing: 2px; }
+
+.picker__chip-price {
+    color: var(--state-charge);
+    letter-spacing: 1px;
+}
+
+.picker__bank {
+    margin-top: var(--space-1);
+    letter-spacing: 2px;
+}
+
+/* ----------------------------------------------------------------- second-fight feed */
+/* Bottom-right while the fight is live, when the bottom stack is cleared. The frame's height is
+   set from its width in C#, since USS has no aspect-ratio. */
+.pip {
+    position: absolute;
+    right: var(--band-edge);
+    bottom: var(--band-edge);
+    width: var(--col);
+    padding-top: 6px;
+    padding-bottom: 6px;
+    padding-left: 6px;
+    padding-right: 6px;
+    background-color: var(--surface-panel);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-color: var(--state-charge);
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    transition-property: opacity, translate;
+    transition-duration: var(--motion-slow);
+    transition-timing-function: ease-out;
+}
+
+.pip--hidden {
+    opacity: 0;
+    translate: 0 24px;
+}
+
+.pip__feed {
+    width: 100%;
+    height: 200px;
+    background-color: var(--surface-track);
+    -unity-background-scale-mode: scale-and-crop;
+}
+
+.pip__caption {
+    margin-top: 6px;
+    letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

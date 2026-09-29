@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The second fight: a corner feed on the best exchange that shares nobody with the one on the
+  main camera. The feed element carries no image in the layout; the view hands it the second
+  camera's render texture at runtime.
+
+  Bottom-right, which is empty while the fight is live - HudVisibilityView clears the bottom
+  stack then, and the touch controls that live there on a phone are the reason this feed is
+  desktop-only.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="pip pip--hidden" picking-mode="Ignore">
+        <ui:VisualElement name="feed" class="pip__feed" picking-mode="Ignore" />
+        <ui:Label name="caption" class="text text--xs text--bold pip__caption" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

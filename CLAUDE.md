@@ -25,10 +25,10 @@ Renderer, so 3D lit materials will not light correctly.
 | Task | How |
 |---|---|
 | Play | Open `Assets/Scenes/SampleScene.unity` → Play. 10 boxers, HUD, boxer #0 on keyboard |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** the fight card (between matches) · **R** restart at the results screen · **F3** diagnostics overlay · tap a chip on the title screen to back a winner |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 179 EditMode tests |
+| Tests | `unity command run_tests --mode EditMode` — 221 PoRumble EditMode tests (the `com.besty.unity-skills` testables add their own, two of which fail upstream) |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the

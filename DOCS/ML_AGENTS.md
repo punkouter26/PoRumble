@@ -29,7 +29,9 @@ The behaviour contract, the observation and action vectors, the training curricu
   replaced was compiled against the old 11-wide vector *and* trained while the ray sensor
   reported nothing but the boxer's own torso. Neither that legacy model nor the
   `results/_preserved/` checkpoint archive is present in this working tree: the only model
-  here is `PoRumbleBoxer.onnx`. Preserve checkpoints again before the next run.
+  here is `PoRumbleBoxer.onnx`. Preserve checkpoints again before the next run. They are also
+  what the evolution exhibition seats as `FighterProfile._policyCheckpoint` fighters - see
+  `GAMEPLAY.md`, *Checkpoint fighters*.
 - **Select a model on how often matches finish, not on reward.** Reward and the objective
   pull apart here: finishing a match early truncates the episode, which caps how much
   damage-dealt reward can accumulate, so the reward function mildly punishes winning

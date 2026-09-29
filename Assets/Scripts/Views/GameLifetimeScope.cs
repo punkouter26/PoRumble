@@ -39,6 +39,9 @@ namespace PoRumble.Views
             builder.Register<DirectorModel>(Lifetime.Singleton);
             builder.Register<CommentaryModel>(Lifetime.Singleton);
             builder.Register<DiagnosticsModel>(Lifetime.Singleton);
+            builder.Register<WinOddsModel>(Lifetime.Singleton);
+            builder.Register<PredictionModel>(Lifetime.Singleton);
+            builder.Register<DamageMapModel>(Lifetime.Singleton);
 
             // Registered through a factory rather than RegisterInstance, because this one is
             // allowed to be null - a training scene assigns no bank - and RegisterInstance
@@ -56,10 +59,16 @@ namespace PoRumble.Views
             builder.Register<DirectorSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<CommentarySystem>(Lifetime.Singleton).AsSelf();
             builder.Register<DiagnosticsSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<WinOddsSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<PredictionSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<DamageMapSystem>(Lifetime.Singleton).AsSelf();
 
             // The league table on disk. A plain C# class rather than a component, so it is
             // registered as an instance; RatingSystem only ever sees the interface.
             builder.Register<IRatingStore>(_ => new FileRatingStore(), Lifetime.Singleton);
+
+            // The viewer's bank, beside the league table and for the same reason.
+            builder.Register<IPredictionStore>(_ => new FilePredictionStore(), Lifetime.Singleton);
 
             // Scene components the systems depend on.
             builder.RegisterComponentInHierarchy<BoxerSpawnPoints>();
@@ -96,6 +105,15 @@ namespace PoRumble.Views
                 // he would subscribe after the fight he was meant to introduce had started.
                 container.Resolve<CommentarySystem>();
 
+                // The book and the fight map only subscribe as well. The book has to be live
+                // before the first introduction or the opening pick is never staked; the map
+                // before the first punch or it opens every session blank. WinOddsSystem is
+                // ticked by MatchDirector, but is resolved here with the rest of the broadcast
+                // layer so its roster subscription is in place before the first deal.
+                container.Resolve<WinOddsSystem>();
+                container.Resolve<PredictionSystem>();
+                container.Resolve<DamageMapSystem>();
+
                 // Presentation components are all optional: the training scenes deliberately
                 // have no HUD, no camera rig and no feedback layer, and
                 // RegisterComponentInHierarchy would throw when they are absent.
@@ -117,6 +135,10 @@ namespace PoRumble.Views
                 InjectOptional<CrowdAmbienceView>(container);
                 InjectOptional<AppChromeView>(container);
                 InjectOptional<HudVisibilityView>(container);
+                InjectOptional<WinOddsHudView>(container);
+                InjectOptional<PredictionPickerView>(container);
+                InjectOptional<DamageMapView>(container);
+                InjectOptional<PictureInPictureView>(container);
             });
         }
 

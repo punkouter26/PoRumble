@@ -1,7 +1,9 @@
 {
     "name": "PoRumble.Models",
     "rootNamespace": "PoRumble.Models",
-    "references": [],
+    "references": [
+        "Unity.InferenceEngine"
+    ],
     "allowUnsafeCode": false,
     "autoReferenced": true
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using MessagePipe;
 using PoRumble.Models;
 using PoRumble.Systems;
+using Unity.InferenceEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
 using Unity.MLAgents.Policies;
@@ -97,6 +98,14 @@ namespace PoRumble.Views
         /// </summary>
         private BehaviorType _authoredBehaviorType = BehaviorType.Default;
         private bool _behaviorTypeCaptured;
+
+        /// <summary>
+        /// The policy the prefab shipped with, so a seat that ran a training checkpoint last
+        /// match can be handed back to it. Captured on first use for the same reason the
+        /// behaviour type is.
+        /// </summary>
+        private ModelAsset _authoredModel;
+        private bool _authoredModelCaptured;
 
         /// <summary>Physics ticks between decisions, read off the DecisionRequester.</summary>
         private int _decisionPeriod = 1;
@@ -254,13 +263,17 @@ namespace PoRumble.Views
         ///
         /// Idempotent and reversible, because the roster can be re-dealt between matches and
         /// the same chair may go from a scripted bot to a policy fighter and back.
+        ///
+        /// <paramref name="checkpoint"/> is the policy to run for a policy fighter, already
+        /// checked as compatible by the seating code; null runs the shipped policy.
         /// </summary>
-        public void ApplyFighter(FighterProfile profile)
+        public void ApplyFighter(FighterProfile profile, ModelAsset checkpoint)
         {
             _modulator = null;
 
             if (profile == null)
             {
+                ApplyPolicy(null);
                 return;
             }
 
@@ -272,6 +285,7 @@ namespace PoRumble.Views
             _scriptedBot = scripted;
             SetBrainProfile(scripted ? profile.Brain : null);
             ApplyBehaviorType(scripted || _humanControlled);
+            ApplyPolicy(scripted ? null : checkpoint);
 
             // Only a policy fighter needs a modulator. A scripted one already has a whole
             // brain of its own, tuned by its BrainProfile tier.
@@ -322,6 +336,59 @@ namespace PoRumble.Views
             }
 
             parameters.BehaviorType = heuristic ? BehaviorType.HeuristicOnly : _authoredBehaviorType;
+        }
+
+        /// <summary>The policy the prefab shipped with. The seating code checks checkpoints against it.</summary>
+        public ModelAsset AuthoredModel
+        {
+            get
+            {
+                if (TryGetComponent(out BehaviorParameters parameters))
+                {
+                    CaptureAuthoredModel(parameters);
+                }
+
+                return _authoredModel;
+            }
+        }
+
+        /// <summary>
+        /// Runs a training checkpoint in this seat, or puts the shipped policy back.
+        ///
+        /// Through Agent.SetModel rather than by writing BehaviorParameters.Model, which the
+        /// package documents as not for runtime use: SetModel closes the current episode
+        /// cleanly before the policy changes underneath it. SetModel already ignores an
+        /// identical request; checking here as well keeps the common case - every fighter on
+        /// the shipped policy, re-seated between every match - from touching the agent at all.
+        /// </summary>
+        private void ApplyPolicy(ModelAsset checkpoint)
+        {
+            if (!TryGetComponent(out BehaviorParameters parameters))
+            {
+                return;
+            }
+
+            CaptureAuthoredModel(parameters);
+
+            ModelAsset wanted = checkpoint != null ? checkpoint : _authoredModel;
+
+            if (parameters.Model == wanted)
+            {
+                return;
+            }
+
+            SetModel(parameters.BehaviorName, wanted, parameters.InferenceDevice);
+        }
+
+        private void CaptureAuthoredModel(BehaviorParameters parameters)
+        {
+            if (_authoredModelCaptured)
+            {
+                return;
+            }
+
+            _authoredModel = parameters.Model;
+            _authoredModelCaptured = true;
         }
 
         /// <summary>Hands this boxer to the keyboard. Inference only, never during training.</summary>

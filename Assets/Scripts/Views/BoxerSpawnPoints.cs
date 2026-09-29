@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using PoRumble.Models;
+using Unity.InferenceEngine;
 using Unity.MLAgents.Sensors;
 using UnityEngine;
 using VContainer;
@@ -83,6 +84,7 @@ namespace PoRumble.Views
         private readonly List<BoxerAgentView> _seatAgents = new();
         private IObjectResolver _resolver;
         private RosterModel _roster;
+        private PolicyCheckpointValidator _checkpoints;
         private bool _built;
 
         /// <summary>True when a card of contestants was assigned, so the roster drives seating.</summary>
@@ -212,9 +214,27 @@ namespace PoRumble.Views
 
                 if (agent != null)
                 {
-                    agent.ApplyFighter(profile);
+                    agent.ApplyFighter(profile, ResolveCheckpoint(profile, agent));
                 }
             }
+        }
+
+        /// <summary>
+        /// The checkpoint a contestant asked for, if this build can actually feed it.
+        ///
+        /// The validator is built against the first agent's shipped model, lazily, because the
+        /// agents are only known once the views exist. Every seat carries the same prefab, so
+        /// one reference covers the ring.
+        /// </summary>
+        private ModelAsset ResolveCheckpoint(FighterProfile profile, BoxerAgentView agent)
+        {
+            if (profile == null || profile.PolicyCheckpoint == null)
+            {
+                return null;
+            }
+
+            _checkpoints ??= new PolicyCheckpointValidator(agent.AuthoredModel);
+            return _checkpoints.Resolve(profile.PolicyCheckpoint);
         }
 
         /// <summary>

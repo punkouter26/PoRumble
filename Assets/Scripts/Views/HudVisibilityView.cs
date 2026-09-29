@@ -25,7 +25,8 @@ namespace PoRumble.Views
     /// The diagnostics overlay is deliberately exempt. It is off by default and only ever up
     /// because somebody asked for it, so it is never part of the clutter this removes - and a
     /// frame-time readout that blanked itself during the only part of the run worth measuring
-    /// would be useless.
+    /// would be useless. The odds board and the second-fight feed are exempt too - see
+    /// <see cref="StaysUpDuringFight"/>.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HudVisibilityView : MonoBehaviour
@@ -81,7 +82,7 @@ namespace PoRumble.Views
                     continue;
                 }
 
-                if (document.GetComponent<DiagnosticsHudView>() != null)
+                if (StaysUpDuringFight(document))
                 {
                     continue;
                 }
@@ -95,6 +96,22 @@ namespace PoRumble.Views
 
                 root.visible = !hide;
             }
+        }
+
+        /// <summary>
+        /// The documents this view never clears.
+        ///
+        /// The diagnostics overlay for the reason above. The odds board and the second-fight
+        /// feed because they are the broadcast layer for the live fight itself: a win
+        /// probability exists to be watched moving, and a feed of the other fight has nothing
+        /// to show at any other time. Both are compact and sit clear of the centre of the
+        /// ring, which is what the clearing protects.
+        /// </summary>
+        private static bool StaysUpDuringFight(UIDocument document)
+        {
+            return document.GetComponent<DiagnosticsHudView>() != null
+                   || document.GetComponent<WinOddsHudView>() != null
+                   || document.GetComponent<PictureInPictureView>() != null;
         }
 
         private void OnDestroy() => _disposables.Dispose();

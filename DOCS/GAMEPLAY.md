@@ -185,6 +185,33 @@ through) and six named fighters wearing the photographs in `Assets/Art/Sprites/F
   for a scripted contestant is otherwise a one-way door and the chair stands there doing
   nothing for the rest of the session.
 
+### Checkpoint fighters — the evolution exhibition
+
+A `FighterProfile` whose control is `Policy` can carry a `_policyCheckpoint` (an `.onnx` from
+`results/<run>/PoRumbleBoxer/`) and a `_trainingSteps` count. Seated, that contestant runs the
+checkpoint instead of the shipped `PoRumbleBoxer.onnx`, and the card prints
+`CHECKPOINT AT 520K STEPS` under the tagline - so a 50k-step flailer and the finished policy
+can share a ring, and Elo rates the generations against each other like any other contestants.
+
+- **No checkpoint fighters ship, because no compatible checkpoints exist in this tree.** The
+  four policies in git history (`36cdf2f`, `cfc2b5e`, `1b5df1d`, `a42eb7d`) were compiled
+  against a 10- or 11-wide observation vector; the prefab writes 15. The next training run has
+  to preserve its checkpoints (`keep_checkpoints` is already set high) to populate the exhibit.
+- **Every checkpoint is checked once, at seating, against the shipped model's signature** -
+  input names and shapes plus output names, read through `Unity.InferenceEngine.ModelLoader` by
+  `PolicyCheckpointValidator`. ML-Agents only runs its own compatibility check in the
+  inspector; at runtime a mismatched model fails on every decision and the fighter stands
+  still. A mismatch logs one warning naming both signatures and the seat runs the shipped
+  policy instead.
+- **The swap goes through `Agent.SetModel`**, which closes the episode cleanly, and is skipped
+  whenever the seat already runs the wanted model - every shipped-policy fighter is re-seated
+  between every match.
+- **`FighterProfile` referencing `ModelAsset` is why `PoRumble.Models` now references
+  `Unity.InferenceEngine`.** It is a data-type reference only; no model is loaded or run from
+  Models.
+- **Roster colours still apply.** Checkpoint fighters are RL variants and may look like
+  anything, but red stays the heuristic bot's and green the reference policy's.
+
 ## Elo
 
 `RatingSystem` rates the *contestants*, not the boxer slots, and carries the table between

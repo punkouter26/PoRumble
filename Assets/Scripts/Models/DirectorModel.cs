@@ -69,6 +69,27 @@ namespace PoRumble.Models
         /// <summary>True when the director has picked out a genuine pair rather than a lone fighter.</summary>
         public bool HasPair => FocusId != NOBODY && RivalId != NOBODY;
 
+        /// <summary>
+        /// The second fight, for the picture-in-picture feed: the best pair that shares nobody
+        /// with the main one. <see cref="NOBODY"/> when there is no such pair.
+        /// </summary>
+        public int SecondFocusId { get; set; } = NOBODY;
+
+        public int SecondRivalId { get; set; } = NOBODY;
+
+        /// <summary>How good the second pair is, 0..1. A plain float for the same reason <see cref="Tension"/> is.</summary>
+        public float SecondTension { get; set; }
+
+        /// <summary>
+        /// Whether the second fight is worth a feed right now. Reactive because showing and
+        /// hiding the feed is a discrete event, and it is the only thing that turns the second
+        /// camera on - a camera rendering a hidden feed would cost a whole second pass for
+        /// nothing.
+        /// </summary>
+        public ReactiveProperty<bool> ShowSecond { get; } = new(false);
+
+        public bool HasSecondPair => SecondFocusId != NOBODY && SecondRivalId != NOBODY;
+
         /// <summary>Clears the decision for a fresh match, so no shot is inherited across the bell.</summary>
         public void Reset()
         {
@@ -77,6 +98,15 @@ namespace PoRumble.Models
             Tension = 0f;
             ShotElapsed = 0f;
             Shot.Value = ShotType.Wide;
+            ClearSecond();
+        }
+
+        public void ClearSecond()
+        {
+            SecondFocusId = NOBODY;
+            SecondRivalId = NOBODY;
+            SecondTension = 0f;
+            ShowSecond.Value = false;
         }
     }
 }

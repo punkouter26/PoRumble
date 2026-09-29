@@ -1,3 +1,4 @@
+using Unity.InferenceEngine;
 using UnityEngine;
 
 namespace PoRumble.Models
@@ -46,6 +47,19 @@ namespace PoRumble.Models
 
         [Tooltip("Tier for the scripted brain. Only read when Control is Scripted.")]
         [SerializeField] private BrainProfile _brainProfile;
+
+        [Header("Policy checkpoint — the evolution exhibition")]
+        [Tooltip("A training checkpoint (.onnx from results/<run>/PoRumbleBoxer/) to drive this " +
+                 "fighter instead of the shipped PoRumbleBoxer.onnx. Only read when Control is " +
+                 "Policy. It must take the same observations as the shipped model: a checkpoint " +
+                 "from before the perception fix (a 10- or 11-wide vector) is refused at seating " +
+                 "and the fighter falls back to the shipped policy with a warning.")]
+        [SerializeField] private ModelAsset _policyCheckpoint;
+
+        [Tooltip("Training steps the checkpoint was saved at, printed on the fight card so a " +
+                 "viewer can see which generation is in the ring. 0 for no label.")]
+        [Min(0)]
+        [SerializeField] private long _trainingSteps;
 
         [Header("Style — how this fighter bends the policy")]
         [Tooltip("Forward bias on movement. Positive walks the opponent down, negative " +
@@ -99,6 +113,14 @@ namespace PoRumble.Models
         public Color Tint => _tint;
         public FighterControl Control => _control;
         public BrainProfile Brain => _brainProfile;
+
+        /// <summary>A checkpoint to run in place of the shipped policy, or null to use the shipped one.</summary>
+        public ModelAsset PolicyCheckpoint => _policyCheckpoint;
+
+        public long TrainingSteps => _trainingSteps;
+
+        /// <summary>"520K STEPS" for a checkpoint with a step count, empty otherwise.</summary>
+        public string GenerationLabel => StepCountFormat.Label(_trainingSteps);
 
         public FighterStyle ToStyle()
         {

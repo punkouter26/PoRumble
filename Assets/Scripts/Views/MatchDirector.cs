@@ -29,6 +29,7 @@ namespace PoRumble.Views
         private readonly FightStatsSystem _statsSystem;
         private readonly DirectorSystem _directorSystem;
         private readonly CommentarySystem _commentarySystem;
+        private readonly WinOddsSystem _winOddsSystem;
 
         /// <summary>
         /// Physics steps of margin between resolving a match on health and the point
@@ -71,7 +72,8 @@ namespace PoRumble.Views
             BoxerSpawnPoints spawnPoints,
             FightStatsSystem statsSystem,
             DirectorSystem directorSystem,
-            CommentarySystem commentarySystem)
+            CommentarySystem commentarySystem,
+            WinOddsSystem winOddsSystem)
         {
             _spawnSystem = spawnSystem;
             _boxerSystem = boxerSystem;
@@ -84,6 +86,7 @@ namespace PoRumble.Views
             _statsSystem = statsSystem;
             _directorSystem = directorSystem;
             _commentarySystem = commentarySystem;
+            _winOddsSystem = winOddsSystem;
         }
 
         /// <summary>True in a training scene, where the presentation loop is skipped.</summary>
@@ -156,6 +159,7 @@ namespace PoRumble.Views
             _statsSystem.Tick(delta);
             _directorSystem.Tick(delta);
             _commentarySystem.Tick(delta);
+            _winOddsSystem.Tick(delta);
         }
 
         public void FixedTick()

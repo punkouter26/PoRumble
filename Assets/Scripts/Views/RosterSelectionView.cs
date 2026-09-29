@@ -199,7 +199,7 @@ namespace PoRumble.Views
 
                 if (tagline != null)
                 {
-                    tagline.text = profile.Tagline;
+                    tagline.text = DescribeTagline(profile);
                 }
 
                 _standingLabels.Add(tile.Q<Label>("standing"));
@@ -211,6 +211,31 @@ namespace PoRumble.Views
 
                 _tiles.Add(tile);
             }
+        }
+
+        /// <summary>
+        /// The style line, with the training generation underneath for a checkpoint fighter.
+        /// That second line is the whole point of an evolution exhibition: two tiles that look
+        /// alike are a fighter from early in the run and one from the end of it.
+        /// </summary>
+        private string DescribeTagline(FighterProfile profile)
+        {
+            string generation = profile.GenerationLabel;
+
+            if (generation.Length == 0)
+            {
+                return profile.Tagline;
+            }
+
+            _builder.Clear();
+
+            if (!string.IsNullOrEmpty(profile.Tagline))
+            {
+                _builder.Append(profile.Tagline).Append('\n');
+            }
+
+            _builder.Append("CHECKPOINT AT ").Append(generation);
+            return _builder.ToString();
         }
 
         private void OnTileClicked(FighterProfile profile)

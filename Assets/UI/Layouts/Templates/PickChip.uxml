@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  One contestant on the pick strip: a name over the price. A Button, so it takes a tap on a
+  phone and a click on a desktop with no extra wiring.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Button name="chip" class="picker__chip">
+        <ui:Label name="name" class="text text--sm text--bold picker__chip-name" picking-mode="Ignore" />
+        <ui:Label name="price" class="text text--xs picker__chip-price" picking-mode="Ignore" />
+    </ui:Button>
+</ui:UXML>

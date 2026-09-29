@@ -8,15 +8,16 @@ Four assemblies enforce `Views → Systems → Models`:
 
 ```
 Assets/Scripts/
-├── Models/    PoRumble.Models.asmdef    depends on nothing
+├── Models/    PoRumble.Models.asmdef    → Unity.InferenceEngine (the ModelAsset type only)
 ├── Systems/   PoRumble.Systems.asmdef   → Models, MessagePipe, VContainer
 ├── Views/     PoRumble.Views.asmdef     → Models, Systems, ML-Agents, Input System
 └── Tests/     PoRumble.Tests.asmdef     EditMode only
 ```
 
 DI is VContainer, cross-system events are MessagePipe. `ReactiveProperty<T>` and
-`CompositeDisposable` are **hand-rolled in Models**, which is what lets Models depend on
-nothing at all — exactly what the architecture rules ask for. R3 was installed for a while
+`CompositeDisposable` are **hand-rolled in Models**, which is what keeps Models free of any
+runtime library. Its one reference, `Unity.InferenceEngine`, exists so `FighterProfile` can
+hold a checkpoint `ModelAsset`; nothing in Models loads or runs a model. R3 was installed for a while
 and never used; it and the rest of the NuGet layer have been removed.
 
 ### Data flow
@@ -68,7 +69,13 @@ FightStatsSystem ─► FightStatsModel ──┬─► FightStatsHudView (the t
                                       └─► DirectorSystem    (recent damage → tension)
 
 DirectorSystem ─► DirectorModel ──┬─► SpectatorCameraView (which pair, how tight)
-                                  └─► CameraDirectorView  (the hard cut to ImpactCam)
+                                  ├─► CameraDirectorView  (the hard cut to ImpactCam)
+                                  └─► PictureInPictureView (the second fight, in a corner)
+
+WinOddsSystem ─► WinOddsModel ──┬─► WinOddsHudView       (live odds, head-to-head, stake)
+                                └─► PredictionSystem ─► PredictionModel (the book)
+
+DamageMapSystem ─► DamageMapModel ─► DamageMapView (the fight map on the results screen)
 ```
 
 ### Things that are easy to get wrong

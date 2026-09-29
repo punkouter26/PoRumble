@@ -25,6 +25,10 @@ every one of them.
 | `Commentary` | `CommentaryView` | Speaks the baked commentary and prints the subtitle |
 | `MainMenu` | `MainMenuView` | The title screen — owns the `Title` phase outright |
 | `Crowd` | `CrowdAmbienceView` | The crowd bed and its reaction swells |
+| `WinOdds` | `WinOddsHudView` | The odds board — live win probability, the head-to-head bar for the director's pair, the viewer's stake |
+| `PredictionPicker` | `PredictionPickerView` | The pick strip on the title screen — back a contestant for the next bell |
+| `SecondFightFeed` | `PictureInPictureView` | The corner feed on the second fight, filmed by `CameraRig/SecondFightCamera` |
+| `DamageMap` | `DamageMapView` | The fight map — the canvas lit where the damage was done, on the results screen |
 
 ## The Camera Director
 
@@ -85,6 +89,85 @@ of its own. `TensionMath.ScorePair` is the rule, and it is pure and static for t
 - **Neither momentum fill carries a transition**, for the reason the stylesheet already gives
   for stamina and charge: easing a value recomputed every tick just renders it permanently
   behind the model reporting it.
+
+## Win Probability and the Book
+
+`WinOddsSystem` scores every fighter four times a second and writes `WinOddsModel`;
+`PredictionSystem` is the book that sits on top of it. Both are derived state - nothing in
+combat reads either - and `WinOddsSystem` is ticked from `MatchDirector.Tick` with the rest of
+the broadcast layer, so training never runs it.
+
+- **The odds are Plackett-Luce over a per-fighter strength, and that is what makes the
+  pre-fight number honest.** Strength is `10^((Elo-1200)/400)` times health-over-chin squared,
+  times power, times a breath factor (0.5-1) and a momentum factor (at most about 1.4x). With
+  everyone fresh and neutral only the rating term differs, and two fighters' share is then
+  exactly their Elo expected score - `WinOddsTests.BeforeTheBellAOneOnOneIsTheEloExpectedScore`
+  pins it. **The in-fight exponents are hand-set, not fitted.** They are a reasoned prior (half
+  health is a quarter the strength; momentum can tip a close call but never outweigh a health
+  lead). Fitting them needs logged match states and outcomes, which this project does not
+  collect yet.
+- **The board is per contestant, not per seat.** The cyclic deal seats some fighters twice, and
+  a board listing BIGGIE on two lines at 12% each misstates who a viewer is backing. The
+  head-to-head bar is per seat, because it describes the two bodies on camera, and it splits
+  their share of *each other's* chances: 9% against 6% in a ten-way is two small numbers, 60/40
+  is a fight.
+- **The odds board and the second-fight feed are the only panels up during a live fight.**
+  `HudVisibilityView.StaysUpDuringFight` exempts them alongside the diagnostics overlay. A win
+  probability exists to be watched moving; hiding it for exactly the phase in which it moves
+  would make it pointless.
+- **Trends are signed numbers, not arrows,** because every font atlas is baked over printable
+  ASCII and a triangle glyph renders as a missing-glyph box. The same goes for `x` in prices
+  and `-` separators throughout the new panels.
+- **The book takes picks on the title screen only, and locks the price at `Introducing`.**
+  Changing your mind on the menu is free; once the fighters are introduced the viewer is
+  watching odds move, and a price taken then is not a prediction. The stake is a flat 100 and
+  the price is fair odds (`1/p`, capped at 50x) - a house margin on play money only makes every
+  pick a slow loss.
+- **A match with no result never costs the viewer.** A draw on the bell refunds, and so does a
+  fight abandoned through the chrome bar's MENU button: that path never publishes
+  `MatchEndedMessage`, so the book refunds any stake still pending when the flow returns to
+  `Title`. A viewer below one stake is bailed back up to the starting 1000 rather than shut out.
+- **The bet names `StakedOn`, not `Pick`.** The pick is sticky between matches and editable on
+  the menu; the stake records who it was actually placed on, so nothing that touches the pick
+  mid-fight can move a bet. `PredictionSystemTests.ChangingThePickMidFightCannotMoveTheBet`.
+- **The bank persists in `porumble_predictions.json`** beside the ratings file. The pick itself
+  does not: it names a contestant asset, and a stale pick silently staked against a changed
+  card is worse than asking again.
+
+## The Second-Fight Feed
+
+`DirectorSystem` now keeps every pair it scored and, after choosing the main pair, picks the
+best pair that shares **nobody** with it (`PairSelection.TryPickSecondary`, pure and tested).
+`PictureInPictureView` films that pair with `CameraRig/SecondFightCamera` into a 640x360
+render texture shown bottom-right.
+
+- **A plain `Camera`, not a second `CinemachineCamera`.** The brain on the main camera takes
+  any Cinemachine camera by priority, and this feed must never compete for the main picture.
+  It carries no `MainCamera` tag, no brain, no `AudioListener` and no post-processing, and it
+  is **enabled only while the feed is up**, so the second render pass costs nothing otherwise.
+- **The swap is emergent.** When the corner fight out-scores the main one by the usual pair
+  margin, `ChooseFocus` takes it for the main camera, and the fight it displaced becomes the
+  best disjoint pair and moves into the corner.
+- **It shows with hysteresis:** up at tension 0.24, down below 0.12, each state held for the
+  1.6s minimum shot length unless the pair it shows no longer exists. Only during `Fighting`;
+  the knockout hold is one moment on one fighter.
+- **Off on mobile** (`_disableOnMobile`). The phone keeps its thumb controls in that corner,
+  and a second pass of the lit 2D renderer is the wrong place to spend a phone's budget.
+
+## The Fight Map
+
+`DamageMapSystem` splats every landed punch's damage into a 64x64 grid over the canvas (whatever the ring size) with a
+normalised 5x5 Gaussian, so a punch deposits exactly its own damage. `DamageMapView` paints it
+into a runtime texture on the results screen and fades it in over the ring.
+
+- **A sprite on the `Floor` layer at order 10, not a UI panel,** so it sits exactly on the
+  canvas at any zoom, above the scuffs and dressing and under the shadows and fighters. It uses
+  `Sprite-Unlit-Default`: it is a graphic laid on the picture, and the house lights around a
+  knockout should not dim the recap of it. It is the one sprite outside the atlas - its texture
+  is data rebuilt per match - and costs one draw call, only on the results screen.
+- **It is the ring-level half of visible damage; the fighter-level half is elsewhere.**
+  Per-side swelling, cuts and the fatigue sweat sheen live on `BoxerModel` and are drawn by
+  `BoxerView`.
 
 ## Audio
 `Assets/Audio/PoRumbleMixer.mixer` routes **Master → SFX / UI / Ambience / Commentary**, and now actually

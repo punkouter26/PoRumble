@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pick a winner: one chip per contestant on tonight's card, with the price a pick pays.
+
+  Its own document rather than part of the title menu, so the menu stays a menu and this panel
+  owns the book. It is sorted just above the menu and anchored to the bottom band, which on the
+  title screen is empty: the floating fight-card button hides there because the menu carries
+  its own.
+
+  The chips are cloned from Templates/PickChip.uxml, one per contestant on the full card, and
+  the view hides the ones not currently entered - so changing the card never rebuilds the strip.
+-->
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="panel" class="picker" picking-mode="Ignore">
+        <ui:Label name="title" text="PICK A WINNER" class="text text--xs text--bold picker__title" picking-mode="Ignore" />
+        <ui:VisualElement name="chips" class="picker__chips" picking-mode="Ignore" />
+        <ui:Label name="bank" class="text text--xs text--muted picker__bank" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

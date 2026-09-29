@@ -66,6 +66,17 @@ namespace PoRumble.Systems
         /// </summary>
         private const float IMPACT_CHARGE = 0.6f;
 
+        /// <summary>
+        /// Tension the second fight must reach before it earns a feed. Above <see cref="WIDE_TENSION"/>
+        /// on purpose: the main camera settles for a quiet pair because it has to show
+        /// something, and the corner feed does not - an empty inset is better than two fighters
+        /// circling at range in a box that pulls the eye off the real fight.
+        /// </summary>
+        private const float SECOND_SHOW_TENSION = 0.24f;
+
+        /// <summary>Below this the feed closes. The gap to the show threshold is hysteresis, so it does not blink.</summary>
+        private const float SECOND_HIDE_TENSION = 0.12f;
+
         private readonly MatchModel _match;
         private readonly DirectorModel _director;
         private readonly MatchFlowModel _flow;
@@ -75,6 +86,17 @@ namespace PoRumble.Systems
 
         /// <summary>Seconds left on an impact cut. Zero when the director is free to choose.</summary>
         private float _impactHold;
+
+        /// <summary>
+        /// Every living pair scored on the last pass, kept so the second fight can be chosen
+        /// from the same scores the main one was. Grown only when the roster outgrows it, so a
+        /// ten-way allocates it once.
+        /// </summary>
+        private ScoredPair[] _pairs = Array.Empty<ScoredPair>();
+        private int _pairCount;
+
+        /// <summary>Seconds since the feed last opened or closed, so it holds for a readable minimum.</summary>
+        private float _secondElapsed;
 
         [Inject]
         public DirectorSystem(
@@ -105,6 +127,7 @@ namespace PoRumble.Systems
             }
 
             _director.ShotElapsed += deltaSeconds;
+            _secondElapsed += deltaSeconds;
 
             // An impact cut owns the camera outright while it runs. Nothing is re-scored
             // underneath it: the point of the shot is that it does not move.
@@ -116,6 +139,7 @@ namespace PoRumble.Systems
 
             ChooseFocus();
             ChooseShot();
+            ChooseSecond();
         }
 
         /// <summary>
@@ -137,6 +161,15 @@ namespace PoRumble.Systems
             int bestB = DirectorModel.NOBODY;
             float bestScore = float.MinValue;
             float currentScore = float.MinValue;
+
+            int pairCapacity = boxers.Count * (boxers.Count - 1) / 2;
+
+            if (_pairs.Length < pairCapacity)
+            {
+                _pairs = new ScoredPair[pairCapacity];
+            }
+
+            _pairCount = 0;
 
             for (int indexA = 0; indexA < boxers.Count; indexA++)
             {
@@ -171,6 +204,8 @@ namespace PoRumble.Systems
                         engagementRange,
                         _stats.RecentDamageBetween(indexA, indexB),
                         threatened));
+
+                    _pairs[_pairCount++] = new ScoredPair(a.Id, b.Id, score);
 
                     if (score > bestScore)
                     {
@@ -240,6 +275,80 @@ namespace PoRumble.Systems
             }
 
             SetShot(wanted, MIN_SHOT_SECONDS);
+        }
+
+        /// <summary>
+        /// Picks the fight for the corner feed and decides whether it is worth showing.
+        ///
+        /// Chosen after the main pair, from the same scores, and never sharing a fighter with
+        /// it. That is also what makes the swap happen by itself: when the corner fight heats
+        /// up past the main one by the switch margin, <see cref="ChooseFocus"/> takes it for
+        /// the main camera, and the fight it displaced is now the best disjoint pair and moves
+        /// into the corner.
+        ///
+        /// Only during a live fight. The knockout hold is one moment on one fighter, and a
+        /// second feed over it would split the eye exactly when it should not be split.
+        /// </summary>
+        private void ChooseSecond()
+        {
+            ScoredPair second = default;
+            bool found = false;
+
+            if (_flow.IsFightLive && _director.HasPair)
+            {
+                found = PairSelection.TryPickSecondary(
+                    _pairs,
+                    _pairCount,
+                    _director.FocusId,
+                    _director.RivalId,
+                    _director.SecondFocusId,
+                    _director.SecondRivalId,
+                    PAIR_SWITCH_MARGIN,
+                    out second);
+            }
+
+            if (!found)
+            {
+                _director.SecondFocusId = DirectorModel.NOBODY;
+                _director.SecondRivalId = DirectorModel.NOBODY;
+                _director.SecondTension = 0f;
+                SetSecondVisible(false, force: true);
+                return;
+            }
+
+            _director.SecondFocusId = second.IdA;
+            _director.SecondRivalId = second.IdB;
+            _director.SecondTension = second.Score;
+
+            if (_director.ShowSecond.Value)
+            {
+                SetSecondVisible(second.Score >= SECOND_HIDE_TENSION, force: false);
+            }
+            else
+            {
+                SetSecondVisible(second.Score >= SECOND_SHOW_TENSION, force: false);
+            }
+        }
+
+        /// <summary>
+        /// Opens or closes the feed, holding each state for the minimum shot length unless
+        /// forced. Forced when the fight it was showing no longer exists - a feed held open on
+        /// a pair that has been knocked apart shows nothing.
+        /// </summary>
+        private void SetSecondVisible(bool visible, bool force)
+        {
+            if (_director.ShowSecond.Value == visible)
+            {
+                return;
+            }
+
+            if (!force && _secondElapsed < MIN_SHOT_SECONDS)
+            {
+                return;
+            }
+
+            _director.ShowSecond.Value = visible;
+            _secondElapsed = 0f;
         }
 
         /// <summary>
@@ -327,6 +436,8 @@ namespace PoRumble.Systems
 
             _director.Reset();
             _impactHold = 0f;
+            _pairCount = 0;
+            _secondElapsed = 0f;
         }
 
         public void Dispose()
