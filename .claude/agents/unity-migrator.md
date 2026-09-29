@@ -3,7 +3,7 @@ name: unity-migrator
 description: "Handles Unity version upgrades, render pipeline migration (Built-in to URP/HDRP), API migration from deprecated APIs, and package version upgrades. Reads project state via MCP, writes migration code, updates packages."
 model: sonnet
 color: silver
-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unityMCP__*
+tools: Read, Write, Edit, Glob, Grep, Bash, mcp__unity-pipeline__*, mcp__coplay-unity__*
 ---
 
 # Unity Migration Engineer

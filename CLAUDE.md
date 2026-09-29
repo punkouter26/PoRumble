@@ -28,7 +28,7 @@ Renderer, so 3D lit materials will not light correctly.
 | Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Tab** flips the title screen between PICK and CARD · **Enter** fight / rematch · **R** back to the menu from the results · **F3** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode EditMode` — 295 PoRumble EditMode tests (the `com.besty.unity-skills` testables add their own, two of which fail upstream). `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
+| Tests | `unity command run_tests --mode editor` — 295 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
@@ -146,7 +146,7 @@ unity command eval_file --file "Temp/evals/script.cs"
 - **`recompile` can report success while compilation is actually failing.** It answered
   `failed: false, errors: []` and then `up_to_date` through four attempts while
   `PoRumble.Views` was failing on a real `CS0246`. Its error list is not trustworthy: check
-  `get_console_logs --severity error`, and compare `Library/ScriptAssemblies/<Assembly>.dll`'s
+  `unity command console` (its `groundTruth.compilationFailed`), and compare `Library/ScriptAssemblies/<Assembly>.dll`'s
   mtime against the source file's. An assembly older than the source did not build. The
   downstream symptom is misleading - the Editor keeps running the last good assembly, so a newly
   added `[SerializeField]` comes back null from `SerializedObject.FindProperty` and is absent
@@ -157,8 +157,8 @@ unity command eval_file --file "Temp/evals/script.cs"
 - Editing any `.cs` under `Assets/` triggers a domain reload, which **exits Play mode and
   kills a running training session**. Batch code changes before starting a run.
 
-> The bundled agents in `.claude/agents/` declare `mcp__unityMCP__*`, which matches neither
-> registered server. They will run without Unity access until renamed.
+- `run_tests` runs longer than the CLI's 30s default: pass `--timeout 600`, or the call times out
+  while the Editor keeps running the suite and every command queues behind it.
 
 **Blender MCP** is registered but needs Blender running with the addon on port 9876.
 

@@ -27,7 +27,7 @@ STDERR=$(echo "$INPUT" | jq -r '.tool_output.stderr // empty')
 # Only analyze build-related commands
 IS_BUILD=false
 case "$COMMAND" in
-    *Unity*-buildTarget*|*-executeMethod*Build*|*BuildPipeline*|*unity-build*|*mcp__unityMCP__manage_build*)
+    *Unity*-buildTarget*|*-executeMethod*Build*|*BuildPipeline*|*unity-build*|*mcp__coplay-unity__manage_build*|*mcp__unity-pipeline__build*)
         IS_BUILD=true
         ;;
 esac
