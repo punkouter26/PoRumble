@@ -24,14 +24,16 @@ The behaviour contract, the observation and action vectors, the training curricu
 - **`VectorObservationSize` on the prefab must equal what `CollectObservations` writes.** It is
   15. ML-Agents does not fail loudly on a mismatch in every path, and a compiled policy simply
   refuses to load. Change one and you must change the other, and retrain.
-- **`PoRumbleBoxer.onnx` is the `ffa_v5` model** (~21M cumulative steps), trained 1v1 against the scripted
-  partner to saturation and then transferred into the ten-way free-for-all. The policy it
-  replaced was compiled against the old 11-wide vector *and* trained while the ray sensor
-  reported nothing but the boxer's own torso. Neither that legacy model nor the
-  `results/_preserved/` checkpoint archive is present in this working tree: the only model
-  here is `PoRumbleBoxer.onnx`. Preserve checkpoints again before the next run. They are also
-  what the evolution exhibition seats as `FighterProfile._policyCheckpoint` fighters - see
-  `GAMEPLAY.md`, *Checkpoint fighters*.
+- **`PoRumbleBoxer.onnx` is `pr_ffa_0929b` at 13M steps** (`PoRumbleBoxer-12999948.onnx`),
+  shipped 2026-09-29: 1.0M steps of spar against the scripted partner, then the ten-way in the
+  game's ring. It is the checkpoint with the best finish rate in that run (3.8%, 6.7 knockouts a
+  match) - see *Run 0929b* below. Watched in `SampleScene`, one ten-way went to the 3:00 bell
+  with three standing: most knockouts came once sudden death closed the ropes, and in the
+  full-size ring it opens on the ropes. It replaced `ffa_v5` (~21M steps, trained in the 40x40
+  ring); that model is in git history up to commit `0d95c8e`. The run's
+  checkpoints are preserved under `results/_preserved/pr_ffa_0929b/`, which is not in the
+  repository; they are also what the evolution exhibition seats as
+  `FighterProfile._policyCheckpoint` fighters - see `GAMEPLAY.md`, *Checkpoint fighters*.
 - **Select a model on how often matches finish, not on reward.** Reward and the objective
   pull apart here: finishing a match early truncates the episode, which caps how much
   damage-dealt reward can accumulate, so the reward function mildly punishes winning
