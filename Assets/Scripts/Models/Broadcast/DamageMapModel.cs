@@ -15,7 +15,7 @@ namespace PoRumble.Models
     public sealed class DamageMapModel
     {
         /// <summary>
-        /// Cells per side, whatever the ring's size. On the 17-unit SampleScene ring a cell is
+        /// Cells per side, whatever the ring's size. On the 17-unit Game ring a cell is
         /// about a quarter of a unit, and the system's splat kernel spreads each punch over a
         /// fighter's width - fine enough to show which corner the fight lived in, smooth enough
         /// that a single punch does not read as a pinprick.

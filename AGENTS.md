@@ -42,18 +42,23 @@ override defaults. Project detail lives in `CLAUDE.md` and `DOCS/`.
   is actually listening rather than assuming.
 - **Before training, remove obsolete runs from TensorBoard** so they do not clutter the view.
   Keep anything under `results/_preserved/`.
-- **For training of 30+ minutes, close the Unity or Unreal Editor** if that speeds training up
-  materially, having saved and committed first. Say explicitly when training is over and the
-  Editor can be reopened.
+- **For a pure RL run, or training of 30+ minutes, close the Unity or Unreal Editor** if that
+  speeds training up materially, having saved and committed first. Say explicitly when training
+  is over and the Editor can be reopened.
 - **Once training has run 30+ minutes, screenshot the three most consequential TensorBoard
-  charts,** review them, and put the screenshots and the review in an HTML file. Explain each chart
-  at three levels: **1. toddler, 2. child, 3. adult.**
+  charts,** review them, and put the screenshots and the review in an HTML file. Compare the run's
+  performance against prior runs, and explain each chart at three levels: **1. toddler, 2. child,
+  3. adult.**
+- **Log all agent actions** to file logs or Azure Tables, so movement profiles, win/loss patterns
+  and success vectors can be analysed.
+- **Log training data so it can be aggregated over time** into reports on what the data means:
+  how the behaviours and the metrics affect the game results.
 
 ## Physics engines outside Unity
 
-- **Train in MuJoCo or Newton** - unless the app uses ML-Agents, in which case every MuJoCo and
-  Isaac Lab rule in this section is ignored. PoRumble uses ML-Agents, so none of this section
-  applies to it.
+- **Train in MuJoCo or Newton** - unless the app uses ML-Agents (`mlagents`), in which case every
+  MuJoCo, Newton and Isaac Lab rule in this section is ignored. PoRumble uses ML-Agents, so none
+  of this section applies to it.
 - **Before training, ask the user for a skinned mesh.** Take the rig structure from that model
   and import it into MuJoCo or Newton to train against.
 - **Compile MuJoCo for Android phones from <https://github.com/joanllobera/mujoco-bin/>.**
@@ -66,4 +71,17 @@ override defaults. Project detail lives in `CLAUDE.md` and `DOCS/`.
   for their size.
 - **When the trained agent is a human, joints move at a human speed and force.**
 - **Every body part of every creature collides accurately** with every other creature's and with
-  the environment. Nothing passes through anything.
+  the environment. Nothing passes through anything, including a creature through itself.
+
+## Self-collision
+
+- **Fit primitive colliders (capsules, boxes, spheres) inside the skinned mesh.** Never collide
+  against bones or the visual mesh.
+- **Collide every pair of body parts except direct parent-child links** and pairs that overlap in
+  the resting pose, which joint limits keep apart instead.
+- **Before training, confirm zero self-contact** in T-pose, in the resting stance, and through
+  natural arm and leg swings.
+- **Never terminate an episode on self-contact.** If the agent exploits it, apply a slight
+  contact-force penalty.
+- **Warm-start a new skill** from a policy trained without self-collision, or from the preceding
+  milestone.

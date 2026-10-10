@@ -4,7 +4,7 @@ The portrait phone build: player settings, the camera framing rules that orienta
 
 ## Android
 
-Ships as a portrait phone build. `SampleScene` is the only scene in the build list; the two
+Ships as a portrait phone build. `Game` is the only scene in the build list; the two
 training arenas are editor-side tools.
 
 | Setting | Value | Why |

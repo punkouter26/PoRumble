@@ -8858,6 +8858,7 @@ Transform:
   - {fileID: 1225692679}
   - {fileID: 890403807}
   - {fileID: 1914777912}
+  - {fileID: 1742505460}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &393422799
@@ -17168,6 +17169,7 @@ MonoBehaviour:
   _spawnRadius: 9.3
   _arenaHalfExtent: {x: 12, y: 12}
   _autoRestart: 0
+  _closeRingInTraining: 0
   _humanBoxerId: -1
   _scriptedBoxerIds: 
   _rosterTiers:
@@ -32963,6 +32965,8 @@ MonoBehaviour:
   _duelPaddingScale: 0.55
   _impactPaddingScale: 0.35
   _widePaddingScale: 1.6
+  _tensionTighten: 0.3
+  _tensionDampingBoost: 0.8
 --- !u!4 &1225692679
 Transform:
   m_ObjectHideFlags: 0
@@ -58741,6 +58745,71 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1220875501}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1742505459
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1742505460}
+  - component: {fileID: 1742505462}
+  - component: {fileID: 1742505461}
+  m_Layer: 0
+  m_Name: ImpactPulse
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1742505460
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1742505459}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 373602496}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1742505461
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1742505459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e16f4a543f61a3a4381862b4708810f5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.ImpactPulseView
+  _pulseVolume: {fileID: 1742505462}
+  _peakWeight: 0.85
+  _decaySeconds: 0.18
+--- !u!114 &1742505462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1742505459}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 172515602e62fb746b5d573b38a5fe58, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Core.Runtime::UnityEngine.Rendering.Volume
+  m_IsGlobal: 1
+  priority: 11
+  blendDistance: 0
+  weight: 0
+  sharedProfile: {fileID: 11400000, guid: eedf392eb6289e1478db812c5b788c09, type: 2}
 --- !u!1 &1783243151
 GameObject:
   m_ObjectHideFlags: 0
@@ -71144,6 +71213,7 @@ MonoBehaviour:
   _footDust: {fileID: 1343400328}
   _speedLines: {fileID: 1709919119}
   _bloodSpray: {fileID: 1308972940}
+  _closingSpeedInfluence: 0.5
   _impactParticles: 12
   _blockParticles: 6
   _bloodSprayDamage: 4

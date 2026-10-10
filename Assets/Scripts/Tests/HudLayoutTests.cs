@@ -216,6 +216,46 @@ namespace PoRumble.Tests
             AssertCommentaryInItsRow(chrome, commentary);
         }
 
+        /// <summary>
+        /// The three touch buttons are the controls a thumb has to find without looking. On every
+        /// phone height they stay in the lower half of the screen, above the bottom chrome row,
+        /// inside the safe area, and clear of each other.
+        /// </summary>
+        [UnityTest]
+        public IEnumerator TouchButtons_SitInTheLowerHalfClearOfTheChromeAndEachOther(
+            [Values(1920f, 2340f, 2400f, 2520f)] float height,
+            [Values(0f, NOTCH)] float notch)
+        {
+            _screen = new ProbeScreen(WIDTH, height, notch);
+            Chrome chrome = AddChrome(_screen);
+            VisualElement touch = _screen.AddDocument("TouchControls.uxml");
+
+            VisualElement punch = touch.Q<VisualElement>("punch");
+            VisualElement charge = touch.Q<VisualElement>("charge");
+            VisualElement dodge = touch.Q<VisualElement>("dodge");
+
+            yield return _screen.Settle();
+
+            float chromeTop = _screen.RectOf(chrome.Bottom).yMin;
+            VisualElement[] buttons = { punch, charge, dodge };
+            string[] names = { "PUNCH", "POWER", "SLIP" };
+
+            for (int index = 0; index < buttons.Length; index++)
+            {
+                Rect rect = _screen.RectOf(buttons[index]);
+
+                Assert.That(rect.yMin, Is.GreaterThanOrEqualTo(height * 0.5f),
+                    $"{names[index]} {rect} starts in the top half of a {height}px screen, out of a thumb's reach");
+                Assert.That(rect.yMax, Is.LessThanOrEqualTo(chromeTop + SLACK),
+                    $"{names[index]} {rect} runs under the bottom chrome row at {chromeTop}");
+                Assert.That(rect.xMax, Is.LessThanOrEqualTo(_screen.Width - SAFE_INSET + SLACK),
+                    $"{names[index]} {rect} runs past the safe area's right edge");
+            }
+
+            AssertApart(punch, "PUNCH", charge, "POWER");
+            AssertApart(charge, "POWER", dodge, "SLIP");
+        }
+
         [UnityTest]
         public IEnumerator Countdown_TaleOfTheTape_FitsUnderTheBoardAndClearOfTheNumber(
             [Values(1920f, 2340f, 2400f, 2520f)] float height,

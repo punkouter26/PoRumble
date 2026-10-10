@@ -68,6 +68,10 @@ namespace PoRumble.Views
             builder.Register<PredictionSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<DamageMapSystem>(Lifetime.Singleton).AsSelf();
             builder.Register<SuddenDeathSystem>(Lifetime.Singleton).AsSelf();
+            builder.Register<MatchLogSystem>(Lifetime.Singleton).AsSelf();
+
+            // One line per finished match, in the game and in training alike.
+            builder.Register<IMatchLogStore>(_ => new FileMatchLogStore(), Lifetime.Singleton);
 
             // The league table on disk. A plain C# class rather than a component, so it is
             // registered as an instance; RatingSystem only ever sees the interface.
@@ -162,6 +166,7 @@ namespace PoRumble.Views
                 InjectOptional<FocusTagView>(container);
                 InjectOptional<FightIntroView>(container);
                 InjectOptional<RingShrinkView>(container);
+                InjectOptional<ImpactPulseView>(container);
             });
         }
 

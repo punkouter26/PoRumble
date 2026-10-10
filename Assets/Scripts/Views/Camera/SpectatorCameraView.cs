@@ -97,6 +97,17 @@ namespace PoRumble.Views
         [Range(0.5f, 3f)]
         [SerializeField] private float _widePaddingScale = 1.6f;
 
+        [Tooltip("How much tighter a duel is framed at full tension, as a share of its padding. " +
+                 "Two hurt fighters trading in range pull the camera in; a pair circling at " +
+                 "arm's length keeps the looser duel framing.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _tensionTighten = 0.3f;
+
+        [Tooltip("How much faster the camera moves and zooms at full tension. 1 doubles both " +
+                 "dampings, so the frame keeps up with an exchange rather than arriving after it.")]
+        [Range(0f, 2f)]
+        [SerializeField] private float _tensionDampingBoost = 0.8f;
+
         private MatchModel _match;
         private BoxerSpawnPoints _spawnPoints;
 
@@ -172,10 +183,11 @@ namespace PoRumble.Views
                 // right down, and a camera damped on scaled time would crawl through exactly
                 // the moment it most needs to keep up with.
                 float delta = Time.unscaledDeltaTime;
+                float urgency = 1f + _tensionDampingBoost * DuelTension();
                 _smoothedCenter = Vector2.Lerp(
-                    _smoothedCenter, center, 1f - Mathf.Exp(-_positionDamping * delta));
+                    _smoothedCenter, center, 1f - Mathf.Exp(-_positionDamping * urgency * delta));
                 _smoothedSize = Mathf.Lerp(
-                    _smoothedSize, desiredSize, 1f - Mathf.Exp(-_zoomDamping * delta));
+                    _smoothedSize, desiredSize, 1f - Mathf.Exp(-_zoomDamping * urgency * delta));
             }
 
             // Clamped to the ropes, not to `bounds`. The outside-ring margin exists so the
@@ -213,7 +225,7 @@ namespace PoRumble.Views
             switch (_director.Shot.Value)
             {
                 case ShotType.Duel:
-                    return _duelPaddingScale;
+                    return _duelPaddingScale * (1f - _tensionTighten * DuelTension());
                 case ShotType.Impact:
                     return _impactPaddingScale;
                 case ShotType.Wide:
@@ -228,6 +240,20 @@ namespace PoRumble.Views
         /// for the establishing shot — where the answer is deliberately "everyone", which is
         /// what a null focus already means to <see cref="TryMeasureFight"/>.
         /// </summary>
+        /// <summary>
+        /// The director's tension while it is holding a two-shot, and zero otherwise: a wide or
+        /// tracking shot is framed on the field, and should not breathe with one pair's score.
+        /// </summary>
+        private float DuelTension()
+        {
+            if (_director == null || _director.Shot.Value != ShotType.Duel)
+            {
+                return 0f;
+            }
+
+            return Mathf.Clamp01(_director.Tension);
+        }
+
         private BoxerModel ResolveDirectedFocus(IReadOnlyList<BoxerModel> boxers)
         {
             if (!_focusOnFight || _director == null || _director.Shot.Value == ShotType.Wide)

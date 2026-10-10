@@ -39,7 +39,7 @@
     <ui:VisualElement name="safe-outline" class="diag__safe diag__safe--hidden" picking-mode="Ignore" />
     <ui:VisualElement name="panel" class="diag diag--collapsed">
         <ui:VisualElement name="tabs" class="diag__tabs">
-            <ui:Label name="title" text="DEBUG   F3" class="diag__title" picking-mode="Ignore" />
+            <ui:Label name="title" text="DEBUG   F3 / TAB" class="diag__title" picking-mode="Ignore" />
             <ui:Button name="tab-frame" text="FRAME" class="diag__tab diag__tab--on" />
             <ui:Button name="tab-combat" text="COMBAT" class="diag__tab" />
             <ui:Button name="tab-match" text="MATCH" class="diag__tab" />

@@ -50,6 +50,28 @@ namespace PoRumble.Models
         }
 
         /// <summary>True once the ropes have started to move.</summary>
+        /// <summary>Share of a training episode at which its ropes start to move.</summary>
+        public const float TRAINING_START_FRACTION = 0.4f;
+
+        /// <summary>Share of a training episode at which its ring is fully closed.</summary>
+        public const float TRAINING_CLOSED_FRACTION = 0.9f;
+
+        /// <summary>
+        /// The same closing ring on a training episode's clock. A training match is fifty
+        /// seconds against the game's three minutes, so the game's schedule would never start;
+        /// this one is keyed to how far through the episode the match is, and closes to the
+        /// same <see cref="MIN_SCALE"/> with the same easing.
+        /// </summary>
+        public static float RingScaleAtFraction(float episodeFraction)
+        {
+            float progress = Mathf.Clamp01(
+                (episodeFraction - TRAINING_START_FRACTION)
+                / (TRAINING_CLOSED_FRACTION - TRAINING_START_FRACTION));
+
+            float eased = progress * progress * (3f - 2f * progress);
+            return Mathf.Lerp(1f, MIN_SCALE, eased);
+        }
+
         public static bool IsClosing(float fightSeconds)
         {
             return fightSeconds >= START_SECONDS;

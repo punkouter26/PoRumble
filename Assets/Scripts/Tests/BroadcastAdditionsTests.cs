@@ -39,6 +39,22 @@ namespace PoRumble.Tests
             Assert.That(SuddenDeathMath.IsClosing(start), Is.True);
         }
 
+        /// <summary>
+        /// Training closes the same ring on its own clock: a fifty-second episode would never
+        /// reach the game's sixty-second start.
+        /// </summary>
+        [Test]
+        public void ATrainingEpisodeClosesTheSameRingOverItsOwnLength()
+        {
+            Assert.That(SuddenDeathMath.RingScaleAtFraction(0f), Is.EqualTo(1f));
+            Assert.That(SuddenDeathMath.RingScaleAtFraction(SuddenDeathMath.TRAINING_START_FRACTION), Is.EqualTo(1f));
+            Assert.That(SuddenDeathMath.RingScaleAtFraction(0.65f), Is.LessThan(1f).And.GreaterThan(SuddenDeathMath.MIN_SCALE));
+            Assert.That(
+                SuddenDeathMath.RingScaleAtFraction(SuddenDeathMath.TRAINING_CLOSED_FRACTION),
+                Is.EqualTo(SuddenDeathMath.MIN_SCALE).Within(0.0001f));
+            Assert.That(SuddenDeathMath.RingScaleAtFraction(1f), Is.EqualTo(SuddenDeathMath.MIN_SCALE).Within(0.0001f));
+        }
+
         [Test]
         public void TheBellOnlyRingsAfterTheRopesHaveFinishedClosing()
         {

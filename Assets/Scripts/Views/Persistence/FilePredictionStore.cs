@@ -82,7 +82,7 @@ namespace PoRumble.Views
 
             try
             {
-                File.WriteAllText(_path, JsonUtility.ToJson(book, true));
+                AtomicFile.WriteAllText(_path, JsonUtility.ToJson(book, true));
             }
             catch (Exception exception)
             {

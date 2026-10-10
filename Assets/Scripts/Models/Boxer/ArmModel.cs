@@ -112,6 +112,29 @@ namespace PoRumble.Models
         }
 
         /// <summary>Forces the arm back to rest, e.g. when its owner is eliminated.</summary>
+        /// <summary>
+        /// Seconds until this arm can throw again, given the shortest each phase can last.
+        /// Fatigue and a wound-up haymaker only ever lengthen a phase, so with the config's base
+        /// durations this is a lower bound: an arm reported busy for a whole decision really is.
+        /// </summary>
+        public float SecondsUntilReady(float extendDuration, float retractDuration, float cooldownDuration)
+        {
+            switch (Phase)
+            {
+                case ArmPhase.Extending:
+                    return extendDuration - _phaseElapsed + retractDuration + cooldownDuration;
+
+                case ArmPhase.Retracting:
+                    return retractDuration - _phaseElapsed + cooldownDuration;
+
+                case ArmPhase.CoolingDown:
+                    return cooldownDuration - _phaseElapsed;
+
+                default:
+                    return 0f;
+            }
+        }
+
         public void ForceRetract()
         {
             Phase = ArmPhase.Idle;

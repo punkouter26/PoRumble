@@ -159,6 +159,10 @@ namespace PoRumble.Views
         /// </summary>
         private const float ROPES_MARGIN = 1.25f;
 
+        private const int LEFT_PUNCH_BRANCH = 0;
+        private const int RIGHT_PUNCH_BRANCH = 1;
+        private const int PUNCH_ACTION = 1;
+
         /// <summary>
         /// False once this boxer is knocked out, which is what stops
         /// <see cref="BoxerDecisionRequester"/> asking it for decisions. True before binding,
@@ -518,6 +522,43 @@ namespace PoRumble.Views
             sensor.AddObservation(_model.Velocity / Mathf.Max(0.01f, _config.MoveSpeed));
         }
 
+        /// <summary>
+        /// Masks a punch the arm cannot throw at any point before the next decision.
+        ///
+        /// The last decision is repeated on every physics step in between, so an arm that comes
+        /// ready two steps from now can still act on it - only an arm busy for the whole period
+        /// is masked. That makes the mask exactly the set of punches that were already no-ops:
+        /// the shipped policy behaves as it did, and a learner stops spending probability on
+        /// them. A mask does not change the action shape, so the compiled model still loads.
+        /// </summary>
+        public override void WriteDiscreteActionMask(IDiscreteActionMask actionMask)
+        {
+            if (_model == null || _config == null)
+            {
+                return;
+            }
+
+            float window = Time.fixedDeltaTime * _decisionPeriod;
+
+            if (IsBusyFor(_model.LeftArm, window))
+            {
+                actionMask.SetActionEnabled(LEFT_PUNCH_BRANCH, PUNCH_ACTION, false);
+            }
+
+            if (IsBusyFor(_model.RightArm, window))
+            {
+                actionMask.SetActionEnabled(RIGHT_PUNCH_BRANCH, PUNCH_ACTION, false);
+            }
+        }
+
+        private bool IsBusyFor(ArmModel arm, float seconds)
+        {
+            return arm.SecondsUntilReady(
+                _config.ArmExtendDuration,
+                _config.ArmRetractDuration,
+                _config.ArmCooldownDuration) >= seconds;
+        }
+
         public override void OnActionReceived(ActionBuffers actions)
         {
             if (_model == null || !_model.IsAlive.Value)
@@ -841,7 +882,9 @@ namespace PoRumble.Views
         /// </summary>
         private void ApplyRopes()
         {
-            Vector2 half = _match.ArenaHalfExtent;
+            // The ropes as they stand now, not as built: once the ring closes, the full-size
+            // extent is out in the crowd and nobody would ever be on it.
+            Vector2 half = _match.PlayableHalfExtent;
             Vector2 position = _model.Position;
 
             _stepsStanding++;

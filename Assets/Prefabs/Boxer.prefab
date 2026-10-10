@@ -1600,7 +1600,7 @@ MonoBehaviour:
   _aimShapingWeight: 0.6
   _approachShapingWeight: 0.25
   _rangeShapingWeight: 0.4
-  _ropesPenaltyWeight: 0.5
+  _ropesPenaltyWeight: 0.9
   _punchCost: 0.002
   _humanControlled: 0
   _scriptedBot: 0

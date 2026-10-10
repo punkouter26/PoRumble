@@ -4,7 +4,7 @@ Everything that is derived state rather than simulation. Delete all of it and th
 
 ## Presentation & Game Feel
 
-Five objects in `SampleScene` carry everything that is not simulation. All are optional —
+Five objects in `Game` carry everything that is not simulation. All are optional —
 `GameLifetimeScope` injects them only if present, which is why the training scenes can omit
 every one of them.
 
@@ -135,7 +135,7 @@ the broadcast layer, so training never runs it.
 
 ## The Second-Fight Feed
 
-**Switched off in `SampleScene`.** `SecondFightFeed` and `CameraRig/SecondFightCamera` are both
+**Switched off in `Game`.** `SecondFightFeed` and `CameraRig/SecondFightCamera` are both
 inactive: at twenty fighters it read as a mini map of specks rather than a fight. Nothing needs
 it - `GameLifetimeScope` injects it optionally - and re-activating both GameObjects brings it
 back as described below.

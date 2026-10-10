@@ -121,7 +121,7 @@ namespace PoRumble.Views
 
             try
             {
-                File.WriteAllText(_path, JsonUtility.ToJson(table, true));
+                AtomicFile.WriteAllText(_path, JsonUtility.ToJson(table, true));
             }
             catch (Exception exception)
             {

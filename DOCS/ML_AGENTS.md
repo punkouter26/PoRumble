@@ -18,22 +18,25 @@ The behaviour contract, the observation and action vectors, the training curricu
 - Rewards: damage dealt/taken, elimination, win, an existential penalty (the ring does not
   shrink, so idling must cost), plus dense shaping for aiming at and holding range on the
   nearest opponent.
-- **`gamma` is 0.995, not the usual 0.99.** An episode is `MaxStep` 1500 physics steps at
-  `DecisionPeriod` 5 — 300 decisions. At 0.99 the +2 win bonus is worth 0.05 at the opening
-  bell, too faint to shape anything; 0.995 leaves it worth 0.22.
+- **`gamma` is 0.995 for the spar and 0.998 for the ten-way, not the usual 0.99.** An episode is
+  `MaxStep` 2500 physics steps at `DecisionPeriod` 5 — 500 decisions. A spar knockout lands in
+  ~100 decisions, where 0.995 is plenty; a ten-way goes the distance, and at 0.995 the +2 win is
+  worth 0.08 at the opening bell against 0.74 at 0.998.
 - **`VectorObservationSize` on the prefab must equal what `CollectObservations` writes.** It is
   15. ML-Agents does not fail loudly on a mismatch in every path, and a compiled policy simply
   refuses to load. Change one and you must change the other, and retrain.
 - **`PoRumbleBoxer.onnx` is `pr_ffa_0929b` at 13M steps** (`PoRumbleBoxer-12999948.onnx`),
   shipped 2026-09-29: 1.0M steps of spar against the scripted partner, then the ten-way in the
   game's ring. It is the checkpoint with the best finish rate in that run (3.8%, 6.7 knockouts a
-  match) - see *Run 0929b* below. Watched in `SampleScene`, one ten-way went to the 3:00 bell
+  match) - see *Run 0929b* below. Watched in `Game`, one ten-way went to the 3:00 bell
   with three standing: most knockouts came once sudden death closed the ropes, and in the
   full-size ring it opens on the ropes. It replaced `ffa_v5` (~21M steps, trained in the 40x40
   ring); that model is in git history up to commit `0d95c8e`. The run's
   checkpoints are preserved under `results/_preserved/pr_ffa_0929b/`, which is not in the
-  repository; they are also what the evolution exhibition seats as
-  `FighterProfile._policyCheckpoint` fighters - see `GAMEPLAY.md`, *Checkpoint fighters*.
+  repository. They are what the evolution exhibition would seat as
+  `FighterProfile._policyCheckpoint` fighters, but none is assigned: every `Fighter_*.asset` has
+  an empty `_policyCheckpoint`, and a clone without that folder has nothing to assign - see
+  `GAMEPLAY.md`, *Checkpoint fighters*.
 - **Select a model on how often matches finish, not on reward.** Reward and the objective
   pull apart here: finishing a match early truncates the episode, which caps how much
   damage-dealt reward can accumulate, so the reward function mildly punishes winning
@@ -50,8 +53,10 @@ The behaviour contract, the observation and action vectors, the training curricu
   eight percent over the next 3M. The clearest signal is not reward at all but how often a
   match finishes before the bell: that went 0/80 summaries at 1.6M to 28/80 at 4M while
   reward moved only 5.68 to 6.12.
-- Curriculum: 1v1 self-play → 4-way → 10-way via `--initialize-from`. **Remove the
-  `self_play` block for stages 2–3** — self-play models two-team games, not a free-for-all.
+- Curriculum: spar (1v1 against the scripted partner) → 10-way via `--initialize-from`. There is
+  no 4-way stage and no YAML for one. `porumble_1v1_selfplay.yaml` is the older first stage and
+  the only config with a `self_play` block — self-play models two-team games, not a
+  free-for-all. The stages are tabled under *Staging manifest* below.
 
 ### Python environment pins — do not casually upgrade
 
@@ -76,7 +81,7 @@ speak communicator API **1.5.0**. There is no newer `mlagents` on PyPI.
   was in range, but every distance the policy learned - approach, range, the rays' 24-unit reach
   against the walls - belonged to a ring more than twice the size. Run with the shipped model in
   the game-size ring, a 2,500-step episode ended with one knockout. The ring, spawn radius and
-  half extent now copy `SampleScene`'s exactly.
+  half extent now copy `Game`'s exactly.
 - **The ten-way now seats two scripted fighters** (ids 8 and 9, red), as two seats of the game's
   card are. `HeuristicOnly` agents send no experience, so eight learners per arena train against
   the mix of opponents they meet in the game.
@@ -218,3 +223,50 @@ finishes a few and knocks out three times as many. Two things did not hold:
 
 The best checkpoint on finish rate is `PoRumbleBoxer-12999948.onnx`, the last one before the
 ropes share climbed past 30%.
+
+## Changes of 2026-10-09 - not yet trained
+
+Nothing below has been through a run. `PoRumbleBoxer.onnx` is still `pr_ffa_0929b` at 13M, and
+the headless players under `Builds/` must be rebuilt before the next run or it trains the old
+code.
+
+| Change | Where | Why |
+|---|---|---|
+| Ropes penalty 0.5 -> 0.9 | `_ropesPenaltyWeight` on `Boxer.prefab` | In 0929b the share on ropes fell to 4% and climbed back to 46%. 0.9 nearly doubles it and stays under aim + range (1.0), so holding range on someone on the ropes still beats walking away |
+| The ropes tally follows the closed ring | `BoxerAgentView.ApplyRopes` reads `PlayableHalfExtent` | With the ring closing, the built extent is out in the crowd and nobody would ever be on it |
+| The ten-way ring closes over each episode | `MatchDirector`, `BoxerSpawnPoints._closeRingInTraining`, `RingShrinkView` in `Training10Way` | Knockouts stalled near 6 a match with nine needed. The game closes its ring and training did not; the policy first met closing ropes in the game |
+| Punches an arm cannot throw are masked | `BoxerAgentView.WriteDiscreteActionMask` | A punch on a busy arm was a silent no-op the policy still spent probability on. Masked only when the arm is busy for the whole decision period, so the shipped model acts exactly as before; the action shape is unchanged and the ONNX still loads |
+| Position solver iterations 3 -> 6 | `Physics2DSettings` | Stiffer arm hinge chains. Project-wide, so the game and the training players agree. Combat is decided in the models, not by the solver; the gloves' colliders only occlude rays |
+
+**Watch on the next run:** `Boxer/Share On Ropes` staying down past 2M steps, and
+`Match/Knockouts` climbing past 6. Three training changes went in together, so if the run goes
+wrong back them out one at a time: the ring close first (`_closeRingInTraining` off), then the
+ropes penalty.
+
+**The closing ring is not observed.** `RingScale` is not among the 15 scalars - adding it would
+widen the vector and stop the model loading. The policy sees the closed ring only through the
+rays hitting walls that have moved in, which is also all it sees in the game.
+
+### Staging manifest
+
+| Stage | Config | Scene | Arenas | Algorithm | Steps | Wall clock | Stop on |
+|---|---|---|---|---|---|---|---|
+| 1. Spar | `porumble_1v1_spar.yaml` | `Training1v1` | 6 players x 4 arenas, one learner each | PPO against the scripted partner | 1.0M | ~14 min | 100% knockouts, ~17 s a match |
+| 2. Ten-way | `porumble_10way_ffa.yaml`, `--initialize-from` the spar | `Training10Way` | 6 players, eight learners + two scripted each | PPO, shared behaviour, no self-play | 24M | ~4 h | pick the checkpoint with the best `Match/Finished By Knockout` before `Share On Ropes` passes 30% |
+
+`Tools\train_overnight.ps1` runs both. Timings are from run 0929b on the i7-10750H.
+
+### The match log
+
+`MatchLogSystem` appends one JSON line per finished match to
+`<persistentDataPath>/matchlog/matches_<yyyyMMdd>_<pid>.jsonl`, in the game and in training
+alike - one file per process, so six headless players never share one. Each line carries the
+winner, whether it was a knockout, the length, and a row per seat: placement, seconds survived,
+punches thrown / landed / blocked / evaded, haymakers, counters, slips, damage dealt and taken,
+knockouts, distance travelled, share of time on the ropes, and mean position as a fraction of
+the way to each wall.
+
+TensorBoard says whether a run is improving; this says why a fighter wins. `meanX` / `meanY`
+is the direct read on the top-left drift noted above: a symmetric task averages near zero. In
+training the roster is not dealt, so `fighter` and `control` are empty and seats 8 and 9 are the
+scripted pair. A ten-way run writes roughly 6,000 lines.

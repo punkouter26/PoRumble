@@ -1,10 +1,10 @@
 # Runtime Verification Report
 
-Captured 2026-09-11 against `SampleScene` on Unity 6000.6.0f1, Editor Play mode.
+Captured 2026-09-11 against `Game` on Unity 6000.6.0f1, Editor Play mode.
 
 ## Scenes run
 
-`SampleScene` is the only non-training scene in the project (`Training1v1` and `Training10`
+`Game` is the only non-training scene in the project (`Training1v1` and `Training10`
 are editor-side tools; `Settings/Scenes/URP2DSceneTemplate` was an unused template and has
 been deleted). It was driven Title -> Introducing -> Countdown -> Fighting -> Results ->
 restart, exercising the HUD, the commentary, the director, the Elo table and the fight card.
@@ -101,7 +101,7 @@ Roughly 323 MB off the working copy, of which 3.40 MB is tracked content.
 
 ## Pass of 2026-09-28
 
-`SampleScene`, Editor Play mode, driven Title -> Introducing -> Countdown -> Fighting ->
+`Game`, Editor Play mode, driven Title -> Introducing -> Countdown -> Fighting ->
 KnockoutHold -> Results -> rematch through `MatchFlowSystem`, before and after a cleanup.
 
 ### Errors

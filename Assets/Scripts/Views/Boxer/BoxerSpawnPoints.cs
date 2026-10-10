@@ -40,6 +40,10 @@ namespace PoRumble.Views
         [SerializeField] private Vector2 _arenaHalfExtent = new(20f, 20f);
         [Tooltip("Restart automatically when the match resolves. Required for training.")]
         [SerializeField] private bool _autoRestart;
+        [Tooltip("Training only: close the ropes in over each episode, as the game's sudden " +
+                 "death does. The ring needs a RingShrinkView so the walls the rays see move " +
+                 "with it.")]
+        [SerializeField] private bool _closeRingInTraining;
         [Tooltip("Boxer id handed to the keyboard. -1 leaves every boxer under AI control.")]
         [SerializeField] private int _humanBoxerId = -1;
         [Tooltip("Boxer ids driven by the hand-written sparring brain rather than a policy. " +
@@ -93,6 +97,7 @@ namespace PoRumble.Views
         public float SpawnRadius => _spawnRadius;
         public Vector2 ArenaHalfExtent => _arenaHalfExtent;
         public bool AutoRestart => _autoRestart;
+        public bool CloseRingInTraining => _closeRingInTraining;
 
         /// <summary>Boxer the keyboard drives, or -1. The player HUD needs to know who to watch.</summary>
         public int HumanBoxerId => _humanBoxerId;

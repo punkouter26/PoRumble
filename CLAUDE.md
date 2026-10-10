@@ -24,11 +24,11 @@ Renderer, so 3D lit materials will not light correctly.
 
 | Task | How |
 |---|---|
-| Play | Open `Assets/Scenes/SampleScene.unity` → Play. 19 boxers, HUD, all AI (`_humanBoxerId` -1) |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Enter** fight / rematch · **R** back to the menu from the results · **F3** diagnostics overlay |
+| Play | Open `Assets/Scenes/Game.unity` → Play. 19 boxers, HUD, all AI (`_humanBoxerId` -1) |
+| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Enter** fight / rematch · **R** back to the menu from the results · **F3** or **Tab** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode editor` — 300 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
+| Tests | `unity command run_tests --mode editor` — 315 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
@@ -113,7 +113,9 @@ silent failures - nothing errors, and the thing simply does not work.
   correctly while MENU sat under the status bar. → `DOCS/PRESENTATION.md`
 - **Sudden death moves `RingScale`, never `ArenaHalfExtent`.** The agents' positional
   observation is normalised against the built ring, and training must never step
-  `SuddenDeathSystem`. → `DOCS/GAMEPLAY.md`
+  `SuddenDeathSystem`. The ten-way closes its own ring instead, on the episode's clock, through
+  `MatchDirector` when `BoxerSpawnPoints._closeRingInTraining` is on - and that scene needs a
+  `RingShrinkView`, or the rays see walls the clamp has already moved past. → `DOCS/GAMEPLAY.md`
 - **A new seat needs its own `BoxerBody{id}` layer and its own ray mask.** Duplicating a boxer
   copies the source's mask, and the copy is blind to the boxer it was cloned from; a missing
   layer only warns. Seats 0-18 use layers 8-26; `BoxerBody19` on 27 is a spare. → `DOCS/GAMEPLAY.md`
@@ -238,7 +240,7 @@ They override defaults; where one clashes with something above, this section win
   Here those colours live in two places and both have to agree. `Fighter_HEURISTIC._tint` and
   `Fighter_STANDARDRL._tint` drive the fight card, and `BoxerView._scriptedColor` / `_rlColor`
   (serialized on `Boxer.prefab`) drive `SetRoleColor`, which is the path the training scenes
-  take — `SampleScene` has `_useRoleColors: 0` because the card supplies a tint per
+  take — `Game` has `_useRoleColors: 0` because the card supplies a tint per
   contestant, `Training1v1` has it on. Change one and the red bot goes red in only half the
   project.
 

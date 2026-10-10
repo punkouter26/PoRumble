@@ -151,3 +151,6 @@ Tools/piper/
 # clean them up. Test-harness litter, not game content.
 /[Aa]ssets/Resources/PerformanceTestRun*.json
 /[Aa]ssets/Resources/PerformanceTestRun*.json.meta
+
+# Generated solution file
+*.slnx

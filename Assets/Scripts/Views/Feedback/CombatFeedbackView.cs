@@ -50,6 +50,12 @@ namespace PoRumble.Views
                  "Distinct from the sweat burst: sweat comes off any solid hit and drifts, " +
                  "this is fast, directional and only fires on the heavy ones.")]
         [SerializeField] private ParticleSystem _bloodSpray;
+        [Tooltip("How much a punch's feedback swings with the speed the two fighters were closing " +
+                 "at when it landed. 0.5 makes a punch walked onto at full pace half again as " +
+                 "loud, bright and shaky as one thrown standing still, and one landed on a " +
+                 "retreating fighter correspondingly softer.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _closingSpeedInfluence = 0.5f;
         [SerializeField] private int _impactParticles = 12;
         [SerializeField] private int _blockParticles = 6;
 
@@ -396,10 +402,12 @@ namespace PoRumble.Views
 
             AudioClip recorded = PickFrom(charged || hook ? _recordedHeavyPunches : _recordedLightPunches);
 
-            // Counters ring a little higher, so the moment is audible as well as visible.
-            PlayImpact(recorded, clip, message.Position, message.IsCounter ? 1.18f : 1f, 1f);
+            float impact = ImpactScale(message.AttackerId, message.TargetId);
 
-            Burst(_impactBurst, message.Position, _impactParticles + Mathf.RoundToInt(message.Damage * 2f));
+            // Counters ring a little higher, so the moment is audible as well as visible.
+            PlayImpact(recorded, clip, message.Position, message.IsCounter ? 1.18f : 1f, impact);
+
+            Burst(_impactBurst, message.Position, Mathf.RoundToInt((_impactParticles + message.Damage * 2f) * impact));
             Burst(_sweatBurst, message.Position, 3 + message.Damage);
 
             // Only the heavy ones. Blood is the strongest signal the feedback layer has, and a
@@ -422,9 +430,39 @@ namespace PoRumble.Views
                 _impactLightRadius * scale,
                 _impactLightSeconds);
 
-            float force = _jabImpulse * (1f + message.Damage * 0.35f + message.ChargeLevel * 2f);
+            float force = _jabImpulse * (1f + message.Damage * 0.35f + message.ChargeLevel * 2f) * impact;
             Shake(force);
             HitStop(heavy ? _heavyHitstop : _jabHitstop);
+        }
+
+        /// <summary>
+        /// Scales a hit's feedback by how fast the two bodies were closing when it landed.
+        ///
+        /// Damage is decided in tiers, so every jab used to sound and shake alike whether the
+        /// target was charging in or backing off. The simulation already knows the difference:
+        /// both fighters carry a velocity, and its component along the line between them is the
+        /// speed the punch met the face at over and above the arm's own.
+        /// </summary>
+        private float ImpactScale(int attackerId, int targetId)
+        {
+            BoxerModel attacker = FindBoxer(attackerId);
+            BoxerModel target = FindBoxer(targetId);
+
+            if (attacker == null || target == null || _config == null)
+            {
+                return 1f;
+            }
+
+            Vector2 line = target.Position - attacker.Position;
+
+            if (line.sqrMagnitude < 0.0001f)
+            {
+                return 1f;
+            }
+
+            float closing = Vector2.Dot(attacker.Velocity - target.Velocity, line.normalized);
+            float normalised = Mathf.Clamp(closing / Mathf.Max(0.01f, _config.MoveSpeed), -1f, 1f);
+            return 1f + _closingSpeedInfluence * normalised;
         }
 
         private void OnPunchBlocked(PunchBlockedMessage message)

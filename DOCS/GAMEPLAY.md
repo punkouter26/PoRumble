@@ -44,7 +44,7 @@ because `FloorMat` is shared with the training scenes and their floor did not gr
 
 ## Nineteen Seats
 
-`SampleScene` seats nineteen - one per contestant on the card - as `Ring/Boxers/Boxer_00..18`,
+`Game` seats nineteen - one per contestant on the card - as `Ring/Boxers/Boxer_00..18`,
 listed in `BoxerSpawnPoints._boxers`, whose length is the seat count. It was twenty for a day,
 which put one contestant in the ring twice. Adding a seat is three things, and two of them fail silently:
 
@@ -86,9 +86,16 @@ fight still has to be won with punches; there is just less and less room not to 
   shift the policy's inputs out of the range it trained on. `MatchModel.RingScale` is the only
   thing sudden death moves, and `PlayableHalfExtent` (their product) is what the clamp, the rope
   contact feedback and `RingShrinkView` read.
-- **Game only.** `MatchDirector` steps `SuddenDeathSystem` from `FixedTick` only when the scene is
-  not a training scene, so `RingScale` stays 1 in training and every episode clamps to exactly the
-  ring it always did. Scaled time, so hitstop and the knockout hold slow the ropes with the fight.
+- **`SuddenDeathSystem` is game only.** `MatchDirector` steps it from `FixedTick` only when the
+  scene is not a training scene. Scaled time, so hitstop and the knockout hold slow the ropes with
+  the fight.
+- **The ten-way closes the same ring on its own clock** (since 2026-10-09). A training episode is
+  fifty seconds, so the game's sixty-second start would never arrive. With
+  `BoxerSpawnPoints._closeRingInTraining` on, `MatchDirector` sets `RingScale` from
+  `SuddenDeathMath.RingScaleAtFraction`: full size until 40% of the episode, eased down to
+  `MIN_SCALE` by 90%. `Training10Way` has it on and carries a `RingShrinkView` on `Ring`;
+  `Training1v1` has neither, and its spar finishes in ~17 s regardless. No policy has been trained
+  with it yet - see `ML_AGENTS.md`, *Changes of 2026-10-09*.
 - **The ropes really move.** `RingShrinkView` on `Ring` moves the four walls - whose colliders
   are what the ray sensors see - the posts and the turnbuckles to the playable extent, keeping each
   object's authored overhang, and hides the stools. The agents perceive the ropes where the clamp
@@ -325,7 +332,7 @@ in `ScriptedBoxerBrain`, so one roster can field a spread of opponents:
 | `Brain_CounterPuncher` | Patient, accurate, punishes a blocked punch |
 
 `BoxerSpawnPoints._rosterTiers` fills the roster in order after the player; whoever is left
-over keeps the trained `PoRumbleBoxer.onnx` policy. `SampleScene` currently fields six scripted
+over keeps the trained `PoRumbleBoxer.onnx` policy. `Game` currently fields six scripted
 fighters across the four tiers and three on the policy.
 
 The brain is seeded per boxer from a local xorshift rather than `UnityEngine.Random`, so it

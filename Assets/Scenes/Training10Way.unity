@@ -327,6 +327,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 247070512}
+  - component: {fileID: 247070513}
   m_Layer: 0
   m_Name: Ring
   m_TagString: Untagged
@@ -354,6 +355,29 @@ Transform:
   - {fileID: 859852193}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &247070513
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 247070511}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2e0294c68df1f349819971cfad74336, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: PoRumble.Views::PoRumble.Views.RingShrinkView
+  _walls:
+  - {fileID: 456618461}
+  - {fileID: 230495744}
+  - {fileID: 1531550090}
+  - {fileID: 1306492202}
+  _corners:
+  - {fileID: 1488269173}
+  - {fileID: 855805997}
+  - {fileID: 630749034}
+  - {fileID: 1923931944}
+  _hideWhileClosed: []
 --- !u!1 &343064732
 GameObject:
   m_ObjectHideFlags: 0
@@ -793,6 +817,7 @@ MonoBehaviour:
   _spawnRadius: 6.375
   _arenaHalfExtent: {x: 8.5, y: 8.5}
   _autoRestart: 1
+  _closeRingInTraining: 1
   _humanBoxerId: -1
   _scriptedBoxerIds: 0800000009000000i
   _rosterTiers: []

@@ -52,6 +52,31 @@ namespace PoRumble.Tests
             Assert.That(arm.CanPunch, Is.True, "cooldown finished");
         }
 
+        /// <summary>
+        /// The punch mask is built on this: an arm is only masked when it stays busy for the
+        /// whole of the next decision, so the count has to run all the way down to zero.
+        /// </summary>
+        [Test]
+        public void SecondsUntilReadyCountsDownThroughEveryPhase()
+        {
+            ArmModel arm = new(ArmSide.Left);
+            Assert.That(arm.SecondsUntilReady(EXTEND, RETRACT, COOLDOWN), Is.EqualTo(0f));
+
+            arm.TryPunch();
+            Assert.That(arm.SecondsUntilReady(EXTEND, RETRACT, COOLDOWN), Is.EqualTo(EXTEND + RETRACT + COOLDOWN).Within(0.0001f));
+
+            Tick(arm, EXTEND);
+            Assert.That(arm.SecondsUntilReady(EXTEND, RETRACT, COOLDOWN), Is.EqualTo(RETRACT + COOLDOWN).Within(0.0001f));
+
+            Tick(arm, RETRACT);
+            Tick(arm, COOLDOWN * 0.5f);
+            Assert.That(arm.SecondsUntilReady(EXTEND, RETRACT, COOLDOWN), Is.EqualTo(COOLDOWN * 0.5f).Within(0.0001f));
+
+            Tick(arm, COOLDOWN * 0.5f);
+            Assert.That(arm.CanPunch, Is.True);
+            Assert.That(arm.SecondsUntilReady(EXTEND, RETRACT, COOLDOWN), Is.EqualTo(0f));
+        }
+
         [Test]
         public void BothArmsExtendIndependently()
         {

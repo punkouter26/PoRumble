@@ -195,6 +195,47 @@ namespace PoRumble.Tests
         }
 
         /// <summary>
+        /// MENU is reachable from every phase, including the 1.6 seconds the world spends at
+        /// quarter speed. Time.timeScale is global, so leaving then without restoring it would
+        /// run the menu, and the whole next fight, in slow motion.
+        /// </summary>
+        [Test]
+        public void LeavingForTheMenuDuringTheKnockoutHoldRestoresTime()
+        {
+            Run(4.2f);
+            _match.End(0);
+            _flowSystem.Tick(0.02f);
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.KnockoutHold));
+            Assert.That(Time.timeScale, Is.LessThan(1f));
+
+            Assert.That(_flowSystem.TryReturnToTitle(), Is.True);
+
+            Assert.That(_flow.Phase.Value, Is.EqualTo(MatchFlowPhase.Title));
+            Assert.That(Time.timeScale, Is.EqualTo(1f).Within(0.001f));
+            Assert.That(_match.Phase.Value, Is.EqualTo(MatchPhase.InProgress),
+                "an abandoned fight must not leave a decided match on the card");
+        }
+
+        /// <summary>
+        /// A fight abandoned in sudden death leaves the ropes closed. The next one has to open
+        /// in the full ring, whether it is reached through MENU or through the results.
+        /// </summary>
+        [Test]
+        public void LeavingForTheMenuInSuddenDeathReopensTheRing()
+        {
+            using SuddenDeathSystem suddenDeath = new(_match, _flow, new SuddenDeathModel());
+
+            Run(4.2f);
+            Assert.That(_flow.IsFightLive, Is.True);
+
+            suddenDeath.Step(SuddenDeathMath.START_SECONDS + SuddenDeathMath.CLOSE_SECONDS);
+            Assert.That(_match.RingScale, Is.LessThan(1f));
+
+            Assert.That(_flowSystem.TryReturnToTitle(), Is.True);
+            Assert.That(_match.RingScale, Is.EqualTo(1f).Within(0.001f));
+        }
+
+        /// <summary>
         /// The two phase machines are separate - MatchPhase says whether the fight is decided,
         /// MatchFlowPhase says what the player is looking at - and only the flow one is driven
         /// by the menu. Introducing an already-decided match fails silently and completely: the

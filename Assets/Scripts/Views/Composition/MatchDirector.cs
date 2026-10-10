@@ -31,6 +31,7 @@ namespace PoRumble.Views
         private readonly CommentarySystem _commentarySystem;
         private readonly WinOddsSystem _winOddsSystem;
         private readonly SuddenDeathSystem _suddenDeathSystem;
+        private readonly MatchLogSystem _matchLogSystem;
 
         /// <summary>
         /// Physics steps of margin between resolving a match on health and the point
@@ -78,7 +79,8 @@ namespace PoRumble.Views
             DirectorSystem directorSystem,
             CommentarySystem commentarySystem,
             WinOddsSystem winOddsSystem,
-            SuddenDeathSystem suddenDeathSystem)
+            SuddenDeathSystem suddenDeathSystem,
+            MatchLogSystem matchLogSystem)
         {
             _spawnSystem = spawnSystem;
             _boxerSystem = boxerSystem;
@@ -92,6 +94,7 @@ namespace PoRumble.Views
             _commentarySystem = commentarySystem;
             _winOddsSystem = winOddsSystem;
             _suddenDeathSystem = suddenDeathSystem;
+            _matchLogSystem = matchLogSystem;
         }
 
         /// <summary>True in a training scene, where the presentation loop is skipped.</summary>
@@ -192,7 +195,16 @@ namespace PoRumble.Views
             // its own MaxStep bell and must clamp to exactly the ring the policy learned in.
             bool gameBell = !IsTraining && _suddenDeathSystem.Step(Time.fixedDeltaTime);
 
+            // Training closes its own ring, on the episode's clock rather than the game's: the
+            // policy has to meet the closing ropes somewhere before it meets them in the game.
+            // SuddenDeathSystem itself is still never stepped here.
+            if (IsTraining && _spawnPoints.CloseRingInTraining && _timeoutSteps != int.MaxValue)
+            {
+                _match.RingScale = SuddenDeathMath.RingScaleAtFraction(_episodeSteps / (float)_timeoutSteps);
+            }
+
             _boxerSystem.Tick(Time.fixedDeltaTime);
+            _matchLogSystem.Step(Time.fixedDeltaTime);
 
             // Resolved after the tick so simultaneous knockouts both count.
             _matchSystem.EvaluateMatchState();
@@ -248,6 +260,7 @@ namespace PoRumble.Views
             }
 
             _spawnSystem.ResetRoster(_spawnPoints.BoxerCount, _spawnPoints.SpawnRadius);
+            _match.RingScale = 1f;
             _match.BeginNewEpisode();
             _episodeSteps = 0;
         }
