@@ -1,7 +1,7 @@
 # CLAUDE.md — PoRumble
 
 Top-down 2D boxing battle royale, after the style of Activision's Boxing (Atari 2600, 1980).
-Nineteen fighters - one of each contestant - last one standing, with ML-Agents-trained opponents.
+Sixteen fighters - one of each contestant - last one standing, with ML-Agents-trained opponents.
 
 ---
 
@@ -24,11 +24,11 @@ Renderer, so 3D lit materials will not light correctly.
 
 | Task | How |
 |---|---|
-| Play | Open `Assets/Scenes/Game.unity` → Play. 19 boxers, HUD, all AI (`_humanBoxerId` -1) |
-| Controls | **WASD** move + aim · **J** left punch · **K** right punch · **Space** hold to charge a haymaker · **L** slip · **Enter** fight / rematch · **R** back to the menu from the results · **F3** or **Tab** diagnostics overlay |
+| Play | Open `Assets/Scenes/Game.unity` → Play. The title screen offers **DEMO** (16 boxers, all AI) and **1 PLAYER** (you plus a random 15 of the 16: you take a random contestant's seat as a black boxer the camera stays centred on; that match is not Elo-rated) |
+| Controls | On a phone: left-half **stick** moves and aims, **PUNCH** / **POWER** / **SLIP** buttons. On a desk, 1 PLAYER: **WASD** move · **mouse** aim · **left click** punch, hold for a flurry, hands alternate · **right click** hold to charge a haymaker · **Space** or **L** slip · **J** / **K** punch. In the Device Simulator a click is a touch: it aims and punches, and there is no right click · **Enter** fight / rematch · **R** back to the menu from the results · **F3** or **Tab** diagnostics overlay |
 | Train | Activate `.venv`, run `mlagents-learn Assets/Config/Training/porumble_1v1_selfplay.yaml --run-id=pr_1v1`, then open `Training1v1.unity` and press Play |
 | Watch training | `tensorboard --logdir results` |
-| Tests | `unity command run_tests --mode editor` — 315 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
+| Tests | `unity command run_tests --mode editor` — 318 PoRumble EditMode tests, all green. `HudLayoutTests` is the phone-screen fit check: run it after touching any layout or `porumble.uss` |
 
 **Art is in Git LFS, and so are the fonts.** A fresh clone that has not run `git lfs pull`
 leaves every `.png` as a 129-byte pointer file, and Unity imports those as nothing at all: the
@@ -118,7 +118,7 @@ silent failures - nothing errors, and the thing simply does not work.
   `RingShrinkView`, or the rays see walls the clamp has already moved past. → `DOCS/GAMEPLAY.md`
 - **A new seat needs its own `BoxerBody{id}` layer and its own ray mask.** Duplicating a boxer
   copies the source's mask, and the copy is blind to the boxer it was cloned from; a missing
-  layer only warns. Seats 0-18 use layers 8-26; `BoxerBody19` on 27 is a spare. → `DOCS/GAMEPLAY.md`
+  layer only warns. The game uses seats 0-15; layers 8-27 exist for up to twenty. → `DOCS/GAMEPLAY.md`
 - **Changing a `[SerializeField]` default does not retune an object that already exists.**
   The serialized value in the scene wins. This fails quietly every time.
 - **Sprite pixels-per-unit equals the sprite's pixel width**, so one sprite is one world unit.
@@ -236,6 +236,12 @@ They override defaults; where one clashes with something above, this section win
   the only roster entries free to look like anything.
 - **Every RL app fields all three**: one heuristic bot, one reference bot, and zero or more
   custom bots. A roster missing the red or the green seat has lost its baseline.
+
+  **PoRumble's game card is the exception, at the user's request (2026-10-10):** the red
+  HEURISTIC and green STANDARD RL fighters were taken off the `Game` scene's card, which now
+  seats the sixteen faces only (DECOY left the card the same day). The two `Fighter_*.asset` files remain, and the training scenes
+  still field the red scripted pair against the learners. Putting them back is adding both
+  assets to `BoxerSpawnPoints._fighterProfiles` and two boxer seats.
 
   Here those colours live in two places and both have to agree. `Fighter_HEURISTIC._tint` and
   `Fighter_STANDARDRL._tint` drive the fight card, and `BoxerView._scriptedColor` / `_rlColor`

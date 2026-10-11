@@ -124,9 +124,17 @@ namespace PoRumble.Views
                 current, wanted, 1f - Mathf.Exp(-_followDamping * Time.unscaledDeltaTime));
         }
 
+        private bool PlayerIsStanding()
+        {
+            BoxerModel player = _match == null ? null : Find(_match.HumanBoxerId.Value);
+            return player != null && player.IsAlive.Value;
+        }
+
         private void OnShotChanged(ShotType shot)
         {
-            _cutting = shot == ShotType.Impact;
+            // No cuts while a person is playing: the impact camera frames whoever was hit, and
+            // taking the screen off the player's own boxer mid-fight takes the controls with it.
+            _cutting = shot == ShotType.Impact && !PlayerIsStanding();
 
             if (_impactCamera == null)
             {

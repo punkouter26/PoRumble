@@ -195,6 +195,41 @@ namespace PoRumble.Tests
         }
 
         /// <summary>
+        /// The title screen starts a fight with a person in a seat or with nobody in any, and
+        /// a rematch - which starts the next fight without saying either - keeps the last answer.
+        /// </summary>
+        [Test]
+        public void TheSeatChosenOnTheMenuSurvivesARematch()
+        {
+            _flowSystem.TryReturnToTitle();
+
+            Assert.That(_flowSystem.TryStartFight(1), Is.True);
+            Assert.That(_match.HumanBoxerId.Value, Is.EqualTo(1));
+
+            Run(4.2f);
+            _match.End(0);
+            Run(2.5f);
+            Assert.That(_flowSystem.TryRestart(), Is.True);
+            Assert.That(_flowSystem.TryStartFight(), Is.True);
+            Assert.That(_match.HumanBoxerId.Value, Is.EqualTo(1), "a rematch is the same mode again");
+
+            _flowSystem.TryReturnToTitle();
+            Assert.That(_flowSystem.TryStartFight(MatchModel.NO_HUMAN), Is.True);
+            Assert.That(_match.HumanBoxerId.Value, Is.EqualTo(MatchModel.NO_HUMAN), "the demo takes the seat back");
+        }
+
+        /// <summary>A seat cannot be changed by a start that is refused, mid-fight.</summary>
+        [Test]
+        public void ARefusedStartDoesNotChangeWhoIsPlaying()
+        {
+            Run(4.2f);
+            Assert.That(_flow.IsFightLive, Is.True);
+
+            Assert.That(_flowSystem.TryStartFight(1), Is.False);
+            Assert.That(_match.HumanBoxerId.Value, Is.EqualTo(MatchModel.NO_HUMAN));
+        }
+
+        /// <summary>
         /// MENU is reachable from every phase, including the 1.6 seconds the world spends at
         /// quarter speed. Time.timeScale is global, so leaving then without restoring it would
         /// run the menu, and the whole next fight, in slow motion.

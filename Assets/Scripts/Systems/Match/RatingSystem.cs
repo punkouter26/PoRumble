@@ -99,6 +99,15 @@ namespace PoRumble.Systems
                 return;
             }
 
+            // A person in the ring is not the contestant whose seat they borrowed. Rating the
+            // match would move the reference policy's standing on a human's result, and every
+            // other fighter's on how they fared against one.
+            if (_match.HumanBoxerId.Value != MatchModel.NO_HUMAN)
+            {
+                _eliminationOrder.Clear();
+                return;
+            }
+
             BuildFinishingOrder(message.WinnerId);
             ApplyPairwiseElo();
             _eliminationOrder.Clear();

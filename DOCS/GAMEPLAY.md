@@ -42,7 +42,43 @@ turnbuckles and stools keep their authored overhang past the rope line rather th
 with it. The game floor is `FloorMat_Game`, a copy with the canvas tiling scaled by 12/8.5,
 because `FloorMat` is shared with the training scenes and their floor did not grow.
 
+## One Player
+
+The title screen starts a fight two ways. **DEMO** is the all-AI card. **1 PLAYER** puts a person
+in one seat.
+
+- **The seat is a model fact, chosen with the fight.** `MatchModel.HumanBoxerId` is set by
+  `MatchFlowSystem.TryStartFight(seat)`; the plain `TryStartFight()` leaves it alone, which is
+  what makes a rematch the same mode again. `BoxerSpawnPoints` watches it and re-dresses the ring.
+  `_humanBoxerId` on the scene object still hard-seats a player when nothing has been chosen.
+- **The player takes a random contestant's seat.** `BoxerSpawnPoints.RandomPlayerSeat` draws it
+  each time 1 PLAYER is pressed, so the fight is the person against a different fifteen of the
+  sixteen. Whoever held the seat sits out; the contestant the viewer has bet on is never the one
+  drawn. A rematch keeps the same seat, and so the same fifteen. The boxer is plain and black (`BoxerView._playerColor` on `Boxer.prefab`), whoever's
+  seat it is: no contestant is black, so it cannot be mistaken for one.
+- **The camera is pinned to the player while they stand.** `SpectatorCameraView.FollowPlayer`
+  puts the boxer dead centre with no damping and no clamp to the ropes, at
+  `_playerOrthographicSize`, and `CameraDirectorView` makes no impact cuts. When the player goes
+  down the broadcast camera takes over from where that one was.
+- **A match with a person in it is not rated.** `RatingSystem` skips it: otherwise the
+  reference policy's Elo, and everyone else's, would move on a human's result. Bets still pay.
+- **Aim and punches bypass the action vector.** `BoxerAgentView.Update` turns the boxer to the
+  pointer every frame and throws on a press; through `Heuristic` both would arrive once a
+  decision period, a tenth of a second late. Each punch that starts hands the next to the other
+  fist. WASD still goes through the action vector, with a zero aim so the pointer's stands.
+- **The pointer is whichever was used last** (`Pointer.current`), not the mouse by name. The
+  Editor's Device Simulator keeps a mouse that never reports and delivers clicks as touches; read
+  by name, it sits at (0, 0) and the boxer stares into the bottom-left corner.
+- **Knocked out, the player keeps watching.** The match runs to its end under the broadcast
+  camera.
+
 ## Nineteen Seats
+
+**Sixteen since 2026-10-10.** The red HEURISTIC and green STANDARD RL fighters, and then DECOY,
+were taken off the `Game` card at the user's request, and seats 16 to 18 (`Boxer_16` to
+`Boxer_18`) went with them, so the ring still holds one of each contestant. The rest of this section was written for
+nineteen and describes the same arrangement two seats larger. Every fighter left on the card is
+a policy fighter with a style; the scripted brain now only appears in the training scenes.
 
 `Game` seats nineteen - one per contestant on the card - as `Ring/Boxers/Boxer_00..18`,
 listed in `BoxerSpawnPoints._boxers`, whose length is the seat count. It was twenty for a day,

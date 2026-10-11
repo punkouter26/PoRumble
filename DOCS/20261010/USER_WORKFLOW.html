@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en" data-level="2"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PoRumble User Journeys</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=Space+Mono&display=swap"><style>/* Layout: one reading column on ring-canvas grey; diagrams and tables break out into their own scroll boxes. */
+:root {
+  --bg: #eef1f5; --surface: #ffffff; --ink: #142033; --muted: #55627a; --line: #cfd6e2;
+  --accent: #b3261e; --accent-ink: #ffffff; --link: #1d4f9c; --code-bg: #e4e9f1;
+  --node: #dfe7f5; --note: #fff3c4; --ok: #1f7a4d;
+  --display: "Anton", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --mono: "Space Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #9aa7bd; --line: #2c3a52;
+    --accent: #ff6b5e; --accent-ink: #1a0906; --link: #8db8ff; --code-bg: #1e2a40;
+    --node: #24344f; --note: #3a3413; --ok: #5fd39a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #9aa7bd; --line: #2c3a52;
+  --accent: #ff6b5e; --accent-ink: #1a0906; --link: #8db8ff; --code-bg: #1e2a40;
+  --node: #24344f; --note: #3a3413; --ok: #5fd39a; color-scheme: dark;
+}
+
+/* The three-tier filter: pure CSS, driven by data-level on the root. */
+:root[data-level="1"] [data-tier="2"],
+:root[data-level="1"] [data-tier="3"],
+:root[data-level="2"] [data-tier="3"] { display: none !important; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top__in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+.top__title { font: 600 17px/1.2 var(--label); letter-spacing: .02em; margin-right: auto; }
+.top__brand { font: 400 19px/1 var(--display); color: var(--accent); letter-spacing: .03em; text-transform: uppercase; margin-right: 6px; }
+.top__nav, .tabs { display: flex; flex-wrap: wrap; gap: 2px 4px; }
+.top__nav a, .tabs button { font: 600 15px/1 var(--label); letter-spacing: .03em; color: var(--muted); text-decoration: none; padding: 7px 8px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; }
+.top__nav a:hover, .tabs button:hover { color: var(--ink); }
+.top__nav a[aria-current], .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.levels { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.levels button { font: 600 14px/1 var(--label); letter-spacing: .03em; padding: 7px 10px; border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.levels button:first-child { border-left: 0; }
+.levels button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+
+.wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: flex; flex-direction: column; gap: 36px; }
+.panel, section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { gap: 36px; }
+h1 { font: 400 clamp(30px, 6vw, 46px)/1.05 var(--display); letter-spacing: .01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+h2 { font: 600 26px/1.15 var(--label); margin: 0; text-wrap: balance; }
+h3 { font: 600 19px/1.2 var(--label); margin: 0; }
+p, ul, ol, dl { margin: 0; }
+p, li { max-width: 68ch; }
+.eli5 { font-size: 18px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 14px; }
+.muted { color: var(--muted); }
+section[data-tier="2"] > h2::after, section[data-tier="3"] > h2::after { font: 600 12px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 3px 6px; margin-left: 10px; vertical-align: middle; }
+section[data-tier="2"] > h2::after { content: "Standard"; }
+section[data-tier="3"] > h2::after { content: "Deep-dive"; }
+
+code { font: 400 .86em/1.4 var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+.cite { color: var(--muted); font-size: .76em; }
+.scroll { overflow-x: auto; max-width: 100%; }
+figure { margin: 0; min-width: 0; }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; max-width: 68ch; }
+.quote { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.quote figcaption { margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--line); max-width: none; }
+.quote pre { margin: 0; padding: 12px; overflow-x: auto; }
+.quote pre code { background: none; padding: 0; font-size: 13px; overflow-wrap: normal; white-space: pre; }
+.diagram .scroll { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.diagram svg { min-width: 680px; height: auto; display: block; margin: 0 auto; }
+.mmd:not([data-processed]) { white-space: pre; font: 12px/1.4 var(--mono); color: var(--muted); }
+.chart svg { display: block; min-width: 560px; width: 100%; height: auto; }
+.chart text { font-family: var(--body); fill: var(--ink); }
+.chart .axis { fill: var(--muted); font-size: 12px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.card h3 { font-size: 18px; }
+.card p { font-size: 15px; }
+.analogy dt { font: 600 17px/1.2 var(--label); }
+.analogy dd { margin: 0 0 12px; color: var(--muted); max-width: 68ch; }
+.analogy dd b { color: var(--ink); font-weight: 600; }
+
+.steps { list-style: none; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 8px; }
+.steps li { counter-increment: step; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px 10px 52px; position: relative; max-width: none; }
+.steps li::before { content: counter(step); position: absolute; left: 14px; top: 9px; font: 400 22px/1.2 var(--display); color: var(--accent); }
+.where { font: 600 12px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 2px 6px; margin-left: 6px; white-space: nowrap; }
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--surface); }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 13px/1.2 var(--label); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.yes { color: var(--ok); font-weight: 600; }
+.no { color: var(--muted); }
+.flag { font: 600 12px/1 var(--label); letter-spacing: .06em; text-transform: uppercase; background: var(--note); color: var(--ink); border-radius: 3px; padding: 3px 6px; }
+.foot { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; color: var(--muted); }
+.foot p { max-width: none; }
+@media (max-width: 520px) { .top__title { flex-basis: 100%; } }
+
+.map svg { min-width: 940px; width: 100%; }
+.map text { font-family: var(--body); fill: var(--ink); }
+.map .sub { fill: var(--muted); }
+</style></head><body><header class="top"><div class="top__in"><div class="top__title"><span class="top__brand">PoRumble</span> User Journeys</div><nav class="top__nav" aria-label="Reports"><a href="index.html">Overview</a><a href="USER_WORKFLOW.html" aria-current=page>Journeys</a><a href="VISUAL_ARCHITECTURE_DASHBOARD.html">Architecture</a><a href="AI_SERVICES_REPORT.html">AI</a><a href="AUTH_SECURITY_REPORT.html">Security</a><a href="artifact.html">All in one</a></nav><div class="levels" role="group" aria-label="Detail level"><button type="button" data-set-level="1" aria-pressed="false">1 Simple</button><button type="button" data-set-level="2" aria-pressed="true">2 Standard</button><button type="button" data-set-level="3" aria-pressed="false">3 Deep-dive</button></div></div></header><main class="wrap"><section>
+  <h1>What people actually do with it</h1>
+  <p class="eli5">There are five things a person can set out to do: watch a fight, fight in one, back a fighter, walk away from a fight, and teach the computer to box. Each is told below as a short story.</p>
+</section>
+
+<section>
+  <h2>The shape of every match</h2>
+  <p class="eli5">Every match moves through the same six screens in the same order, like rounds on a fight night programme.</p>
+  <div class="cards">
+    <div class="card"><h3>1. Title</h3><p>The menu. Waits for you; no clock.</p></div>
+    <div class="card"><h3>2. Introduction</h3><p>"Get ready." Lasts 0.8 seconds.</p></div>
+    <div class="card"><h3>3. Countdown</h3><p>3, 2, 1. Lasts 3 seconds. Nobody can punch yet.</p></div>
+    <div class="card"><h3>4. Fight</h3><p>Live boxing until one is left, or 3 minutes pass.</p></div>
+    <div class="card"><h3>5. Knockout hold</h3><p>1.6 seconds of slow motion on the final blow.</p></div>
+    <div class="card"><h3>6. Results</h3><p>Who won. Rematch or return to the menu.</p></div>
+  </div>
+  <p data-tier="3">Timings are hardcoded constants, not settings: <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/MatchFlowSystem.cs:25-34</code>. The phase list is <code class="cite" data-tier="3">Assets/Scripts/Models/Match/MatchFlowModel.cs:16-38</code>.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">stateDiagram-v2
+  direction LR
+  [*] --&gt; Title
+  Title --&gt; Introducing: DEMO, 1 PLAYER or Enter
+  Introducing --&gt; Countdown: after 0.8 s
+  Countdown --&gt; Fighting: after 3 s (the bell)
+  Fighting --&gt; KnockoutHold: match decided
+  KnockoutHold --&gt; Results: after 1.6 s
+  Results --&gt; Title: Rematch, New pick, Enter or R
+  Introducing --&gt; Title: MENU button
+  Countdown --&gt; Title: MENU button
+  Fighting --&gt; Title: MENU button
+  KnockoutHold --&gt; Title: MENU button</div></div><figcaption>The six screens and the only moves allowed between them. "MENU" is the one exit that works from anywhere.</figcaption></figure>
+</section>
+
+<section>
+  <h2>Journey 1: Watch a demo fight</h2>
+  <p class="eli5">You press one button and sixteen computer-controlled boxers fight it out while you watch.</p>
+  <ol class="steps">
+    <li>You open the game and see the title screen with the sixteen fighters on the card. <span class="where">Screen</span></li>
+    <li>You press <b>DEMO</b>. <span class="where">Screen</span></li>
+    <li>The front desk checks that the menu is showing and that no finished match is still on the table, then starts the introduction. <span class="where">Rules</span></li>
+    <li>After the countdown the bell rings and every boxer starts taking instructions from the trained brain. <span class="where">AI</span></li>
+    <li>Each time a boxer is knocked out, the referee counts who is left. When one remains, the match is over. <span class="where">Rules</span></li>
+    <li>The league table is updated and saved, and one line is added to the match diary. <span class="where">Files</span></li>
+    <li>The results screen appears. <span class="where">Screen</span></li>
+  </ol>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">sequenceDiagram
+  actor V as Spectator
+  participant Menu as Title screen
+  participant Desk as Front desk (MatchFlowSystem)
+  participant Line as Assembly line (MatchDirector)
+  participant Ref as Referee (MatchSystem)
+  participant Files as Files on device
+  V-&gt;&gt;Menu: press DEMO
+  Menu-&gt;&gt;Desk: start fight, no human seat
+  Desk--&gt;&gt;Menu: accepted, phase becomes Introducing
+  Note over Desk: 0.8 s intro, then 3 s countdown
+  Desk-&gt;&gt;Line: phase becomes Fighting
+  loop every physics step while the fight is live
+    Line-&gt;&gt;Line: move ropes, move boxers, log movement
+    Line-&gt;&gt;Ref: who is still standing?
+  end
+  Ref--&gt;&gt;Desk: match ended, here is the winner
+  Ref-&gt;&gt;Files: ratings saved, match line appended
+  Desk--&gt;&gt;V: slow-motion hold, then results</div></div><figcaption>Journey 1 as a sequence: who talks to whom when DEMO is pressed.</figcaption></figure>
+  <section data-tier="3">
+    <h3>Code evidence</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Match/MatchFlowSystem.cs:202-222</code></figcaption><pre><code>public bool TryStartFight()
+{
+if (!_flow.CanStartFight)
+{
+return false;
+}
+if (_match.Phase.Value == MatchPhase.Ended)
+{
+return false;
+}
+EnterPhase(MatchFlowPhase.Introducing);
+return true;
+}</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Match/MatchSystem.cs:36-52</code></figcaption><pre><code>public void EvaluateMatchState()
+{
+if (_match.Phase.Value == MatchPhase.Ended)
+{
+return;
+}
+int aliveCount = _match.CountAlive();
+if (aliveCount &gt; 1)
+{
+return;
+}
+int winnerId = aliveCount == 1 ? _match.ResolveLeaderId() : MatchModel.NO_WINNER;
+EndMatch(winnerId);
+}</code></pre></figure>
+  </section>
+</section>
+
+<section>
+  <h2>Journey 2: Fight in the ring yourself</h2>
+  <p class="eli5">You press 1 PLAYER, the game hands you a random fighter's seat, and you box fifteen computer opponents.</p>
+  <ol class="steps">
+    <li>You press <b>1 PLAYER</b> on the title screen. <span class="where">Screen</span></li>
+    <li>The game draws a seat at random. If you have backed a fighter, that fighter's seat is never the one drawn, so your bet stays alive. <span class="where">Rules</span></li>
+    <li>The fighter who held that seat sits this match out; you appear in their place. <span class="where">Screen</span></li>
+    <li>You move, aim, punch, charge a big punch and slip, using the controls below. <span class="where">Controls</span></li>
+    <li>Your inputs travel down exactly the same path the computer brain uses, so the rules treat you like any other boxer. <span class="where">Rules</span></li>
+    <li>When the match ends, the league table is <b>not</b> changed, because a human result would distort the computer fighters' ratings. <span class="where">Rules</span></li>
+  </ol>
+  <div class="scroll"><table>
+    <tr><th>You want to</th><th>Keyboard and mouse</th><th>Evidence</th></tr>
+    <tr><td>Move</td><td>W A S D</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Boxer/BoxerAgentView.cs:782-783</code></td></tr>
+    <tr><td>Aim</td><td>Point the mouse (or touch)</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Boxer/BoxerAgentView.cs:375</code></td></tr>
+    <tr><td>Punch</td><td>Left click, or J / K</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Boxer/BoxerAgentView.cs:784</code></td></tr>
+    <tr><td>Charge a haymaker</td><td>Hold right click</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Boxer/BoxerAgentView.cs:291</code></td></tr>
+    <tr><td>Slip a punch</td><td>Space or L</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Boxer/BoxerAgentView.cs:323</code></td></tr>
+    <tr><td>Start or rematch</td><td>Enter</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Input/MatchInputView.cs:48-61</code></td></tr>
+    <tr><td>Back to the menu from results</td><td>R</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Input/MatchInputView.cs:63-66</code></td></tr>
+    <tr><td>Show the diagnostics overlay</td><td>F3 or Tab</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Hud/DiagnosticsHudView.cs:903</code></td></tr>
+  </table></div>
+  <section data-tier="3">
+    <h3>Code evidence</h3>
+    <p>The human-match exclusion from ratings:</p>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Match/RatingSystem.cs:102-109</code></figcaption><pre><code>// A person in the ring is not the contestant whose seat they borrowed. Rating the
+// match would move the reference policy&#x27;s standing on a human&#x27;s result, and every
+// other fighter&#x27;s on how they fared against one.
+if (_match.HumanBoxerId.Value != MatchModel.NO_HUMAN)
+{
+_eliminationOrder.Clear();
+return;
+}</code></pre></figure>
+    <p>The seat draw that protects a backed fighter:</p>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Boxer/BoxerSpawnPoints.cs:134-142</code></figcaption><pre><code>int choices = kept &gt;= 0 ? _views.Count - 1 : _views.Count;
+if (choices &lt;= 0)
+{
+return 0;
+}
+int drawn = UnityEngine.Random.Range(0, choices);
+return kept &gt;= 0 &amp;&amp; drawn &gt;= kept ? drawn + 1 : drawn;</code></pre></figure>
+  </section>
+</section>
+
+<section>
+  <h2>Journey 3: Back a fighter</h2>
+  <p class="eli5">Before the bell you tap the fighter you think will win. If they do, your play-money bank grows; if not, you lose your stake.</p>
+  <ol class="steps">
+    <li>On the title screen you tap a fighter's tile. Tapping it again clears the pick. <span class="where">Screen</span></li>
+    <li>Each tile shows a price based on the fighter's league rating: long shots pay more. <span class="where">Rules</span></li>
+    <li>When the fight is introduced, 100 points leave your bank and the price is locked. Changing your mind mid-fight cannot move the bet. <span class="where">Rules</span></li>
+    <li>If your bank had fallen below 100, it is topped back up to 1,000 first, so you are never shut out. <span class="where">Rules</span></li>
+    <li>Your fighter wins: you are paid the stake times the locked price. They lose: you get nothing back. <span class="where">Rules</span></li>
+    <li>A draw, or leaving through MENU, returns the stake. <span class="where">Rules</span></li>
+    <li>The bank is saved to a file so it is still there next time. Your pick itself is not saved. <span class="where">Files</span></li>
+  </ol>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">flowchart LR
+  pick[&quot;Tap a fighter&lt;br/&gt;on the title screen&quot;] --&gt; lock[&quot;Fight introduced:&lt;br/&gt;100 points staked, price locked&quot;]
+  lock --&gt; end1{&quot;How did the&lt;br/&gt;match end?&quot;}
+  end1 --&gt;|&quot;Your fighter won&quot;| won[&quot;Paid: stake x locked price&quot;]
+  end1 --&gt;|&quot;Another fighter won&quot;| lost[&quot;Paid: 0&quot;]
+  end1 --&gt;|&quot;Draw on the bell&quot;| refund[&quot;Stake returned&quot;]
+  lock --&gt;|&quot;You pressed MENU&quot;| refund
+  won --&gt; save[(&quot;Bank saved to file&quot;)]
+  lost --&gt; save
+  refund --&gt; save</div></div><figcaption>What happens to a 100-point stake. Every path ends with the bank being saved.</figcaption></figure>
+  <section data-tier="3">
+    <h3>Code evidence</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Match/PredictionSystem.cs:66-75</code></figcaption><pre><code>public bool TogglePick(FighterProfile profile)
+{
+if (!_flow.CanStartFight || profile == null || !_roster.IsEntrant(profile))
+{
+return false;
+}
+_predictions.Pick.Value = _predictions.Pick.Value == profile ? null : profile;
+return true;
+}</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Match/PredictionSystem.cs:120-136</code></figcaption><pre><code>if (_predictions.Bank.Value &lt; STAKE)
+{
+_predictions.Bank.Value = PredictionModel.STARTING_BANK;
+_predictions.Bailouts++;
+}
+_odds.Recompute();
+_predictions.StakedOn = pick;
+_predictions.Stake = STAKE;
+_predictions.LockedMultiplier = MultiplierFor(pick);
+_predictions.LastPayout = 0;
+_predictions.Outcome = PredictionOutcome.Pending;
+_predictions.Bank.Value -= STAKE;
+_predictions.Revision.Value++;</code></pre></figure>
+    <p>Not saved on purpose: <code class="cite" data-tier="3">Assets/Scripts/Views/Persistence/FilePredictionStore.cs:14-16</code>.</p>
+  </section>
+</section>
+
+<section>
+  <h2>Journey 4: A fight that will not end</h2>
+  <p class="eli5">If boxers keep running away from each other, the ring itself shrinks until they cannot, and after three minutes a bell ends it.</p>
+  <figure class="chart">
+    <div class="scroll">
+      <svg viewBox="0 0 720 270" role="img" aria-label="Ring size over a three-minute fight: full size for 60 seconds, shrinking to 30 percent by 120 seconds, held there until the bell at 180 seconds.">
+        <g stroke="var(--line)" stroke-width="1">
+          <line x1="60" y1="210" x2="680" y2="210"/>
+          <line x1="60" y1="40" x2="680" y2="40" stroke-dasharray="3 4"/>
+          <line x1="60" y1="159" x2="680" y2="159" stroke-dasharray="3 4"/>
+          <line x1="266.7" y1="40" x2="266.7" y2="210" stroke-dasharray="3 4"/>
+          <line x1="473.3" y1="40" x2="473.3" y2="210" stroke-dasharray="3 4"/>
+        </g>
+        <polyline fill="none" stroke="var(--link)" stroke-width="2.5" stroke-linejoin="round" points="60,40 266.7,40 292.5,44.8 318.3,58.6 344.2,78.8 370,99.5 395.8,120.2 421.7,140.4 447.5,154.2 473.3,159 680,159"/>
+        <line x1="680" y1="30" x2="680" y2="210" stroke="var(--accent)" stroke-width="2.5"/>
+        <circle cx="266.7" cy="40" r="4.5" fill="var(--link)" stroke="var(--surface)" stroke-width="2"><title>60 s: ropes start to move</title></circle>
+        <circle cx="473.3" cy="159" r="4.5" fill="var(--link)" stroke="var(--surface)" stroke-width="2"><title>120 s: ring at 30% of full size</title></circle>
+        <g font-size="13" font-weight="600">
+          <text x="70" y="30">Full ring (100%)</text>
+          <text x="276" y="30">Ropes start closing</text>
+          <text x="483" y="150">Smallest ring (30%)</text>
+          <text x="672" y="22" text-anchor="end">Bell: most health wins</text>
+        </g>
+        <g class="axis">
+          <text x="60" y="230" text-anchor="middle">0 s</text>
+          <text x="266.7" y="230" text-anchor="middle">60 s</text>
+          <text x="473.3" y="230" text-anchor="middle">120 s</text>
+          <text x="680" y="230" text-anchor="middle">180 s</text>
+          <text x="370" y="256" text-anchor="middle">Seconds of live fighting</text>
+          <text x="52" y="44" text-anchor="end">100%</text>
+          <text x="52" y="163" text-anchor="end">30%</text>
+          <text x="52" y="214" text-anchor="end">0%</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Ring size as a share of the full ring. The curve eases in and out so the ropes do not appear to jump. <code class="cite" data-tier="3">Assets/Scripts/Models/Math/SuddenDeathMath.cs:42-50</code></figcaption>
+  </figure>
+  <ol class="steps">
+    <li>For the first 60 seconds the ring is full size. <span class="where">Rules</span></li>
+    <li>From 60 to 120 seconds the ropes slide in until the ring is 30% of its original size. <span class="where">Rules</span></li>
+    <li>The boxers get one more minute in the small ring to settle it themselves. <span class="where">Rules</span></li>
+    <li>At 180 seconds the bell rings. Whoever has the most health left wins; an exact tie is a draw. <span class="where">Rules</span></li>
+  </ol>
+  <p data-tier="3">The bell is rung by <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:218-221</code> and resolved by <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/MatchSystem.cs:55-63</code>; ties resolve to no winner at <code class="cite" data-tier="3">Assets/Scripts/Models/Match/MatchModel.cs:71-99</code>.</p>
+</section>
+
+<section>
+  <h2>Journey 5: Walk away, or go again</h2>
+  <p class="eli5">You can always get back to the menu, but you cannot accidentally skip or cut short a fight by mashing a key.</p>
+  <ol class="steps">
+    <li>During a fight, the <b>MENU</b> button in the top bar abandons it and returns to the title screen. Any stake is refunded. <span class="where">Screen</span></li>
+    <li>On the results screen, <b>Enter</b> starts a rematch with the same seats; <b>R</b> returns to the menu so you can change your pick. <span class="where">Controls</span></li>
+    <li>Pressing Enter or R at any other time does nothing: the front desk refuses requests that do not fit the current screen. <span class="where">Rules</span></li>
+  </ol>
+  <section data-tier="3">
+    <h3>Code evidence</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Match/MatchFlowSystem.cs:155-168</code></figcaption><pre><code>public bool TryRestart()
+{
+if (!_flow.CanRestart)
+{
+return false;
+}
+Time.timeScale = 1f;
+_spawnSystem.ResetRoster(_boxerCount, _spawnRadius);
+_match.BeginNewEpisode();
+_flow.MatchNumber.Value++;
+EnterPhase(MatchFlowPhase.Title);
+return true;
+}</code></pre></figure>
+    <p>MENU is wired at <code class="cite" data-tier="3">Assets/Scripts/Views/Hud/AppChromeView.cs:130</code> to <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/MatchFlowSystem.cs:184-196</code>.</p>
+  </section>
+</section>
+
+<section>
+  <h2>Journey 6: Teach the computer to box</h2>
+  <p class="eli5">A developer runs thousands of fast, screenless practice fights. After each one the brain is told how well it did, and it gradually gets better.</p>
+  <ol class="steps">
+    <li>The developer starts the progress dashboard (TensorBoard), then the Python trainer, then presses Play in a training scene. <span class="where">Developer</span></li>
+    <li>A training scene has no menu, no countdown and no HUD: the fight is live from the first instant. <span class="where">Rules</span></li>
+    <li>Boxers earn small rewards for landing punches, dodging and blocking, and pay small costs for being hit or wasting punches. <span class="where">AI</span></li>
+    <li>When a practice fight ends, the winner gets a bonus (bigger for a knockout than for winning on the bell), and the ring is reset at once for the next fight. <span class="where">AI</span></li>
+    <li>The trainer saves the improved brain as a file, which the developer copies into the game. <span class="where">Developer</span></li>
+  </ol>
+  <p data-tier="3">Training detection: <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:101</code>, live-from-first-step at <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:128-131</code>, episode reset at <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:243-266</code>. The AI report covers rewards in detail.</p>
+</section>
+<footer class="foot"><p>Generated 2026-10-10 from commit <code>253447b</code> (<code>253447bc8955412eb4fb876b341d2879c1340093</code>) on <code>main</code>, plus 35 uncommitted working-tree paths. Line numbers refer to the working tree as it stood on that date.</p></footer></main><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script><script>(function () {
+  var root = document.documentElement;
+  var LEVEL_KEY = 'porumble-docs-level';
+  var TAB_KEY = 'porumble-docs-tab';
+
+  function read(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function write(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private window */ } }
+  function each(selector, fn) { Array.prototype.forEach.call(document.querySelectorAll(selector), fn); }
+
+  // Mermaid cannot measure a hidden diagram, so only what is on screen is drawn, and
+  // the rest is drawn when a tier or tab change reveals it.
+  function draw() {
+    if (!window.mermaid) { return; }
+    var style = getComputedStyle(root);
+    function token(name) { return style.getPropertyValue(name).trim(); }
+    var ink = token('--ink'), line = token('--muted'), node = token('--node'), surface = token('--surface');
+    window.mermaid.initialize({
+      startOnLoad: false, theme: 'base',
+      themeVariables: {
+        fontFamily: 'Barlow, Segoe UI, system-ui, sans-serif', fontSize: '15px',
+        background: surface, primaryColor: node, primaryTextColor: ink, primaryBorderColor: line,
+        secondaryColor: surface, tertiaryColor: surface, lineColor: line, textColor: ink,
+        mainBkg: node, nodeBorder: line, clusterBkg: surface, clusterBorder: line, titleColor: ink,
+        edgeLabelBackground: surface, actorBkg: node, actorBorder: line, actorTextColor: ink,
+        signalColor: ink, signalTextColor: ink, labelBoxBkgColor: node, labelBoxBorderColor: line,
+        labelTextColor: ink, loopTextColor: ink, noteBkgColor: token('--note'), noteTextColor: ink,
+        noteBorderColor: line, activationBkgColor: surface, activationBorderColor: line,
+        attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: token('--bg')
+      },
+      flowchart: { useMaxWidth: true, htmlLabels: true },
+      sequence: { useMaxWidth: false, wrap: true, width: 150 },
+      er: { useMaxWidth: false }, state: { useMaxWidth: false }
+    });
+    var nodes = [];
+    each('.mmd:not([data-processed])', function (el) {
+      if (el.offsetParent === null) { return; }
+      if (!el.dataset.src) { el.dataset.src = el.textContent; }
+      nodes.push(el);
+    });
+    if (nodes.length) { window.mermaid.run({ nodes: nodes }).catch(function (e) { console.error(e); }); }
+  }
+
+  function redraw() {
+    each('.mmd[data-processed]', function (el) {
+      el.removeAttribute('data-processed');
+      el.textContent = el.dataset.src;
+    });
+    draw();
+  }
+
+  function setLevel(level) {
+    root.setAttribute('data-level', level);
+    write(LEVEL_KEY, level);
+    each('[data-set-level]', function (button) {
+      button.setAttribute('aria-pressed', String(button.dataset.setLevel === level));
+    });
+    draw();
+  }
+
+  function setTab(name) {
+    if (!document.getElementById('p-' + name)) { return; }
+    each('.panel', function (panel) { panel.hidden = panel.id !== 'p-' + name; });
+    each('[data-tab]', function (tab) {
+      tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+    });
+    write(TAB_KEY, name);
+    draw();
+  }
+
+  each('[data-set-level]', function (button) {
+    button.addEventListener('click', function () { setLevel(button.dataset.setLevel); });
+  });
+  each('[data-tab]', function (tab) {
+    tab.addEventListener('click', function () { setTab(tab.dataset.tab); window.scrollTo(0, 0); });
+  });
+
+  var saved = read(LEVEL_KEY);
+  setLevel(saved === '1' || saved === '3' ? saved : '2');
+
+  if (document.querySelector('.panel')) {
+    setTab('overview');
+    setTab(location.hash.slice(1) || read(TAB_KEY) || 'overview');
+  }
+
+  if (window.matchMedia) {
+    var scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (scheme.addEventListener) { scheme.addEventListener('change', redraw); }
+  }
+  new MutationObserver(redraw).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script></body></html>

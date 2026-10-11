@@ -222,6 +222,22 @@ namespace PoRumble.Systems
         }
 
         /// <summary>
+        /// Starts a fight from the menu with a person in the given seat, or with nobody in any
+        /// when it is <see cref="MatchModel.NO_HUMAN"/>. The plain overload keeps whoever was
+        /// seated, which is what a rematch wants.
+        /// </summary>
+        public bool TryStartFight(int humanBoxerId)
+        {
+            if (!_flow.CanStartFight || _match.Phase.Value == MatchPhase.Ended)
+            {
+                return false;
+            }
+
+            _match.HumanBoxerId.Value = humanBoxerId;
+            return TryStartFight();
+        }
+
+        /// <summary>
         /// Restores normal time. Called when the scene tears down: Time.timeScale is global
         /// and survives leaving Play mode, so a knockout hold interrupted by a scene change
         /// would otherwise leave the Editor running at quarter speed.

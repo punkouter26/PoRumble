@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>1 Player mode - UI changes</title>
+<style>
+  :root { --bg: #14161c; --panel: #1d2029; --text: #eef0f5; --muted: #9aa1b2; --old: #eb5247; --new: #66d970; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  h2 { margin: 36px 0 8px; font-size: 20px; }
+  p { margin: 0 0 12px; color: var(--muted); }
+  .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  figure { margin: 0; background: var(--panel); border-radius: 8px; padding: 12px; }
+  figcaption { margin-bottom: 8px; font-weight: 600; }
+  .shot { position: relative; }
+  .shot img { display: block; width: 100%; border-radius: 4px; }
+  .mark { position: absolute; border: 3px solid var(--new); border-radius: 6px; }
+  .mark.old { border-color: var(--old); }
+  .mark span { position: absolute; left: -3px; bottom: 100%; padding: 1px 6px; background: var(--new); color: #0c1a0e; font-size: 12px; font-weight: 700; white-space: nowrap; border-radius: 4px 4px 0 0; }
+  .mark.old span { background: var(--old); color: #1f0806; }
+  .mark.below span { bottom: auto; top: 100%; border-radius: 0 0 4px 4px; }
+  ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); }
+  li b { color: var(--text); }
+  small { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>1 Player mode - UI changes</h1>
+  <p>2026-10-10. Captured from the Editor's play view, which stretches the portrait layout into a 1280x720 frame; proportions on a phone differ, positions do not.</p>
+
+  <h2>Title screen</h2>
+  <div class="pair">
+    <figure>
+      <figcaption>Before</figcaption>
+      <div class="shot">
+        <img src="menu_before.png" alt="Title screen with a single FIGHT button">
+        <div class="mark old" style="left:3.6%; top:88.6%; width:92.8%; height:6.8%"><span>One button: FIGHT (always all-AI)</span></div>
+      </div>
+    </figure>
+    <figure>
+      <figcaption>After</figcaption>
+      <div class="shot">
+        <img src="menu_after.png" alt="Title screen with 1 PLAYER and DEMO buttons">
+        <div class="mark" style="left:3.9%; top:90.4%; width:45.7%; height:5.8%"><span>New: 1 PLAYER</span></div>
+        <div class="mark" style="left:50.4%; top:90.4%; width:45.7%; height:5.8%"><span>FIGHT is now DEMO</span></div>
+      </div>
+    </figure>
+  </div>
+  <ul>
+    <li><b>1 PLAYER</b> starts the fight with you in the STANDARD RL seat.</li>
+    <li><b>DEMO</b> is the old FIGHT button: all nineteen seats are AI.</li>
+    <li>The two buttons share one row, so the screen is no taller than before.</li>
+  </ul>
+
+  <h2>In the fight</h2>
+  <div class="pair">
+    <figure>
+      <figcaption>Before (demo)</figcaption>
+      <div class="shot">
+        <img src="fight_before.png" alt="Demo fight with no player marked">
+        <div class="mark old below" style="left:12.8%; top:7.2%; width:9.6%; height:6%"><span>STANDARD RL: an ordinary row</span></div>
+      </div>
+    </figure>
+    <figure>
+      <figcaption>After (1 PLAYER)</figcaption>
+      <div class="shot">
+        <img src="fight_after.png" alt="One-player fight with the black player boxer at the centre of the screen">
+        <div class="mark below" style="left:12.8%; top:7.2%; width:9.6%; height:6%"><span>Your row, marked blue</span></div>
+        <div class="mark" style="left:46.5%; top:43.5%; width:16%; height:12%"><span>You: black, dead centre</span></div>
+      </div>
+    </figure>
+  </div>
+  <ul>
+    <li>The player's boxer is black and plain, in the seat STANDARD RL holds in the demo.</li>
+    <li>The camera is pinned to the player, exactly centred, while they are standing; after a knockout the broadcast camera takes over.</li>
+    <li>The field strip marks the player's row in blue.</li>
+  </ul>
+  <p><small>Not shown: the player's HEALTH / BREATH / POWER panel. It appears on a desktop; where a touchscreen is present (including the Editor's Device Simulator, used for these captures) the existing touch layout hides those bars.</small></p>
+</main>
+</body>
+</html>

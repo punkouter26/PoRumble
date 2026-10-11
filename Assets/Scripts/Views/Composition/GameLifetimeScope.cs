@@ -163,7 +163,6 @@ namespace PoRumble.Views
                 InjectOptional<HapticsView>(container);
                 InjectOptional<PerformanceLogView>(container);
                 InjectOptional<EliminationFeedView>(container);
-                InjectOptional<FocusTagView>(container);
                 InjectOptional<FightIntroView>(container);
                 InjectOptional<RingShrinkView>(container);
                 InjectOptional<ImpactPulseView>(container);

@@ -15,6 +15,15 @@ namespace PoRumble.Models
         /// <summary>Winner id, or NO_WINNER for a draw.</summary>
         public const int NO_WINNER = -1;
 
+        /// <summary>Nobody is holding the controls: every seat is an AI. The demo.</summary>
+        public const int NO_HUMAN = -1;
+
+        /// <summary>
+        /// The seat a person is playing, or <see cref="NO_HUMAN"/>. Chosen on the title screen
+        /// with the fight, and kept across a rematch.
+        /// </summary>
+        public ReactiveProperty<int> HumanBoxerId { get; } = new(NO_HUMAN);
+
         private readonly List<BoxerModel> _boxers = new();
 
         public IReadOnlyList<BoxerModel> Boxers => _boxers;

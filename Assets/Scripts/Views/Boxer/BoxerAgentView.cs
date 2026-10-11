@@ -141,6 +141,11 @@ namespace PoRumble.Views
 
         private int _boxerId = -1;
 
+        // The player's pointer. The camera is found once, when the controls are handed over.
+        private Camera _aimCamera;
+        private ArmSide _nextPunch = ArmSide.Left;
+        private bool _pointerSeen;
+
         // Per-episode tallies for TensorBoard. Reward is a poor read of skill here, so these
         // say directly whether the punches are finding anything.
         private int _punchesThrown;
@@ -158,6 +163,9 @@ namespace PoRumble.Views
         /// little inside the half extent, so this sits just outside that clamp.
         /// </summary>
         private const float ROPES_MARGIN = 1.25f;
+
+        /// <summary>World units from the boxer inside which the pointer does not turn it.</summary>
+        private const float MIN_AIM_DISTANCE = 0.5f;
 
         private const int LEFT_PUNCH_BRANCH = 0;
         private const int RIGHT_PUNCH_BRANCH = 1;
@@ -271,12 +279,32 @@ namespace PoRumble.Views
 
             Keyboard keyboard = Keyboard.current;
 
-            if (keyboard != null)
+            // The pointer is the player's controls: it aims, and pressing it punches. On a desk
+            // that is the mouse, whose right button also winds up a haymaker; on a phone, or in
+            // the Editor's device simulator, it is a finger. A phone's on-screen stick and
+            // buttons take over whenever they are in use.
+            Pointer pointer = ActivePointer();
+            bool pressed = pointer != null && pointer.press.isPressed;
+
+            if (pointer is Mouse mouse)
             {
-                charging |= keyboard.spaceKey.isPressed;
+                charging |= mouse.rightButton.isPressed;
+            }
+
+            // A mouse has a position between clicks; a finger only has one while it is down.
+            if (pointer != null && (pressed || pointer is Mouse))
+            {
+                AimAtPointer(pointer);
             }
 
             _boxerSystem.SetCharge(_boxerId, live && charging);
+
+            // Held, not pressed: a click is one punch and a hold is a flurry. Each punch that
+            // actually starts hands the next one to the other fist, so the hands alternate.
+            if (pressed && live && _boxerSystem.Punch(_boxerId, _nextPunch))
+            {
+                _nextPunch = _nextPunch == ArmSide.Left ? ArmSide.Right : ArmSide.Left;
+            }
 
             // The slip is polled here for the same reason the haymaker is: Heuristic runs
             // once every DecisionPeriod physics ticks, and a defensive input that coarse
@@ -292,7 +320,7 @@ namespace PoRumble.Views
 
             if (keyboard != null)
             {
-                slip |= keyboard.lKey.wasPressedThisFrame;
+                slip |= keyboard.spaceKey.wasPressedThisFrame || keyboard.lKey.wasPressedThisFrame;
             }
 
             if (live && slip)
@@ -311,6 +339,57 @@ namespace PoRumble.Views
         /// <paramref name="checkpoint"/> is the policy to run for a policy fighter, already
         /// checked as compatible by the seating code; null runs the shipped policy.
         /// </summary>
+        /// <summary>
+        /// The pointer that aims this boxer, or null when the on-screen stick is in use or no
+        /// pointer has been touched yet.
+        ///
+        /// Whichever pointer was used last, not the mouse by name. The Editor's device simulator
+        /// leaves a mouse present that never receives an event and reports clicks as touches
+        /// instead; read anyway, that mouse sits at (0, 0) for ever and the boxer stares into
+        /// the bottom-left corner. Nothing aims until some pointer has actually reported, for
+        /// the same reason: before that its position is a default, not somewhere anybody pointed.
+        /// </summary>
+        private Pointer ActivePointer()
+        {
+            if (_touch != null && _touch.IsActive)
+            {
+                return null;
+            }
+
+            Pointer pointer = Pointer.current;
+
+            if (pointer == null || !pointer.enabled)
+            {
+                return null;
+            }
+
+            _pointerSeen |= pointer.wasUpdatedThisFrame;
+            return _pointerSeen ? pointer : null;
+        }
+
+        /// <summary>
+        /// Turns the boxer to face the pointer. Asked every frame rather than through the action
+        /// vector, which only updates once a decision period - a tenth of a second of lag
+        /// between the hand and the boxer is the difference between aiming and steering.
+        /// </summary>
+        private void AimAtPointer(Pointer pointer)
+        {
+            if (_aimCamera == null)
+            {
+                return;
+            }
+
+            Vector2 screen = pointer.position.ReadValue();
+            Vector3 world = _aimCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, 0f));
+            Vector2 aim = new(world.x - transform.position.x, world.y - transform.position.y);
+
+            // Inside the boxer's own body the direction is noise, and the facing would spin.
+            if (aim.sqrMagnitude > MIN_AIM_DISTANCE * MIN_AIM_DISTANCE)
+            {
+                _boxerSystem.SetAim(_boxerId, aim.normalized);
+            }
+        }
+
         public void ApplyFighter(FighterProfile profile, ModelAsset checkpoint)
         {
             _modulator = null;
@@ -333,14 +412,20 @@ namespace PoRumble.Views
 
             // Only a policy fighter needs a modulator. A scripted one already has a whole
             // brain of its own, tuned by its BrainProfile tier.
-            if (!scripted && _config != null)
+            //
+            // Nor does a person. The modulator rewrites intent - it holds punches back, slips and
+            // winds up haymakers on the contestant's odds - and laid over a player's own inputs
+            // that is the boxer ignoring the stick and spending energy on slips nobody asked for.
+            if (!scripted && !_humanControlled && _config != null)
             {
                 _modulator = new StyleModulator(_config, profile.ToStyle(), _boxerId + 1);
             }
 
             if (_model != null)
             {
-                _model.Attributes = profile.ToAttributes();
+                // A player fights on level terms every match, not with the power and chin of
+                // whichever contestant the draw happened to sit out.
+                _model.Attributes = _humanControlled ? FighterAttributes.Neutral : profile.ToAttributes();
             }
         }
 
@@ -443,6 +528,11 @@ namespace PoRumble.Views
             if (!humanControlled)
             {
                 return;
+            }
+
+            if (_aimCamera == null)
+            {
+                _aimCamera = Camera.main;
             }
 
             // Force heuristic, otherwise the trained policy would drive the boxer the player
@@ -705,10 +795,13 @@ namespace PoRumble.Views
 
             continuous[0] = horizontal;
             continuous[1] = vertical;
-            // Aim follows movement: there is no second stick, and a boxer that walks one way
-            // while facing another cannot land anything through the face arc anyway.
-            continuous[2] = horizontal;
-            continuous[3] = vertical;
+
+            // With a pointer, that aims, every frame, from Update; a zero aim here leaves it
+            // standing. Without one, aim follows movement: there is no second stick, and a
+            // boxer that walks one way while facing another cannot land anything anyway.
+            bool pointerAims = ActivePointer() != null;
+            continuous[2] = pointerAims ? 0f : horizontal;
+            continuous[3] = pointerAims ? 0f : vertical;
 
             // One request is enough. BoxerSystem falls through to whichever arm is free, and
             // only one fist may be out at a time, so asking for both would change nothing.

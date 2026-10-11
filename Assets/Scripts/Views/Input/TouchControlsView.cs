@@ -67,6 +67,8 @@ namespace PoRumble.Views
         [SerializeField] private Color _chargeReadyColor = new(1f, 0.42f, 0.2f);
 
         private readonly CompositeDisposable _disposables = new();
+        private CompositeDisposable _playerDisposables = new();
+        private bool _built;
 
         private TouchInputModel _touch;
         private MatchFlowModel _flow;
@@ -110,12 +112,10 @@ namespace PoRumble.Views
                 return;
             }
 
-            // No human boxer means nothing for these controls to drive - the all-AI exhibition
-            // should not have a dead stick sitting over it.
-            bool hasPlayer = _spawnPoints == null || _spawnPoints.HumanBoxerId >= 0;
-            bool wanted = _forceVisible || Touchscreen.current != null;
-
-            if (!hasPlayer || !wanted)
+            // Built whenever there is a screen to touch, and shown only while a person is in a
+            // fight: who is playing is chosen on the title screen now, so it cannot be decided
+            // here once and for all.
+            if (!_forceVisible && Touchscreen.current == null)
             {
                 _root.style.display = DisplayStyle.None;
                 return;
@@ -128,11 +128,64 @@ namespace PoRumble.Views
 
             _layout.CloneTree(_root);
             _root.pickingMode = PickingMode.Ignore;
-            _touch.IsActive = true;
 
             BindStick();
             BindButtons();
             BindRings();
+
+            _built = true;
+            _match.HumanBoxerId.Subscribe(_ => OnPlayerChanged()).AddTo(_disposables);
+            _flow.Phase.Subscribe(_ => RefreshVisibility()).AddTo(_disposables);
+        }
+
+        /// <summary>Points the meter rings at whoever is playing now.</summary>
+        private void OnPlayerChanged()
+        {
+            _playerDisposables.Dispose();
+            _playerDisposables = new CompositeDisposable();
+            _player = FindPlayer();
+
+            if (_player != null)
+            {
+                _player.Stamina.Subscribe(_ => MarkRingDirty(_punchButton)).AddTo(_playerDisposables);
+                _player.Charge.Subscribe(_ => MarkRingDirty(_chargeButton)).AddTo(_playerDisposables);
+            }
+
+            RefreshVisibility();
+        }
+
+        /// <summary>
+        /// Up from the introduction to the knockout, for a person, and at no other time. The
+        /// stick's zone covers the lower left of the screen and sorts above the title screen:
+        /// left up between fights it sits over the 1 PLAYER button and swallows the tap.
+        /// </summary>
+        private void RefreshVisibility()
+        {
+            if (!_built)
+            {
+                return;
+            }
+
+            MatchFlowPhase phase = _flow.Phase.Value;
+            bool inFight = phase != MatchFlowPhase.Title && phase != MatchFlowPhase.Results;
+            bool on = _player != null && inFight;
+
+            _root.style.display = on ? DisplayStyle.Flex : DisplayStyle.None;
+
+            if (_touch.IsActive && !on)
+            {
+                _touch.Clear();
+            }
+
+            _touch.IsActive = on;
+        }
+
+        private static void MarkRingDirty(VisualElement button)
+        {
+            if (button != null)
+            {
+                button.MarkDirtyRepaint();
+            }
         }
 
         /// <summary>
@@ -146,26 +199,17 @@ namespace PoRumble.Views
         /// </summary>
         private void BindRings()
         {
-            _player = FindPlayer();
-
-            if (_player == null)
-            {
-                return;
-            }
-
             _punchButton = _root.Q<VisualElement>("punch");
             _chargeButton = _root.Q<VisualElement>("charge");
 
             if (_punchButton != null)
             {
                 _punchButton.generateVisualContent += DrawBreathRing;
-                _player.Stamina.Subscribe(_ => _punchButton.MarkDirtyRepaint()).AddTo(_disposables);
             }
 
             if (_chargeButton != null)
             {
                 _chargeButton.generateVisualContent += DrawChargeRing;
-                _player.Charge.Subscribe(_ => _chargeButton.MarkDirtyRepaint()).AddTo(_disposables);
             }
         }
 
@@ -192,12 +236,22 @@ namespace PoRumble.Views
 
         private void DrawBreathRing(MeshGenerationContext context)
         {
+            if (_player == null)
+            {
+                return;
+            }
+
             float breath = Mathf.Clamp01(_player.Stamina.Value);
             DrawRing(context, breath, breath <= _lowBreathThreshold ? _breathLowColor : _breathColor);
         }
 
         private void DrawChargeRing(MeshGenerationContext context)
         {
+            if (_player == null)
+            {
+                return;
+            }
+
             float charge = Mathf.Clamp01(_player.Charge.Value);
             bool ready = _config != null && charge >= _config.MinChargeToRelease;
             DrawRing(context, charge, ready ? _chargeReadyColor : _chargeColor);
@@ -411,6 +465,7 @@ namespace PoRumble.Views
 
         private void OnDestroy()
         {
+            _playerDisposables.Dispose();
             _disposables.Dispose();
 
             if (_punchButton != null)

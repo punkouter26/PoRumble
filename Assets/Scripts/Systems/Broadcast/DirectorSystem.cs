@@ -34,11 +34,45 @@ namespace PoRumble.Systems
         /// Shortest a shot may stay on screen. Below about a second a cut reads as a glitch
         /// rather than as an edit, and the viewer never finds the fighters before the frame
         /// changes again.
+        ///
+        /// Four seconds, up from 1.6. Sixteen fighters produce a reason to reframe several
+        /// times a second, and at 1.6 the camera took most of them: a demo match was a string
+        /// of arrivals with nothing in between to watch.
         /// </summary>
-        private const float MIN_SHOT_SECONDS = 1.6f;
+        private const float MIN_SHOT_SECONDS = 4f;
 
         /// <summary>How long an impact cut holds before the director goes back to work.</summary>
-        private const float IMPACT_SHOT_SECONDS = 1.15f;
+        private const float IMPACT_SHOT_SECONDS = 1.8f;
+
+        /// <summary>
+        /// Shortest the camera stays with one pair before a better one may take it. The switch
+        /// margin alone stops a tie-break; this stops a genuinely better fight every second.
+        /// A pair that stops being a pair - one of them goes down - is left at once.
+        /// </summary>
+        private const float MIN_PAIR_SECONDS = 8f;
+
+        /// <summary>
+        /// Shortest gap between two cuts to a haymaker. They only cut at all once the field has
+        /// thinned to <see cref="LATE_FIGHT_SURVIVORS"/>: in a crowded ring somebody lands one
+        /// every few seconds, and each cut is a jump across the ring and another one back.
+        /// </summary>
+        private const float HAYMAKER_CUT_GAP_SECONDS = 10f;
+
+        /// <summary>
+        /// Shortest gap between two cuts to a knockout while the field is still crowded. Early
+        /// on they come in clusters, and cutting to each one is the camera jumping round the
+        /// ring. The last few are never skipped - see <see cref="LATE_FIGHT_SURVIVORS"/>.
+        /// </summary>
+        private const float KNOCKOUT_CUT_GAP_SECONDS = 8f;
+
+        /// <summary>
+        /// Health a challenger must lead the followed fighter by before the camera changes
+        /// subject. About one clean punch: less, and the lead changes on every exchange.
+        /// </summary>
+        private const int LEADER_SWITCH_MARGIN = 4;
+
+        /// <summary>With this many standing or fewer, every knockout gets its cut.</summary>
+        private const int LATE_FIGHT_SURVIVORS = 4;
 
         /// <summary>
         /// How much better a rival pair must score before the camera abandons the one it is
@@ -46,7 +80,7 @@ namespace PoRumble.Systems
         /// same reason: without it the framing chases the leader of a race that changes hands
         /// on every landed punch.
         /// </summary>
-        private const float PAIR_SWITCH_MARGIN = 0.12f;
+        private const float PAIR_SWITCH_MARGIN = 0.25f;
 
         /// <summary>Tension at or above which the pair earns a tight two-shot.</summary>
         private const float DUEL_TENSION = 0.55f;
@@ -82,12 +116,22 @@ namespace PoRumble.Systems
         private readonly MatchFlowModel _flow;
         private readonly FightStatsSystem _stats;
         private readonly BoxerConfig _config;
-        private readonly RosterModel _roster;
-        private readonly PredictionModel _predictions;
         private readonly CompositeDisposable _disposables = new();
 
         /// <summary>Seconds left on an impact cut. Zero when the director is free to choose.</summary>
         private float _impactHold;
+
+        /// <summary>Seconds the camera has been with the pair it is on.</summary>
+        private float _pairElapsed;
+
+        /// <summary>Seconds the followed fighter has had the opponent they are framed with.</summary>
+        private float _rivalElapsed;
+
+        /// <summary>The fighter the camera is following for being ahead on health.</summary>
+        private int _leaderId = DirectorModel.NOBODY;
+
+        /// <summary>Seconds since the last impact cut. Starts high so the first is never refused.</summary>
+        private float _sinceImpactCut = float.MaxValue;
 
         /// <summary>
         /// Every living pair scored on the last pass, kept so the second fight can be chosen
@@ -107,8 +151,6 @@ namespace PoRumble.Systems
             MatchFlowModel flow,
             FightStatsSystem stats,
             BoxerConfig config,
-            RosterModel roster,
-            PredictionModel predictions,
             ISubscriber<PunchLandedMessage> landedSubscriber,
             ISubscriber<BoxerEliminatedMessage> eliminatedSubscriber)
         {
@@ -117,8 +159,6 @@ namespace PoRumble.Systems
             _flow = flow;
             _stats = stats;
             _config = config;
-            _roster = roster;
-            _predictions = predictions;
 
             landedSubscriber.Subscribe(OnPunchLanded).AddTo(_disposables);
             eliminatedSubscriber.Subscribe(OnBoxerEliminated).AddTo(_disposables);
@@ -134,6 +174,13 @@ namespace PoRumble.Systems
 
             _director.ShotElapsed += deltaSeconds;
             _secondElapsed += deltaSeconds;
+            _pairElapsed += deltaSeconds;
+            _rivalElapsed += deltaSeconds;
+
+            if (_sinceImpactCut < float.MaxValue)
+            {
+                _sinceImpactCut += deltaSeconds;
+            }
 
             // An impact cut owns the camera outright while it runs. Nothing is re-scored
             // underneath it: the point of the shot is that it does not move.
@@ -190,11 +237,6 @@ namespace PoRumble.Systems
             float engagementRange = _config.ArmReach + _config.HeadOffset + _config.BodyRadius;
             float threatRange = engagementRange * _config.DodgeThreatRangeScale;
 
-            int bestA = DirectorModel.NOBODY;
-            int bestB = DirectorModel.NOBODY;
-            float bestScore = float.MinValue;
-            float currentScore = float.MinValue;
-
             int pairCapacity = boxers.Count * (boxers.Count - 1) / 2;
 
             if (_pairs.Length < pairCapacity)
@@ -239,18 +281,6 @@ namespace PoRumble.Systems
                         threatened));
 
                     _pairs[_pairCount++] = new ScoredPair(a.Id, b.Id, score);
-
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        bestA = a.Id;
-                        bestB = b.Id;
-                    }
-
-                    if (IsCurrentPair(a.Id, b.Id))
-                    {
-                        currentScore = score;
-                    }
                 }
             }
 
@@ -259,28 +289,75 @@ namespace PoRumble.Systems
                 return;
             }
 
-            // Nobody is paired up: either one fighter is left or the ring is empty. Hold on
-            // whoever is still standing rather than snapping to the origin, which is the same
-            // choice SpectatorCameraView makes when it cannot measure a fight.
-            if (bestA == DirectorModel.NOBODY)
+            // The camera's subject is whoever is winning: the fighter with the most health left.
+            // Who they are fighting is still the tension score's call.
+            int leader = ResolveLeader();
+
+            if (leader == DirectorModel.NOBODY)
             {
-                _director.FocusId = FirstAlive();
+                _director.FocusId = DirectorModel.NOBODY;
                 _director.RivalId = DirectorModel.NOBODY;
                 _director.Tension = 0f;
                 return;
             }
 
-            // Hold the pair already on screen unless something is decisively better, so a
-            // switch is an event rather than a tie-break.
-            if (currentScore > float.MinValue && bestScore - currentScore < PAIR_SWITCH_MARGIN)
+            Follow(leader);
+        }
+
+        /// <summary>
+        /// The standing fighter with the most health, held until somebody is clearly ahead of
+        /// them. Health moves a point at a time and a ring of sixteen opens level, so the plain
+        /// maximum changes hands constantly; the leader keeps the camera until they are down, or
+        /// until someone leads them by <see cref="LEADER_SWITCH_MARGIN"/> and they have had
+        /// <see cref="MIN_PAIR_SECONDS"/> on screen.
+        /// </summary>
+        private int ResolveLeader()
+        {
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+            BoxerModel current = null;
+            BoxerModel best = null;
+
+            for (int index = 0; index < boxers.Count; index++)
             {
-                _director.Tension = currentScore;
-                return;
+                BoxerModel boxer = boxers[index];
+
+                if (!boxer.IsAlive.Value)
+                {
+                    continue;
+                }
+
+                if (boxer.Id == _leaderId)
+                {
+                    current = boxer;
+                }
+
+                if (best == null || boxer.Health.Value > best.Health.Value)
+                {
+                    best = boxer;
+                }
             }
 
-            _director.FocusId = bestA;
-            _director.RivalId = bestB;
-            _director.Tension = bestScore;
+            if (best == null)
+            {
+                _leaderId = DirectorModel.NOBODY;
+                return _leaderId;
+            }
+
+            bool overtaken = current != null
+                && best.Health.Value - current.Health.Value >= LEADER_SWITCH_MARGIN
+                && _pairElapsed >= MIN_PAIR_SECONDS;
+
+            if (current == null || overtaken)
+            {
+                if (_leaderId != best.Id)
+                {
+                    _pairElapsed = 0f;
+                }
+
+                _leaderId = best.Id;
+            }
+
+            return _leaderId;
         }
 
         /// <summary>
@@ -406,11 +483,23 @@ namespace PoRumble.Systems
                 return;
             }
 
+            if (_match.CountAlive() > LATE_FIGHT_SURVIVORS || _sinceImpactCut < HAYMAKER_CUT_GAP_SECONDS)
+            {
+                return;
+            }
+
             CutToImpact(message.TargetId, message.AttackerId);
         }
 
         private void OnBoxerEliminated(BoxerEliminatedMessage message)
         {
+            bool crowded = _match.CountAlive() > LATE_FIGHT_SURVIVORS;
+
+            if (crowded && _sinceImpactCut < KNOCKOUT_CUT_GAP_SECONDS)
+            {
+                return;
+            }
+
             CutToImpact(message.BoxerId, message.EliminatedById);
         }
 
@@ -433,6 +522,8 @@ namespace PoRumble.Systems
             _director.FocusId = subjectId;
             _director.RivalId = otherId;
             _impactHold = IMPACT_SHOT_SECONDS;
+            _sinceImpactCut = 0f;
+            _pairElapsed = 0f;
             SetShot(ShotType.Impact, 0f);
         }
 
@@ -477,29 +568,63 @@ namespace PoRumble.Systems
                 return false;
             }
 
+            Follow(pinned);
+            return true;
+        }
+
+        /// <summary>
+        /// Puts the camera on one fighter and whoever they are most worth watching against.
+        ///
+        /// The rival is held the way the subject is: a fighter in a crowd has several
+        /// near-equal opponents, and taking the best-scoring one every frame swings the framing
+        /// between them. The one already in shot stays until another is decisively better.
+        /// </summary>
+        private void Follow(int subject)
+        {
             int rival = DirectorModel.NOBODY;
             float best = float.MinValue;
+            float held = float.MinValue;
+            bool sameSubject = _director.FocusId == subject;
 
             for (int index = 0; index < _pairCount; index++)
             {
                 ScoredPair pair = _pairs[index];
 
-                if (pair.IdA != pinned && pair.IdB != pinned)
+                if (pair.IdA != subject && pair.IdB != subject)
                 {
                     continue;
+                }
+
+                int other = pair.IdA == subject ? pair.IdB : pair.IdA;
+
+                if (sameSubject && other == _director.RivalId)
+                {
+                    held = pair.Score;
                 }
 
                 if (pair.Score > best)
                 {
                     best = pair.Score;
-                    rival = pair.IdA == pinned ? pair.IdB : pair.IdA;
+                    rival = other;
                 }
             }
 
-            _director.FocusId = pinned;
+            // The opponent in shot stays until another is decisively better and this one has had
+            // their time. An opponent who is down has no pair left to find, and is dropped at once.
+            if (held > float.MinValue && (best - held < PAIR_SWITCH_MARGIN || _rivalElapsed < MIN_PAIR_SECONDS))
+            {
+                rival = _director.RivalId;
+                best = held;
+            }
+
+            if (!sameSubject || rival != _director.RivalId)
+            {
+                _rivalElapsed = 0f;
+            }
+
+            _director.FocusId = subject;
             _director.RivalId = rival;
             _director.Tension = rival == DirectorModel.NOBODY ? 0f : best;
-            return true;
         }
 
         /// <summary>
@@ -526,27 +651,6 @@ namespace PoRumble.Systems
             return false;
         }
 
-        private bool IsCurrentPair(int idA, int idB)
-        {
-            return (_director.FocusId == idA && _director.RivalId == idB)
-                   || (_director.FocusId == idB && _director.RivalId == idA);
-        }
-
-        private int FirstAlive()
-        {
-            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
-
-            for (int index = 0; index < boxers.Count; index++)
-            {
-                if (boxers[index].IsAlive.Value)
-                {
-                    return boxers[index].Id;
-                }
-            }
-
-            return DirectorModel.NOBODY;
-        }
-
         private void OnMatchPhaseChanged(MatchPhase phase)
         {
             if (phase != MatchPhase.InProgress)
@@ -558,33 +662,9 @@ namespace PoRumble.Systems
             _impactHold = 0f;
             _pairCount = 0;
             _secondElapsed = 0f;
-            PinPick();
-        }
-
-        /// <summary>
-        /// Follows the fighter the viewer backed on the title screen from the bell. The pick is a
-        /// contestant and the camera follows a seat, so it is the first seat holding them - with
-        /// one of each on the card that is the only one. Nothing is pinned without a pick, or in
-        /// the training scenes, which seat no roster at all. A tap on the board still moves the
-        /// camera to anyone else, and the pin lets go on its own when the fighter goes down.
-        /// </summary>
-        private void PinPick()
-        {
-            FighterProfile pick = _predictions.Pick.Value;
-
-            if (pick == null)
-            {
-                return;
-            }
-
-            for (int boxerId = 0; boxerId < _match.Boxers.Count; boxerId++)
-            {
-                if (_roster.SeatOf(boxerId) == pick)
-                {
-                    _director.PinnedId.Value = boxerId;
-                    return;
-                }
-            }
+            _pairElapsed = 0f;
+            _sinceImpactCut = float.MaxValue;
+            _leaderId = DirectorModel.NOBODY;
         }
 
         public void Dispose()

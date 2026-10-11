@@ -48,6 +48,7 @@ namespace PoRumble.Views
         [SerializeField] private float _threatRange = 4f;
 
         private readonly CompositeDisposable _disposables = new();
+        private CompositeDisposable _playerDisposables = new();
 
         private MatchModel _match;
         private MatchFlowModel _flow;
@@ -60,7 +61,7 @@ namespace PoRumble.Views
         private VisualElement _vignette;
         private VisualElement _healthFill;
         private VisualElement _staminaFill;
-        private VisualElement _chargeFill;
+        private Label _title;
         private Label _threatLabel;
         private Label _counterLabel;
 
@@ -101,7 +102,6 @@ namespace PoRumble.Views
                 return;
             }
 
-            _player = FindPlayer();
             _root = GetComponent<UIDocument>().rootVisualElement;
 
             if (_root == null)
@@ -114,25 +114,42 @@ namespace PoRumble.Views
                 _root.styleSheets.Add(_styleSheet);
             }
 
-            // No human in this scene - a training arena, or an all-AI exhibition. Nothing is
-            // built at all rather than showing an empty set of bars. The damage vignette goes
-            // with the panel: it lives in the same document, and with nobody to take damage
-            // there was never anything to drive it.
+            // The panel is built once and hidden rather than built on demand: who is playing is
+            // chosen on the title screen now, and changes between one fight and the next.
+            BuildPanel();
+            _match.HumanBoxerId.Subscribe(_ => BindPlayer()).AddTo(_disposables);
+        }
+
+        /// <summary>Points the panel at whoever is playing now, or hides it when nobody is.</summary>
+        private void BindPlayer()
+        {
+            _playerDisposables.Dispose();
+            _playerDisposables = new CompositeDisposable();
+            _player = FindPlayer();
+            _vignetteAlpha = 0f;
+
+            if (_panel == null)
+            {
+                return;
+            }
+
+            _panel.style.display = _player == null ? DisplayStyle.None : DisplayStyle.Flex;
+
             if (_player == null)
             {
                 return;
             }
 
-            BuildPanel();
+            if (_title != null)
+            {
+                _title.text = $"YOU  #{_player.Id:00}";
+            }
 
-            _player.Health.Subscribe(OnHealthChanged).AddTo(_disposables);
-            _player.Stamina.Subscribe(OnStaminaChanged).AddTo(_disposables);
-            _player.Charge.Subscribe(OnChargeChanged).AddTo(_disposables);
-            _player.IsAlive.Subscribe(OnAliveChanged).AddTo(_disposables);
-
-            OnHealthChanged(_player.Health.Value);
-            OnStaminaChanged(_player.Stamina.Value);
-            OnChargeChanged(_player.Charge.Value);
+            // Each of these reports its current value on subscription, so the bars are right
+            // from the first frame.
+            _player.Health.Subscribe(OnHealthChanged).AddTo(_playerDisposables);
+            _player.Stamina.Subscribe(OnStaminaChanged).AddTo(_playerDisposables);
+            _player.IsAlive.Subscribe(OnAliveChanged).AddTo(_playerDisposables);
         }
 
         private BoxerModel FindPlayer()
@@ -184,23 +201,14 @@ namespace PoRumble.Views
                 return;
             }
 
-            // The panel's usual home is bottom-left, which is exactly where the virtual stick
-            // lives. On a touch device it moves up out of the way.
-            _panel.EnableInClassList(
-                "player-hud--touch", UnityEngine.InputSystem.Touchscreen.current != null);
-
-            Label title = _root.Q<Label>("title");
-
-            if (title != null)
-            {
-                title.text = $"YOU  #{_player.Id:00}";
-            }
+            _title = _root.Q<Label>("title");
 
             VisualElement bars = _root.Q<VisualElement>("bars");
 
-            _healthFill = AddBar(bars, "HEALTH", "bar__fill--healthy", "player-hud__bar--health");
-            _staminaFill = AddBar(bars, "BREATH", "bar__fill--stamina", "player-hud__bar--minor");
-            _chargeFill = AddBar(bars, "POWER", "bar__fill--charge", "player-hud__bar--minor");
+            // Two bars, and the same two on every device. Hit points are what is left before
+            // the knockout; energy is spent by punching and comes back when the punching stops.
+            _healthFill = AddBar(bars, "HIT POINTS", "bar__fill--healthy", "player-hud__bar--health");
+            _staminaFill = AddBar(bars, "ENERGY", "bar__fill--stamina", "player-hud__bar--health");
 
             _counterLabel = _root.Q<Label>("counter");
             _threatLabel = _root.Q<Label>("threat");
@@ -266,22 +274,6 @@ namespace PoRumble.Views
             _staminaFill.style.width = Length.Percent(Mathf.Clamp01(stamina) * 100f);
             _staminaFill.EnableInClassList("bar__fill--stamina", stamina > _lowStaminaThreshold);
             _staminaFill.EnableInClassList("bar__fill--stamina-low", stamina <= _lowStaminaThreshold);
-        }
-
-        private void OnChargeChanged(float charge)
-        {
-            if (_chargeFill == null)
-            {
-                return;
-            }
-
-            _chargeFill.style.width = Length.Percent(Mathf.Clamp01(charge) * 100f);
-
-            // Turns colour the moment the wind-up is worth releasing, so the player can see
-            // when a hold has become a haymaker rather than having to count seconds.
-            bool ready = charge >= _config.MinChargeToRelease;
-            _chargeFill.EnableInClassList("bar__fill--charge", !ready);
-            _chargeFill.EnableInClassList("bar__fill--charge-ready", ready);
         }
 
         private void OnAliveChanged(bool isAlive)
@@ -452,6 +444,10 @@ namespace PoRumble.Views
             }
         }
 
-        private void OnDestroy() => _disposables.Dispose();
+        private void OnDestroy()
+        {
+            _playerDisposables.Dispose();
+            _disposables.Dispose();
+        }
     }
 }

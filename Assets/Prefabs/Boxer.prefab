@@ -1978,6 +1978,7 @@ MonoBehaviour:
   _eliminatedColor: {r: 0.22, g: 0.24, b: 0.22, a: 1}
   _rlColor: {r: 0.12, g: 0.75, b: 0.25, a: 1}
   _scriptedColor: {r: 0.85, g: 0.12, b: 0.12, a: 1}
+  _playerColor: {r: 0.04, g: 0.04, b: 0.05, a: 1}
   _flashSeconds: 0.11
   _dissolveSeconds: 0.9
   _counterOutlineColor: {r: 1, g: 0.85, b: 0.25, a: 1}

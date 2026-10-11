@@ -26,6 +26,35 @@ own debug keystore, and `adb install -r` fails `INSTALL_FAILED_UPDATE_INCOMPATIB
 past it is `adb uninstall com.punkouter.porumble`, which deletes the saved ratings and the bank
 on the phone - ask before doing it.
 
+### One player on a phone (2026-10-10)
+
+The phone build is no longer exhibition-only. `TouchControls` is in the `Game` scene (under
+`Hud`, sorting order 5), and 1 PLAYER on the title screen is playable with it: a floating stick
+on the left half moves and aims, and PUNCH, POWER and SLIP sit on the right.
+
+- **The controls follow the seat, not the scene.** `TouchControlsView` builds whenever there is
+  a touchscreen and shows only while `MatchModel.HumanBoxerId` names a player *and* the flow is
+  between the introduction and the knockout. It used to decide once, in `Start`, from the
+  scene-authored `_humanBoxerId`; the seat is now chosen on the title screen, after `Start`.
+- **Hidden on the title and results screens on purpose.** The stick's zone is the lower-left
+  half of the screen and the document sorts above the menu: left up, it sits over the
+  1 PLAYER button and swallows the tap that would start the next fight.
+- **`TouchInputModel.IsActive` is what switches the tap-to-aim path off.** While the on-screen
+  controls are up, `BoxerAgentView` ignores the raw pointer, so a thumb on the stick is not also
+  read as "face this point and punch".
+- **The player's panel shows two bars everywhere: HIT POINTS and ENERGY.** The old touch layout
+  moved the bars into rings round the buttons and hid the panel's own; with no touch controls
+  in the scene that left a phone player with no bars at all. The rings are still drawn.
+- **A person is not modulated.** `ApplyFighter` builds no `StyleModulator` for a human seat and
+  gives it neutral attributes. Before, the displaced contestant's style was laid over the
+  player's own inputs - held punches back, slipped on its own odds and spent the energy for it.
+- **Verified in the Editor's Device Simulator with real touch events**: stick full right moved
+  and turned the boxer right, PUNCH held threw alternating hands and drained energy, and both
+  cleared on release.
+
+The entries below that say the build seats no human, or that the touch controls are not in the
+scene, describe the build before this.
+
 ### Things that are easy to get wrong
 
 - **The camera watches one exchange, not the whole field.** Fitting the bounding box of every

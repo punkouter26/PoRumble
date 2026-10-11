@@ -113,6 +113,24 @@ namespace PoRumble.Tests
             return _ratings.GetOrCreate(_roster.SeatOf(seat).Id, null).Rating;
         }
 
+        /// <summary>
+        /// A person plays in the reference policy's seat. Rating that match would move the
+        /// policy's standing, and everyone else's, on a human's result.
+        /// </summary>
+        [Test]
+        public void AMatchWithAPersonInItMovesNobodysRating()
+        {
+            Rack(4, 4);
+            _match.HumanBoxerId.Value = 0;
+
+            ResolveMatch(0, 3, 2, 1);
+
+            for (int seat = 0; seat < 4; seat++)
+            {
+                Assert.That(RatingOf(seat), Is.EqualTo(RatingModel.DEFAULT_RATING));
+            }
+        }
+
         [Test]
         public void TheWinnerGainsAndTheFirstOutLosesMost()
         {

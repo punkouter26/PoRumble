@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en" data-level="2"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PoRumble PoRumble in Plain English</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=Space+Mono&display=swap"><style>/* Layout: one reading column on ring-canvas grey; diagrams and tables break out into their own scroll boxes. */
+:root {
+  --bg: #eef1f5; --surface: #ffffff; --ink: #142033; --muted: #55627a; --line: #cfd6e2;
+  --accent: #b3261e; --accent-ink: #ffffff; --link: #1d4f9c; --code-bg: #e4e9f1;
+  --node: #dfe7f5; --note: #fff3c4; --ok: #1f7a4d;
+  --display: "Anton", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --mono: "Space Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #9aa7bd; --line: #2c3a52;
+    --accent: #ff6b5e; --accent-ink: #1a0906; --link: #8db8ff; --code-bg: #1e2a40;
+    --node: #24344f; --note: #3a3413; --ok: #5fd39a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #9aa7bd; --line: #2c3a52;
+  --accent: #ff6b5e; --accent-ink: #1a0906; --link: #8db8ff; --code-bg: #1e2a40;
+  --node: #24344f; --note: #3a3413; --ok: #5fd39a; color-scheme: dark;
+}
+
+/* The three-tier filter: pure CSS, driven by data-level on the root. */
+:root[data-level="1"] [data-tier="2"],
+:root[data-level="1"] [data-tier="3"],
+:root[data-level="2"] [data-tier="3"] { display: none !important; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top__in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+.top__title { font: 600 17px/1.2 var(--label); letter-spacing: .02em; margin-right: auto; }
+.top__brand { font: 400 19px/1 var(--display); color: var(--accent); letter-spacing: .03em; text-transform: uppercase; margin-right: 6px; }
+.top__nav, .tabs { display: flex; flex-wrap: wrap; gap: 2px 4px; }
+.top__nav a, .tabs button { font: 600 15px/1 var(--label); letter-spacing: .03em; color: var(--muted); text-decoration: none; padding: 7px 8px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; }
+.top__nav a:hover, .tabs button:hover { color: var(--ink); }
+.top__nav a[aria-current], .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.levels { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.levels button { font: 600 14px/1 var(--label); letter-spacing: .03em; padding: 7px 10px; border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.levels button:first-child { border-left: 0; }
+.levels button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+
+.wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: flex; flex-direction: column; gap: 36px; }
+.panel, section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { gap: 36px; }
+h1 { font: 400 clamp(30px, 6vw, 46px)/1.05 var(--display); letter-spacing: .01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+h2 { font: 600 26px/1.15 var(--label); margin: 0; text-wrap: balance; }
+h3 { font: 600 19px/1.2 var(--label); margin: 0; }
+p, ul, ol, dl { margin: 0; }
+p, li { max-width: 68ch; }
+.eli5 { font-size: 18px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 14px; }
+.muted { color: var(--muted); }
+section[data-tier="2"] > h2::after, section[data-tier="3"] > h2::after { font: 600 12px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 3px 6px; margin-left: 10px; vertical-align: middle; }
+section[data-tier="2"] > h2::after { content: "Standard"; }
+section[data-tier="3"] > h2::after { content: "Deep-dive"; }
+
+code { font: 400 .86em/1.4 var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+.cite { color: var(--muted); font-size: .76em; }
+.scroll { overflow-x: auto; max-width: 100%; }
+figure { margin: 0; min-width: 0; }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; max-width: 68ch; }
+.quote { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.quote figcaption { margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--line); max-width: none; }
+.quote pre { margin: 0; padding: 12px; overflow-x: auto; }
+.quote pre code { background: none; padding: 0; font-size: 13px; overflow-wrap: normal; white-space: pre; }
+.diagram .scroll { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.diagram svg { min-width: 680px; height: auto; display: block; margin: 0 auto; }
+.mmd:not([data-processed]) { white-space: pre; font: 12px/1.4 var(--mono); color: var(--muted); }
+.chart svg { display: block; min-width: 560px; width: 100%; height: auto; }
+.chart text { font-family: var(--body); fill: var(--ink); }
+.chart .axis { fill: var(--muted); font-size: 12px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.card h3 { font-size: 18px; }
+.card p { font-size: 15px; }
+.analogy dt { font: 600 17px/1.2 var(--label); }
+.analogy dd { margin: 0 0 12px; color: var(--muted); max-width: 68ch; }
+.analogy dd b { color: var(--ink); font-weight: 600; }
+
+.steps { list-style: none; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 8px; }
+.steps li { counter-increment: step; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px 10px 52px; position: relative; max-width: none; }
+.steps li::before { content: counter(step); position: absolute; left: 14px; top: 9px; font: 400 22px/1.2 var(--display); color: var(--accent); }
+.where { font: 600 12px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 2px 6px; margin-left: 6px; white-space: nowrap; }
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--surface); }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 13px/1.2 var(--label); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.yes { color: var(--ok); font-weight: 600; }
+.no { color: var(--muted); }
+.flag { font: 600 12px/1 var(--label); letter-spacing: .06em; text-transform: uppercase; background: var(--note); color: var(--ink); border-radius: 3px; padding: 3px 6px; }
+.foot { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; color: var(--muted); }
+.foot p { max-width: none; }
+@media (max-width: 520px) { .top__title { flex-basis: 100%; } }
+
+.map svg { min-width: 940px; width: 100%; }
+.map text { font-family: var(--body); fill: var(--ink); }
+.map .sub { fill: var(--muted); }
+</style></head><body><header class="top"><div class="top__in"><div class="top__title"><span class="top__brand">PoRumble</span> PoRumble in Plain English</div><nav class="top__nav" aria-label="Reports"><a href="index.html" aria-current=page>Overview</a><a href="USER_WORKFLOW.html">Journeys</a><a href="VISUAL_ARCHITECTURE_DASHBOARD.html">Architecture</a><a href="AI_SERVICES_REPORT.html">AI</a><a href="AUTH_SECURITY_REPORT.html">Security</a><a href="artifact.html">All in one</a></nav><div class="levels" role="group" aria-label="Detail level"><button type="button" data-set-level="1" aria-pressed="false">1 Simple</button><button type="button" data-set-level="2" aria-pressed="true">2 Standard</button><button type="button" data-set-level="3" aria-pressed="false">3 Deep-dive</button></div></div></header><main class="wrap"><section>
+  <h1>Sixteen boxers, one ring, last one standing</h1>
+  <p class="eli5">PoRumble is a top-down boxing game where sixteen fighters share one ring and brawl until a single one is left. Most of the fighters are controlled by a small computer brain that learned to box by practising against itself.</p>
+  <p>You can sit back and watch all sixteen fight (the <b>DEMO</b>), or take one fighter's place yourself (<b>1 PLAYER</b>). Either way you can back a fighter with play money before the bell, and the game keeps a league table of how every fighter has done over time.</p>
+  <p class="muted">It runs entirely on your own computer or phone. There is no account, no server and no internet connection involved in playing it.</p>
+</section>
+
+<section>
+  <h2>Who it is for</h2>
+  <div class="cards">
+    <div class="card"><h3>The spectator</h3><p>Presses DEMO, picks a favourite, and watches the fight like a sports broadcast with a commentator, live odds and a scoreboard.</p></div>
+    <div class="card"><h3>The player</h3><p>Presses 1 PLAYER and fights fifteen computer opponents with keyboard and mouse, or with touch on a phone.</p></div>
+    <div class="card"><h3>The developer</h3><p>Runs training sessions that teach the computer brain to box better, then ships the improved brain inside the game.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>What it does</h2>
+  <div class="cards">
+    <div class="card"><h3>Demo fights</h3><p>All sixteen seats are computer-controlled. Nobody holds the controls. <code class="cite" data-tier="3">Assets/Scripts/Views/Hud/MainMenuView.cs:125-129</code></p></div>
+    <div class="card"><h3>One-player fights</h3><p>You take a randomly drawn seat; the fighter who held it sits this one out. <code class="cite" data-tier="3">Assets/Scripts/Views/Boxer/BoxerSpawnPoints.cs:115-143</code></p></div>
+    <div class="card"><h3>Picks and a bank</h3><p>Back a fighter before the bell. A stake of 100 play-money points is taken from a bank that starts at 1,000. <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/PredictionSystem.cs:27</code> <code class="cite" data-tier="3">Assets/Scripts/Models/Match/PredictionModel.cs:28</code></p></div>
+    <div class="card"><h3>A league table</h3><p>After each all-computer match every fighter's rating moves up or down, chess-style. <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/RatingSystem.cs:172-215</code></p></div>
+    <div class="card"><h3>A closing ring</h3><p>After one minute the ropes start moving inward so nobody can hide. At three minutes a bell decides it on health. <code class="cite" data-tier="3">Assets/Scripts/Models/Math/SuddenDeathMath.cs:20-39</code></p></div>
+    <div class="card"><h3>Commentary</h3><p>A recorded commentator calls the action, joining a fighter's name to a line. <code class="cite" data-tier="3">Assets/Scripts/Views/Audio/CommentaryView.cs:11-14</code></p></div>
+    <div class="card"><h3>A match diary</h3><p>Every finished match is written down as one line in a log file on the device. <code class="cite" data-tier="3">Assets/Scripts/Views/Persistence/FileMatchLogStore.cs:11-16</code></p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Everyday analogies</h2>
+  <p class="eli5">Think of the game as a boxing arena with a staff. Each technical part does the job of one member of that staff.</p>
+  <dl class="analogy">
+    <dt>The Tool Shed <span class="where">dependency injection</span></dt>
+    <dd>One room where every tool is kept and handed out. Each part of the game asks the shed for exactly the tools it needs and nothing else. <b>In code:</b> <code>GameLifetimeScope</code>. <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:10-11</code></dd>
+    <dt>The Arena PA System <span class="where">messages</span></dt>
+    <dd>When something happens ("a punch landed!") it is announced once over the speakers. Anyone who cares is listening; the announcer does not need to know who. <b>In code:</b> nine MessagePipe messages. <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:21-30</code></dd>
+    <dt>The Front Desk <span class="where">entry points</span></dt>
+    <dd>Every request ("start a fight", "rematch", "back to menu") goes to one desk, which says yes or no depending on what is happening right now. <b>In code:</b> the <code>Try…</code> methods on <code>MatchFlowSystem</code>. <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/MatchFlowSystem.cs:155-238</code></dd>
+    <dt>The Assembly Line <span class="where">per-tick pipeline</span></dt>
+    <dd>Fifty times a second the same stations run in the same order: move the ropes, move the boxers, write the diary, ask the referee. <b>In code:</b> <code>MatchDirector.FixedTick</code>. <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:181-227</code></dd>
+    <dt>The Referee <span class="where">match rules</span></dt>
+    <dd>Counts who is still standing after every exchange and stops the fight when fewer than two remain. <b>In code:</b> <code>MatchSystem</code>. <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/MatchSystem.cs:36-52</code></dd>
+    <dt>The Filing Cabinet <span class="where">storage</span></dt>
+    <dd>Three drawers kept on the device: the league table, your play-money bank, and the match diary. There is no database. <b>In code:</b> three small file stores. <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:73-81</code></dd>
+    <dt>The Visitor Badge <span class="where">login tokens</span></dt>
+    <dd>There isn't one. The arena has no door staff because nobody signs in. See the Security report for what protects the game instead.</dd>
+  </dl>
+</section>
+
+<section>
+  <h2>How big it is</h2>
+  <p class="eli5">Most of the code is the part you see and hear. The rules of boxing themselves are a small core.</p>
+  <figure class="chart">
+    <div class="scroll">
+      <svg viewBox="0 0 720 230" role="img" aria-label="Lines of C# per layer: Views 15,209, Tests 6,879, Systems 4,938, Models 4,782.">
+        <g font-size="14">
+          <text x="150" y="42" text-anchor="end">Screens and sound</text>
+          <text x="150" y="92" text-anchor="end">Automated checks</text>
+          <text x="150" y="142" text-anchor="end">Rules</text>
+          <text x="150" y="192" text-anchor="end">State and maths</text>
+        </g>
+        <g fill="var(--link)">
+          <rect x="162" y="24" width="440" height="26" rx="3"><title>Views: 53 files, 15,209 lines</title></rect>
+          <rect x="162" y="74" width="199" height="26" rx="3"><title>Tests: 37 files, 6,879 lines</title></rect>
+          <rect x="162" y="124" width="143" height="26" rx="3"><title>Systems: 20 files, 4,938 lines</title></rect>
+          <rect x="162" y="174" width="138" height="26" rx="3"><title>Models: 50 files, 4,782 lines</title></rect>
+        </g>
+        <g font-size="14" font-weight="600">
+          <text x="610" y="42">15,209</text>
+          <text x="369" y="92">6,879</text>
+          <text x="313" y="142">4,938</text>
+          <text x="308" y="192">4,782</text>
+        </g>
+        <g class="axis">
+          <text x="162" y="64">Views · 53 files</text>
+          <text x="162" y="114">Tests · 37 files</text>
+          <text x="162" y="164">Systems · 20 files</text>
+          <text x="162" y="214">Models · 50 files</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption>Lines of C# under <code>Assets/Scripts</code>, counted per folder on the generation date (31,808 in total across 160 files).</figcaption>
+  </figure>
+</section>
+
+<section data-tier="2">
+  <h2>The system at a glance</h2>
+  <p class="eli5">People and the computer brain both push the same buttons. The rules decide what happens, the scoreboard remembers it, and the screen shows it.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">flowchart TB
+  human[&quot;Player or spectator&quot;]
+  brain[&quot;Trained boxing brain&lt;br/&gt;(file shipped inside the game)&quot;]
+  subgraph game[&quot;PoRumble, running on one device&quot;]
+    direction TB
+    views[&quot;Screens, sound and controls&lt;br/&gt;(Views)&quot;]
+    systems[&quot;Rules of the fight&lt;br/&gt;(Systems)&quot;]
+    models[&quot;Live scoreboard&lt;br/&gt;(Models)&quot;]
+    bus([&quot;Arena PA system&lt;br/&gt;(messages)&quot;])
+  end
+  files[(&quot;Files on the device&lt;br/&gt;league table, bank, match diary&quot;)]
+  human --&gt;|&quot;clicks, keys, touch&quot;| views
+  brain --&gt;|&quot;move, aim, punch&quot;| views
+  views --&gt;|&quot;asks for actions&quot;| systems
+  systems --&gt;|&quot;updates&quot;| models
+  models --&gt;|&quot;notifies of changes&quot;| views
+  systems --&gt;|&quot;announces events&quot;| bus
+  bus --&gt;|&quot;heard by&quot;| views
+  systems --&gt;|&quot;saves through&quot;| files</div></div><figcaption>One fight, top to bottom. The trained brain and a human player enter through the same control path, so the rules cannot tell them apart.</figcaption></figure>
+  <ol class="steps">
+    <li>A person, or the trained brain, asks a boxer to move or punch. <span class="where">Controls</span></li>
+    <li>The rules decide whether the punch lands, is blocked, or misses. <span class="where">Rules</span></li>
+    <li>Health and positions are updated on the live scoreboard. <span class="where">State</span></li>
+    <li>The result is announced, and the screen, the crowd and the commentator react. <span class="where">Screens</span></li>
+    <li>When the fight ends, the league table, the bank and the match diary are saved. <span class="where">Files</span></li>
+  </ol>
+</section>
+
+<section data-tier="3">
+  <h2>Evidence</h2>
+  <p>Truth order used throughout these reports: source code, then configuration and scene files, then code comments, then <code>CLAUDE.md</code> and <code>DOCS/*.md</code>. Where they disagree the code is quoted. One such disagreement: <code>DOCS/ARCHITECTURE.md</code> describes the game scene as holding nineteen boxers, while <code>Assets/Scenes/Game.unity</code> lists sixteen seats and sixteen fighter profiles on its spawn component.</p>
+  <h3>The two buttons on the title screen</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/UI/Layouts/MainMenu.uxml:33-34</code></figcaption><pre><code>&lt;ui:Button name=&quot;play&quot; text=&quot;1 PLAYER&quot; class=&quot;text text--lg text--bold menu__button menu__button--half menu__button--primary&quot; /&gt;
+&lt;ui:Button name=&quot;fight&quot; text=&quot;DEMO&quot; class=&quot;text text--lg text--bold menu__button menu__button--half&quot; /&gt;</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Hud/MainMenuView.cs:125-137</code></figcaption><pre><code>// DEMO: nobody holds the controls and the whole card is AI.
+if (fight != null)
+{
+fight.clicked += () =&gt; _flowSystem.TryStartFight(MatchModel.NO_HUMAN);
+}
+Button play = root.Q&lt;Button&gt;(&quot;play&quot;);
+if (play != null)
+{
+play.clicked += () =&gt; _flowSystem.TryStartFight(
+_spawnPoints.RandomPlayerSeat(_predictions.Pick.Value));
+}</code></pre></figure>
+  <h3>The layering is enforced by the compiler</h3>
+  <p>Rules may use state; screens may use both; state may use neither.</p>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/PoRumble.Systems.asmdef:4-9</code></figcaption><pre><code>&quot;references&quot;: [
+&quot;PoRumble.Models&quot;,
+&quot;MessagePipe&quot;,
+&quot;VContainer&quot;,
+&quot;UniTask&quot;
+],</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Models/PoRumble.Models.asmdef:4-6</code></figcaption><pre><code>&quot;references&quot;: [
+&quot;Unity.InferenceEngine&quot;
+],</code></pre></figure>
+  <h3>Key third-party packages</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Packages/manifest.json:4-6</code></figcaption><pre><code>&quot;com.cysharp.messagepipe&quot;: &quot;1.8.2&quot;,
+&quot;com.cysharp.messagepipe.vcontainer&quot;: &quot;1.8.2&quot;,
+&quot;com.cysharp.unitask&quot;: &quot;2.5.11&quot;,</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Packages/manifest.json:15-23</code></figcaption><pre><code>&quot;com.unity.inputsystem&quot;: &quot;1.20.0&quot;,
+&quot;com.unity.ml-agents&quot;: &quot;4.1.0&quot;,
+&quot;com.unity.render-pipelines.universal&quot;: &quot;17.6.0&quot;,
+&quot;jp.hadashikick.vcontainer&quot;: &quot;1.19.0&quot;,</code></pre></figure>
+  <h3>Operational numbers</h3>
+  <div class="scroll"><table>
+    <tr><th>Metric</th><th>Status</th></tr>
+    <tr><td>Longest possible fight</td><td>Not declared in the repository as a setting (hardcoded constant: <code>BELL_SECONDS = START_SECONDS + CLOSE_SECONDS + 60f</code>, i.e. 180 seconds, at <code class="cite" data-tier="3">Assets/Scripts/Models/Math/SuddenDeathMath.cs:39</code>)</td></tr>
+    <tr><td>Starting health</td><td>Configured: <code>_maxHealth: 30</code> at <code class="cite" data-tier="3">Assets/Config/BoxerConfig.asset:15</code></td></tr>
+    <tr><td>Uptime, latency or availability targets</td><td>Not declared in the repository. There is no service to measure; the game is a local application.</td></tr>
+    <tr><td>Performance logs kept per device</td><td>Configured default: <code>_logsKept = 20</code> at <code class="cite" data-tier="3">Assets/Scripts/Views/Platform/PerformanceLogView.cs:36</code></td></tr>
+    <tr><td>Automated checks</td><td>266 <code>[Test]</code> methods in 37 files under <code>Assets/Scripts/Tests</code>, counted on the generation date. <code>CLAUDE.md</code> reports 318 EditMode tests; the two figures were not reconciled and the suite was not run for this report.</td></tr>
+  </table></div>
+</section>
+<footer class="foot"><p>Generated 2026-10-10 from commit <code>253447b</code> (<code>253447bc8955412eb4fb876b341d2879c1340093</code>) on <code>main</code>, plus 35 uncommitted working-tree paths. Line numbers refer to the working tree as it stood on that date.</p></footer></main><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script><script>(function () {
+  var root = document.documentElement;
+  var LEVEL_KEY = 'porumble-docs-level';
+  var TAB_KEY = 'porumble-docs-tab';
+
+  function read(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function write(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private window */ } }
+  function each(selector, fn) { Array.prototype.forEach.call(document.querySelectorAll(selector), fn); }
+
+  // Mermaid cannot measure a hidden diagram, so only what is on screen is drawn, and
+  // the rest is drawn when a tier or tab change reveals it.
+  function draw() {
+    if (!window.mermaid) { return; }
+    var style = getComputedStyle(root);
+    function token(name) { return style.getPropertyValue(name).trim(); }
+    var ink = token('--ink'), line = token('--muted'), node = token('--node'), surface = token('--surface');
+    window.mermaid.initialize({
+      startOnLoad: false, theme: 'base',
+      themeVariables: {
+        fontFamily: 'Barlow, Segoe UI, system-ui, sans-serif', fontSize: '15px',
+        background: surface, primaryColor: node, primaryTextColor: ink, primaryBorderColor: line,
+        secondaryColor: surface, tertiaryColor: surface, lineColor: line, textColor: ink,
+        mainBkg: node, nodeBorder: line, clusterBkg: surface, clusterBorder: line, titleColor: ink,
+        edgeLabelBackground: surface, actorBkg: node, actorBorder: line, actorTextColor: ink,
+        signalColor: ink, signalTextColor: ink, labelBoxBkgColor: node, labelBoxBorderColor: line,
+        labelTextColor: ink, loopTextColor: ink, noteBkgColor: token('--note'), noteTextColor: ink,
+        noteBorderColor: line, activationBkgColor: surface, activationBorderColor: line,
+        attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: token('--bg')
+      },
+      flowchart: { useMaxWidth: true, htmlLabels: true },
+      sequence: { useMaxWidth: false, wrap: true, width: 150 },
+      er: { useMaxWidth: false }, state: { useMaxWidth: false }
+    });
+    var nodes = [];
+    each('.mmd:not([data-processed])', function (el) {
+      if (el.offsetParent === null) { return; }
+      if (!el.dataset.src) { el.dataset.src = el.textContent; }
+      nodes.push(el);
+    });
+    if (nodes.length) { window.mermaid.run({ nodes: nodes }).catch(function (e) { console.error(e); }); }
+  }
+
+  function redraw() {
+    each('.mmd[data-processed]', function (el) {
+      el.removeAttribute('data-processed');
+      el.textContent = el.dataset.src;
+    });
+    draw();
+  }
+
+  function setLevel(level) {
+    root.setAttribute('data-level', level);
+    write(LEVEL_KEY, level);
+    each('[data-set-level]', function (button) {
+      button.setAttribute('aria-pressed', String(button.dataset.setLevel === level));
+    });
+    draw();
+  }
+
+  function setTab(name) {
+    if (!document.getElementById('p-' + name)) { return; }
+    each('.panel', function (panel) { panel.hidden = panel.id !== 'p-' + name; });
+    each('[data-tab]', function (tab) {
+      tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+    });
+    write(TAB_KEY, name);
+    draw();
+  }
+
+  each('[data-set-level]', function (button) {
+    button.addEventListener('click', function () { setLevel(button.dataset.setLevel); });
+  });
+  each('[data-tab]', function (tab) {
+    tab.addEventListener('click', function () { setTab(tab.dataset.tab); window.scrollTo(0, 0); });
+  });
+
+  var saved = read(LEVEL_KEY);
+  setLevel(saved === '1' || saved === '3' ? saved : '2');
+
+  if (document.querySelector('.panel')) {
+    setTab('overview');
+    setTab(location.hash.slice(1) || read(TAB_KEY) || 'overview');
+  }
+
+  if (window.matchMedia) {
+    var scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (scheme.addEventListener) { scheme.addEventListener('change', redraw); }
+  }
+  new MutationObserver(redraw).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script></body></html>

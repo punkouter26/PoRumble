@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en" data-level="2"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>PoRumble Visual Architecture Dashboard</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&family=Space+Mono&display=swap"><style>/* Layout: one reading column on ring-canvas grey; diagrams and tables break out into their own scroll boxes. */
+:root {
+  --bg: #eef1f5; --surface: #ffffff; --ink: #142033; --muted: #55627a; --line: #cfd6e2;
+  --accent: #b3261e; --accent-ink: #ffffff; --link: #1d4f9c; --code-bg: #e4e9f1;
+  --node: #dfe7f5; --note: #fff3c4; --ok: #1f7a4d;
+  --display: "Anton", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --label: "Barlow Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --mono: "Space Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #9aa7bd; --line: #2c3a52;
+    --accent: #ff6b5e; --accent-ink: #1a0906; --link: #8db8ff; --code-bg: #1e2a40;
+    --node: #24344f; --note: #3a3413; --ok: #5fd39a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1522; --surface: #172133; --ink: #e8edf6; --muted: #9aa7bd; --line: #2c3a52;
+  --accent: #ff6b5e; --accent-ink: #1a0906; --link: #8db8ff; --code-bg: #1e2a40;
+  --node: #24344f; --note: #3a3413; --ok: #5fd39a; color-scheme: dark;
+}
+
+/* The three-tier filter: pure CSS, driven by data-level on the root. */
+:root[data-level="1"] [data-tier="2"],
+:root[data-level="1"] [data-tier="3"],
+:root[data-level="2"] [data-tier="3"] { display: none !important; }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--body); }
+a { color: var(--link); }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+.top__in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; }
+.top__title { font: 600 17px/1.2 var(--label); letter-spacing: .02em; margin-right: auto; }
+.top__brand { font: 400 19px/1 var(--display); color: var(--accent); letter-spacing: .03em; text-transform: uppercase; margin-right: 6px; }
+.top__nav, .tabs { display: flex; flex-wrap: wrap; gap: 2px 4px; }
+.top__nav a, .tabs button { font: 600 15px/1 var(--label); letter-spacing: .03em; color: var(--muted); text-decoration: none; padding: 7px 8px; border: 0; border-bottom: 2px solid transparent; background: none; cursor: pointer; }
+.top__nav a:hover, .tabs button:hover { color: var(--ink); }
+.top__nav a[aria-current], .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.levels { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.levels button { font: 600 14px/1 var(--label); letter-spacing: .03em; padding: 7px 10px; border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; }
+.levels button:first-child { border-left: 0; }
+.levels button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+
+.wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: flex; flex-direction: column; gap: 36px; }
+.panel, section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { gap: 36px; }
+h1 { font: 400 clamp(30px, 6vw, 46px)/1.05 var(--display); letter-spacing: .01em; text-transform: uppercase; margin: 0; text-wrap: balance; }
+h2 { font: 600 26px/1.15 var(--label); margin: 0; text-wrap: balance; }
+h3 { font: 600 19px/1.2 var(--label); margin: 0; }
+p, ul, ol, dl { margin: 0; }
+p, li { max-width: 68ch; }
+.eli5 { font-size: 18px; line-height: 1.5; border-left: 3px solid var(--accent); padding-left: 14px; }
+.muted { color: var(--muted); }
+section[data-tier="2"] > h2::after, section[data-tier="3"] > h2::after { font: 600 12px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 3px 6px; margin-left: 10px; vertical-align: middle; }
+section[data-tier="2"] > h2::after { content: "Standard"; }
+section[data-tier="3"] > h2::after { content: "Deep-dive"; }
+
+code { font: 400 .86em/1.4 var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 3px; overflow-wrap: anywhere; }
+.cite { color: var(--muted); font-size: .76em; }
+.scroll { overflow-x: auto; max-width: 100%; }
+figure { margin: 0; min-width: 0; }
+figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; max-width: 68ch; }
+.quote { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.quote figcaption { margin: 0; padding: 6px 12px; border-bottom: 1px solid var(--line); max-width: none; }
+.quote pre { margin: 0; padding: 12px; overflow-x: auto; }
+.quote pre code { background: none; padding: 0; font-size: 13px; overflow-wrap: normal; white-space: pre; }
+.diagram .scroll { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.diagram svg { min-width: 680px; height: auto; display: block; margin: 0 auto; }
+.mmd:not([data-processed]) { white-space: pre; font: 12px/1.4 var(--mono); color: var(--muted); }
+.chart svg { display: block; min-width: 560px; width: 100%; height: auto; }
+.chart text { font-family: var(--body); fill: var(--ink); }
+.chart .axis { fill: var(--muted); font-size: 12px; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.card h3 { font-size: 18px; }
+.card p { font-size: 15px; }
+.analogy dt { font: 600 17px/1.2 var(--label); }
+.analogy dd { margin: 0 0 12px; color: var(--muted); max-width: 68ch; }
+.analogy dd b { color: var(--ink); font-weight: 600; }
+
+.steps { list-style: none; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 8px; }
+.steps li { counter-increment: step; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px 10px 52px; position: relative; max-width: none; }
+.steps li::before { content: counter(step); position: absolute; left: 14px; top: 9px; font: 400 22px/1.2 var(--display); color: var(--accent); }
+.where { font: 600 12px/1 var(--label); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 2px 6px; margin-left: 6px; white-space: nowrap; }
+
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--surface); }
+th, td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+th { font: 600 13px/1.2 var(--label); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.yes { color: var(--ok); font-weight: 600; }
+.no { color: var(--muted); }
+.flag { font: 600 12px/1 var(--label); letter-spacing: .06em; text-transform: uppercase; background: var(--note); color: var(--ink); border-radius: 3px; padding: 3px 6px; }
+.foot { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; color: var(--muted); }
+.foot p { max-width: none; }
+@media (max-width: 520px) { .top__title { flex-basis: 100%; } }
+
+.map svg { min-width: 940px; width: 100%; }
+.map text { font-family: var(--body); fill: var(--ink); }
+.map .sub { fill: var(--muted); }
+</style></head><body><header class="top"><div class="top__in"><div class="top__title"><span class="top__brand">PoRumble</span> Visual Architecture Dashboard</div><nav class="top__nav" aria-label="Reports"><a href="index.html">Overview</a><a href="USER_WORKFLOW.html">Journeys</a><a href="VISUAL_ARCHITECTURE_DASHBOARD.html" aria-current=page>Architecture</a><a href="AI_SERVICES_REPORT.html">AI</a><a href="AUTH_SECURITY_REPORT.html">Security</a><a href="artifact.html">All in one</a></nav><div class="levels" role="group" aria-label="Detail level"><button type="button" data-set-level="1" aria-pressed="false">1 Simple</button><button type="button" data-set-level="2" aria-pressed="true">2 Standard</button><button type="button" data-set-level="3" aria-pressed="false">3 Deep-dive</button></div></div></header><main class="wrap"><section>
+  <h1>How the pieces fit together</h1>
+  <p class="eli5">The game is built in three layers, like a boxing arena: the <b>scoreboard</b> that holds the facts, the <b>officials</b> who apply the rules, and the <b>broadcast crew</b> who show and voice it all. Each layer is only allowed to talk downward.</p>
+  <div class="cards">
+    <div class="card"><h3>Broadcast crew <span class="where">Views</span></h3><p>Everything you see, hear and touch: boxers on screen, the HUD, cameras, crowd, controls, and the file drawers. 53 files.</p></div>
+    <div class="card"><h3>Officials <span class="where">Systems</span></h3><p>The rules. Who hit whom, when the match ends, how ratings move, what a pick pays. 20 files, no screens.</p></div>
+    <div class="card"><h3>Scoreboard <span class="where">Models</span></h3><p>The facts right now: each boxer's health and position, the match phase, the league table. 50 files, no logic that needs a screen.</p></div>
+  </div>
+  <p>Two helpers tie the layers together. The <b>Tool Shed</b> hands every part the things it needs when the scene starts. The <b>PA System</b> lets the officials announce events without knowing who is listening.</p>
+</section>
+
+<section data-tier="2">
+  <h2>Component map</h2>
+  <p class="eli5">A map of the building: who works on which floor, and which doors exist between floors.</p>
+<figure class="diagram map" data-tier="2"><div class="scroll"><svg viewBox="-12 0 1150 620" role="img" aria-label="Component map: the player and the trained brain feed the Views layer; Views call Systems; Systems change Models and announce events on a message bus that other Systems and Views listen to; three Systems save to files through store classes."><defs><marker id="cm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs><rect x="40" y="96" width="1040" height="104" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="1068" y="114" text-anchor="end" font-size="11.5" font-weight="600" letter-spacing="1.2" class="sub">BROADCAST CREW · VIEWS ASSEMBLY</text><rect x="40" y="262" width="1040" height="104" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="1068" y="280" text-anchor="end" font-size="11.5" font-weight="600" letter-spacing="1.2" class="sub">OFFICIALS · SYSTEMS ASSEMBLY</text><rect x="40" y="500" width="690" height="104" rx="6" fill="var(--surface)" stroke="var(--line)"/><text x="718" y="518" text-anchor="end" font-size="11.5" font-weight="600" letter-spacing="1.2" class="sub">SCOREBOARD · MODELS ASSEMBLY</text><polyline points="850,348 850,526" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="856" y="486" text-anchor="start" font-size="12">save, load</text><rect x="230" y="412" width="830" height="40" rx="20" fill="var(--note)" stroke="var(--muted)"/><text x="645" y="437" text-anchor="middle" font-size="14" font-weight="600">PA SYSTEM · 9 announcements (MessagePipe messages)</text><rect x="60" y="4" width="320" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="220.0" y="29" text-anchor="middle" font-size="14" font-weight="600">Player or spectator</text><text x="220.0" y="47" text-anchor="middle" font-size="11.5" class="sub">at the keyboard or the touchscreen</text><rect x="400" y="4" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="475.0" y="29" text-anchor="middle" font-size="14" font-weight="600">Trained brain</text><text x="475.0" y="47" text-anchor="middle" font-size="11.5" class="sub">PoRumbleBoxer.onnx</text><rect x="620" y="4" width="170" height="58" rx="5" fill="var(--node)" stroke="var(--muted)" stroke-dasharray="5 4"/><text x="705.0" y="29" text-anchor="middle" font-size="14" font-weight="600">Python trainer</text><text x="705.0" y="47" text-anchor="middle" font-size="11.5" class="sub">development only</text><polyline points="620,33 552,33" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 4" marker-end="url(#cm-arrow)"/><text x="586" y="26" text-anchor="middle" font-size="12">exports</text><rect x="60" y="124" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="135.0" y="149" text-anchor="middle" font-size="14" font-weight="600">Screens and HUD</text><text x="135.0" y="167" text-anchor="middle" font-size="11.5" class="sub">menu, board, results</text><rect x="230" y="124" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="305.0" y="149" text-anchor="middle" font-size="14" font-weight="600">Boxer controls</text><text x="305.0" y="167" text-anchor="middle" font-size="11.5" class="sub">BoxerAgentView</text><rect x="400" y="124" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="475.0" y="149" text-anchor="middle" font-size="14" font-weight="600">Assembly Line</text><text x="475.0" y="167" text-anchor="middle" font-size="11.5" class="sub">MatchDirector</text><rect x="570" y="124" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="645.0" y="149" text-anchor="middle" font-size="14" font-weight="600">Tool Shed</text><text x="645.0" y="167" text-anchor="middle" font-size="11.5" class="sub">GameLifetimeScope</text><rect x="910" y="124" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="985.0" y="149" text-anchor="middle" font-size="14" font-weight="600">Camera, crowd,</text><text x="985.0" y="167" text-anchor="middle" font-size="11.5" class="sub">commentary, haptics</text><rect x="60" y="290" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="135.0" y="315" text-anchor="middle" font-size="14" font-weight="600">Front Desk</text><text x="135.0" y="333" text-anchor="middle" font-size="11.5" class="sub">MatchFlowSystem</text><rect x="230" y="290" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="305.0" y="315" text-anchor="middle" font-size="14" font-weight="600">Movement, punches</text><text x="305.0" y="333" text-anchor="middle" font-size="11.5" class="sub">BoxerSystem</text><rect x="400" y="290" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="475.0" y="315" text-anchor="middle" font-size="14" font-weight="600">Referee</text><text x="475.0" y="333" text-anchor="middle" font-size="11.5" class="sub">MatchSystem</text><rect x="570" y="290" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="645.0" y="315" text-anchor="middle" font-size="14" font-weight="600">Damage, knockouts</text><text x="645.0" y="333" text-anchor="middle" font-size="11.5" class="sub">CombatSystem</text><rect x="740" y="290" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="815.0" y="315" text-anchor="middle" font-size="14" font-weight="600">League and bank</text><text x="815.0" y="333" text-anchor="middle" font-size="11.5" class="sub">Rating, Prediction, MatchLog</text><rect x="910" y="290" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="985.0" y="315" text-anchor="middle" font-size="14" font-weight="600">Broadcast brains</text><text x="985.0" y="333" text-anchor="middle" font-size="11.5" class="sub">stats, odds, commentary</text><rect x="60" y="528" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="135.0" y="553" text-anchor="middle" font-size="14" font-weight="600">Which screen</text><text x="135.0" y="571" text-anchor="middle" font-size="11.5" class="sub">MatchFlowModel</text><rect x="230" y="528" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="305.0" y="553" text-anchor="middle" font-size="14" font-weight="600">Match and boxers</text><text x="305.0" y="571" text-anchor="middle" font-size="11.5" class="sub">MatchModel, BoxerModel</text><rect x="400" y="528" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="475.0" y="553" text-anchor="middle" font-size="14" font-weight="600">League, roster, bank</text><text x="475.0" y="571" text-anchor="middle" font-size="11.5" class="sub">Rating, Roster, Prediction</text><rect x="570" y="528" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="645.0" y="553" text-anchor="middle" font-size="14" font-weight="600">Tuning sheets</text><text x="645.0" y="571" text-anchor="middle" font-size="11.5" class="sub">BoxerConfig, FighterProfile</text><rect x="775" y="528" width="150" height="58" rx="5" fill="var(--node)" stroke="var(--muted)"/><text x="850.0" y="553" text-anchor="middle" font-size="14" font-weight="600">File drawers</text><text x="850.0" y="571" text-anchor="middle" font-size="11.5" class="sub">3 File…Store classes</text><path d="M955,540 a52,9 0 0 0 104,0 a52,9 0 0 0 -104,0 v38 a52,9 0 0 0 104,0 v-38" fill="var(--node)" stroke="var(--muted)"/><text x="1007" y="566" text-anchor="middle" font-size="13" font-weight="600">Files on</text><text x="1007" y="581" text-anchor="middle" font-size="13" font-weight="600">the device</text><polyline points="925,557 953,557" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="940" y="606" text-anchor="middle" font-size="12">reads, writes</text><polyline points="135,62 135,122" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="141" y="86" text-anchor="start" font-size="12">buttons</text><polyline points="305,62 305,122" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="299" y="90" text-anchor="end" font-size="12">keys, mouse, touch</text><polyline points="475,62 475,74 350,74 350,122" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="484" y="80" text-anchor="start" font-size="12">move, aim, punch</text><polyline points="135,182 135,288" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="141" y="232" text-anchor="start" font-size="12">requests</text><polyline points="305,182 305,288" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="299" y="232" text-anchor="end" font-size="12">intent</text><polyline points="430,182 346,288" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="392" y="246" text-anchor="start" font-size="12">ticks</text><polyline points="475,182 475,288" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="481" y="232" text-anchor="start" font-size="12">asks each step</text><polyline points="135,348 135,498" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="141" y="436" text-anchor="start" font-size="12">read, change</text><polyline points="305,348 305,410" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="311" y="386" text-anchor="start" font-size="12">punches</text><polyline points="475,348 475,410" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="481" y="386" text-anchor="start" font-size="12">match end</text><polyline points="620,412 620,350" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="614" y="386" text-anchor="end" font-size="12">hears</text><polyline points="670,348 670,410" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="676" y="386" text-anchor="start" font-size="12">knockouts</text><polyline points="790,412 790,350" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="784" y="386" text-anchor="end" font-size="12">hears</text><polyline points="985,412 985,350" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#cm-arrow)"/><text x="991" y="386" text-anchor="start" font-size="12">hears</text><polyline points="1060,432 1104,432 1104,153 1062,153" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 4" marker-end="url(#cm-arrow)"/><text x="1120" y="292" text-anchor="middle" font-size="12" transform="rotate(-90 1120 292)">heard by screens and sound</text><polyline points="40,552 14,552 14,153 58,153" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="3 4" marker-end="url(#cm-arrow)"/><text x="6" y="352" text-anchor="middle" font-size="12" transform="rotate(-90 6 352)">scoreboard notifies screens of changes</text></svg></div><figcaption>C4-style component map (containers are the three assemblies; components are the boxes inside). Solid arrows are direct calls and only go downward. Dotted arrows are the upward traffic: announcements and change notifications. The Tool Shed has no arrows because it touches everything once, at scene start. The file drawers are written in the Views assembly but are reached only through save-and-load contracts owned by Systems.</figcaption></figure>
+  <ol class="steps">
+    <li>When the scene loads, the Tool Shed builds every official and every scoreboard exactly once and hands them out. <span class="where">Views</span></li>
+    <li>The Assembly Line runs each physics step: it asks the officials to move boxers, then asks the Referee whether the match is over. <span class="where">Views to Systems</span></li>
+    <li>Officials never call the screens. They change the scoreboard and make announcements. <span class="where">Systems to Models</span></li>
+    <li>Screens listen: to the scoreboard for values (health bars), and to the PA system for moments (a punch landed, play the sound). <span class="where">Models to Views</span></li>
+    <li>Only three officials touch storage, and only through a narrow "save / load" contract, so the rules never know where a file lives. <span class="where">Systems to Files</span></li>
+  </ol>
+</section>
+
+<section data-tier="2">
+  <h2>Request path: a punch becomes a knockout</h2>
+  <p class="eli5">One punch, followed from the button press to the league table. This is the main road through the whole system.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">sequenceDiagram
+  autonumber
+  participant In as Player or trained brain
+  participant Ag as Boxer controls (BoxerAgentView)
+  participant Bx as Movement and punches (BoxerSystem)
+  participant PA as PA system
+  participant Cb as Damage (CombatSystem)
+  participant Ref as Referee (MatchSystem)
+  participant Lg as League, bank, diary
+  participant Scr as Screens and sound
+  In-&gt;&gt;Ag: punch with the left hand
+  Ag-&gt;&gt;Bx: Punch(boxer, Left)
+  Note over Bx: refused if an arm is already out
+  Bx-&gt;&gt;PA: PunchThrown
+  Bx-&gt;&gt;Bx: is a face within reach and unguarded?
+  Bx-&gt;&gt;PA: PunchLanded (or PunchBlocked, PunchEvaded)
+  PA-&gt;&gt;Cb: PunchLanded
+  Cb-&gt;&gt;Cb: take health off, shove the target back
+  Cb-&gt;&gt;PA: BoxerDamaged
+  opt health reached zero
+    Cb-&gt;&gt;PA: BoxerEliminated
+  end
+  PA-&gt;&gt;Scr: flash, sound, crowd, commentary
+  Note over Ref: asked once, after the whole step
+  Ref-&gt;&gt;Ref: fewer than two standing?
+  Ref-&gt;&gt;PA: MatchEnded (winner)
+  PA-&gt;&gt;Lg: update ratings, settle the pick, append the match line
+  PA-&gt;&gt;Scr: knockout hold, then results</div></div><figcaption>Hits are collected during the step and announced together at the end of it, so two boxers who knock each other out on the same step both go down.</figcaption></figure>
+  <ol class="steps">
+    <li>A person or the trained brain asks for a punch. Both arrive through the same controls component. <span class="where">Controls</span></li>
+    <li>The movement official starts the punch only if no other fist is already travelling, and announces "punch thrown". <span class="where">Rules</span></li>
+    <li>Pure geometry decides the outcome: landed, blocked by a glove, or slipped. No physics engine is involved, so the same inputs always give the same result. <span class="where">Rules</span></li>
+    <li>The damage official hears "punch landed", removes health, and pushes the target backwards. At zero health it announces a knockout, exactly once per boxer. <span class="where">Rules</span></li>
+    <li>After the step, the Referee counts survivors. Fewer than two means the match is over. <span class="where">Rules</span></li>
+    <li>"Match ended" is heard by the league table, the bank and the diary, which each save their own file. <span class="where">Files</span></li>
+  </ol>
+  <section data-tier="3">
+    <h3>Code evidence</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Systems/Boxer/CombatSystem.cs:78-109</code></figcaption><pre><code>private void OnPunchLanded(PunchLandedMessage message)
+{
+// Once the match is decided, in-flight punches must not keep landing.
+if (_match.Phase.Value == MatchPhase.Ended)
+{
+return;
+}
+BoxerModel target = FindBoxer(message.TargetId);
+if (target == null || !target.IsAlive.Value)
+{
+return;
+}
+target.ApplyDamage(message.Damage);
+ApplyKnockback(target, message);
+MarkFace(target, message);
+_damagedPublisher.Publish(new BoxerDamagedMessage(target.Id));
+if (target.Health.Value &gt; 0)
+{
+return;
+}
+// Eliminate() returns false if something already eliminated this boxer,
+// which keeps the elimination message strictly one-per-boxer.
+if (target.Eliminate())
+{
+_eliminatedPublisher.Publish(new BoxerEliminatedMessage(target.Id, message.AttackerId));
+}
+}</code></pre></figure>
+    <p>Hit resolution is the static function at <code class="cite" data-tier="3">Assets/Scripts/Models/Math/CombatMath.cs:22</code>, called from <code class="cite" data-tier="3">Assets/Scripts/Systems/Boxer/BoxerSystem.cs:606</code>; hits are buffered in <code>_pendingHits</code> at <code class="cite" data-tier="3">Assets/Scripts/Systems/Boxer/BoxerSystem.cs:648</code>. Publishers: thrown <code class="cite" data-tier="3">Assets/Scripts/Systems/Boxer/BoxerSystem.cs:262</code>, blocked <code class="cite" data-tier="3">Assets/Scripts/Systems/Boxer/BoxerSystem.cs:711</code>, evaded <code class="cite" data-tier="3">Assets/Scripts/Systems/Boxer/BoxerSystem.cs:728</code>.</p>
+  </section>
+</section>
+
+<section data-tier="2">
+  <h2>Request path: starting up</h2>
+  <p class="eli5">What happens in the first instant after the scene loads, before anything appears to move.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">sequenceDiagram
+  autonumber
+  participant U as Unity scene load
+  participant Shed as Tool Shed (GameLifetimeScope)
+  participant Sys as Officials (Systems)
+  participant St as File drawers
+  participant Scr as Optional screens
+  participant Line as Assembly Line (MatchDirector)
+  U-&gt;&gt;Shed: Configure
+  Shed-&gt;&gt;Shed: register 9 messages, 14 scoreboards, 15 officials, 3 stores
+  Shed-&gt;&gt;Sys: build the listeners now (combat, referee, ratings, stats, commentary, odds, picks, damage map)
+  Sys-&gt;&gt;St: load league table and bank
+  Shed-&gt;&gt;Scr: inject each screen that exists in this scene
+  Shed-&gt;&gt;Line: Start
+  Line-&gt;&gt;Sys: spawn the roster, seat the fighters
+  alt training scene
+    Line-&gt;&gt;Sys: phase = Fighting immediately
+  else game scene
+    Line-&gt;&gt;Sys: stay on Title and wait for the player
+  end</div></div><figcaption>Several officials only ever listen. Nothing asks for them, so the Tool Shed must build them on purpose or punches would silently do nothing.</figcaption></figure>
+  <ol class="steps">
+    <li>The Tool Shed registers everything that can exist: messages, scoreboards, officials, file drawers. <span class="where">Views</span></li>
+    <li>It then deliberately wakes the officials who only listen, so they are subscribed before the first bell. <span class="where">Views</span></li>
+    <li>Waking the ratings and picks officials loads the league table and bank from disk. A missing or damaged file is a warning and a fresh start, never a crash. <span class="where">Files</span></li>
+    <li>Screens are optional: a training scene has none, and the shed simply skips what is absent. <span class="where">Views</span></li>
+    <li>The Assembly Line places the boxers. A game scene waits on the menu; a training scene starts fighting at once. <span class="where">Rules</span></li>
+  </ol>
+  <section data-tier="3">
+    <h3>Dependency-injection registry</h3>
+    <p>Every registration is <code>Lifetime.Singleton</code> within its scope. A training scene with four arenas has four scopes, so four independent sets. <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:83-96</code></p>
+    <div class="scroll"><table>
+      <tr><th>Kind</th><th>Registered</th><th>How</th><th>Lines</th></tr>
+      <tr><td>Messages</td><td>PunchLanded, PunchEvaded, PunchBlocked, HaymakerThrown, BoxerDodged, BoxerDamaged, BoxerEliminated, MatchEnded, PunchThrown</td><td><code>RegisterMessageBroker&lt;T&gt;</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:21-30</code></td></tr>
+      <tr><td>Config</td><td>BoxerConfig</td><td><code>RegisterInstance</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:32</code></td></tr>
+      <tr><td>Models</td><td>Match, TouchInput, MatchFlow, Roster, Rating, FightStats, Director, Commentary, Diagnostics, WinOdds, Prediction, DamageMap, SuddenDeath</td><td><code>Register&lt;T&gt;(Singleton)</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:33-45</code></td></tr>
+      <tr><td>Models (factory)</td><td>PerformanceTraceModel; CommentaryBank (may be null)</td><td><code>Register(_ =&gt; …, Singleton)</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:47-55</code></td></tr>
+      <tr><td>Systems</td><td>Boxer, Combat, Match, MatchFlow, Spawn, Rating, FightStats, Director, Commentary, Diagnostics, WinOdds, Prediction, DamageMap, SuddenDeath, MatchLog</td><td><code>Register&lt;T&gt;(Singleton).AsSelf()</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:57-71</code></td></tr>
+      <tr><td>Stores</td><td>IMatchLogStore, IRatingStore, IPredictionStore</td><td>factory, Singleton, bound to the <code>File…Store</code> classes</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:73-81</code></td></tr>
+      <tr><td>Scene component</td><td>BoxerSpawnPoints (own child, else scene search)</td><td><code>RegisterComponent</code> / <code>RegisterComponentInHierarchy</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:87-96</code></td></tr>
+      <tr><td>Entry point</td><td>MatchDirector (IStartable, ITickable, IFixedTickable)</td><td><code>RegisterEntryPoint</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:98</code></td></tr>
+      <tr><td>Eager resolves</td><td>Combat, Match, Rating, FightStats, Director, Commentary, WinOdds, Prediction, DamageMap</td><td><code>container.Resolve&lt;T&gt;()</code> in the build callback</td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:103-137</code></td></tr>
+      <tr><td>Optional views</td><td>27 MonoBehaviours, injected only if present</td><td><code>InjectOptional&lt;T&gt;</code></td><td><code class="cite" data-tier="3">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:142-168</code></td></tr>
+    </table></div>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Composition/GameLifetimeScope.cs:100-106</code></figcaption><pre><code>// VContainer resolves lazily. CombatSystem and MatchSystem only ever subscribe to
+// messages, so nothing injects them and they would never be constructed - meaning
+// punches would silently do nothing. Force them to exist when the container builds.
+builder.RegisterBuildCallback(container =&gt;
+{
+container.Resolve&lt;CombatSystem&gt;();
+container.Resolve&lt;MatchSystem&gt;();</code></pre></figure>
+  </section>
+</section>
+
+<section data-tier="2">
+  <h2>The assembly line, station by station</h2>
+  <p class="eli5">Fifty times a second the same six stations run in the same order. This is the game's equivalent of a web server's request pipeline.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">flowchart TB
+  start([&quot;Physics step begins&quot;]) --&gt; g1{&quot;Match already&lt;br/&gt;decided?&quot;}
+  g1 --&gt;|yes| stop([&quot;Do nothing&quot;])
+  g1 --&gt;|no| g2{&quot;Game scene and&lt;br/&gt;the bell has not rung?&quot;}
+  g2 --&gt;|yes| stop
+  g2 --&gt;|no| s1[&quot;1. Close the ropes&lt;br/&gt;(game: by the clock; training: by episode progress)&quot;]
+  s1 --&gt; s2[&quot;2. Move every boxer, resolve every punch&quot;]
+  s2 --&gt; s3[&quot;3. Note movement for the match diary&quot;]
+  s3 --&gt; s4[&quot;4. Referee: fewer than two standing?&quot;]
+  s4 --&gt; s5{&quot;5. Time is up and&lt;br/&gt;still undecided?&quot;}
+  s5 --&gt;|yes| bell[&quot;Bell: most health wins&quot;]
+  s5 --&gt;|no| s6
+  bell --&gt; s6{&quot;6. Training scene and&lt;br/&gt;match decided?&quot;}
+  s6 --&gt;|yes| reset[&quot;Pay rewards, end the episode,&lt;br/&gt;reset the ring&quot;]
+  s6 --&gt;|no| done([&quot;Step ends&quot;])
+  reset --&gt; done</div></div><figcaption>One physics step. Two gates at the top stop the line entirely; everything below runs in a fixed order.</figcaption></figure>
+  <section data-tier="3">
+    <h3>Code evidence</h3>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Composition/MatchDirector.cs:181-227</code></figcaption><pre><code>public void FixedTick()
+{
+if (_match.Phase.Value == MatchPhase.Ended)
+{
+return;
+}
+if (!IsTraining &amp;&amp; !_flow.IsFightLive)
+{
+return;
+}
+bool gameBell = !IsTraining &amp;&amp; _suddenDeathSystem.Step(Time.fixedDeltaTime);
+if (IsTraining &amp;&amp; _spawnPoints.CloseRingInTraining &amp;&amp; _timeoutSteps != int.MaxValue)
+{
+_match.RingScale = SuddenDeathMath.RingScaleAtFraction(_episodeSteps / (float)_timeoutSteps);
+}
+_boxerSystem.Tick(Time.fixedDeltaTime);
+_matchLogSystem.Step(Time.fixedDeltaTime);
+_matchSystem.EvaluateMatchState();
+_episodeSteps++;
+if (_match.Phase.Value != MatchPhase.Ended &amp;&amp; (gameBell || _episodeSteps &gt;= _timeoutSteps))
+{
+_matchSystem.EndByTimeout();
+}
+if (_match.Phase.Value == MatchPhase.Ended &amp;&amp; IsTraining)
+{
+StartNextEpisode();
+}
+}</code></pre></figure>
+    <p>The presentation loop is separate and runs on unscaled time: <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:155-179</code>.</p>
+  </section>
+</section>
+
+<section data-tier="2">
+  <h2>Data model</h2>
+  <p class="eli5">What the game remembers. The top half lives only while the game is open; the three shaded "file" boxes at the bottom are what is still there tomorrow.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">erDiagram
+  MatchModel ||--o{ BoxerModel : &quot;seats&quot;
+  BoxerModel ||--|{ ArmModel : &quot;left and right arm&quot;
+  RosterModel ||--o{ FighterProfile : &quot;assigns to seats&quot;
+  BoxerModel }o--|| FighterProfile : &quot;played by&quot;
+  RatingModel ||--o{ RatingRecord : &quot;holds&quot;
+  FighterProfile ||--o| RatingRecord : &quot;rated as (by id)&quot;
+  PredictionModel }o--o| FighterProfile : &quot;backs&quot;
+  MatchLogRecord ||--|{ BoxerLogRow : &quot;one row per seat&quot;
+  RatingRecord ||--|| RATINGS_FILE : &quot;saved in&quot;
+  PredictionModel ||--|| PREDICTIONS_FILE : &quot;saved in&quot;
+  MatchLogRecord ||--|| MATCHLOG_FILE : &quot;appended to&quot;
+
+  MatchModel {
+    enum Phase &quot;InProgress or Ended&quot;
+    int WinnerId &quot;-1 means draw&quot;
+    int HumanBoxerId &quot;-1 means all AI&quot;
+    Vector2 ArenaHalfExtent &quot;ring as built&quot;
+    float RingScale &quot;1 is full ring&quot;
+  }
+  BoxerModel {
+    int Id &quot;seat number&quot;
+    int Health &quot;reactive&quot;
+    bool IsAlive &quot;reactive&quot;
+    float Stamina &quot;1 fresh, 0 spent&quot;
+    float Charge &quot;haymaker wind-up&quot;
+    Vector2 Position
+    Vector2 Facing
+    float SwellLeft
+    float SwellRight
+    float Cut
+  }
+  ArmModel {
+    enum Side
+    enum Phase
+    float Extension
+  }
+  FighterProfile {
+    string Id
+    string DisplayName
+    ModelAsset PolicyCheckpoint &quot;optional own brain&quot;
+  }
+  RatingRecord {
+    string Id
+    string DisplayName
+    float Rating &quot;starts at 1200&quot;
+    int Matches
+    int Wins
+    int Knockouts
+    float LastDelta &quot;not saved&quot;
+  }
+  PredictionModel {
+    FighterProfile Pick &quot;not saved&quot;
+    int Bank &quot;starts at 1000&quot;
+    int Stake
+    float LockedMultiplier
+    enum Outcome
+    int Placed
+    int Correct
+    int Bailouts
+    int BestPayout
+  }
+  MatchLogRecord {
+    string utc
+    int entrants
+    int winnerSeat
+    bool knockout
+    float seconds
+  }
+  BoxerLogRow {
+    int seat
+    string fighter
+    string control
+    int placement
+    int thrown
+    int landed
+    int damageDealt
+    int damageTaken
+    float distance
+    float ropesShare
+  }
+  RATINGS_FILE {
+    json porumble_ratings_json &quot;rewritten whole&quot;
+  }
+  PREDICTIONS_FILE {
+    json porumble_predictions_json &quot;rewritten whole&quot;
+  }
+  MATCHLOG_FILE {
+    jsonl matches_date_pid_jsonl &quot;append only&quot;
+  }</div></div><figcaption>Entity relationships. A "seat" is a chair in the ring (0 to 15); a "contestant" is the fighter profile sitting in it. Ratings follow the contestant, not the chair.</figcaption></figure>
+  <ol class="steps">
+    <li>A match holds a list of boxers. Each boxer is a seat number plus live facts: health, stamina, position, two arms. <span class="where">State</span></li>
+    <li>The roster decides which contestant sits in which seat. A contestant is a tuning sheet: a name, a look, and optionally its own trained brain. <span class="where">State</span></li>
+    <li>The league table keeps one record per contestant, found by the contestant's id, so a fighter keeps their rating whichever chair they sit in. <span class="where">State</span></li>
+    <li>Values a screen needs to follow (health, phase, bank) are "reactive": changing one automatically notifies whoever is watching. <span class="where">State to Screens</span></li>
+    <li>Only three things are written to disk: the league table, the bank totals, and one diary line per match. <span class="where">Files</span></li>
+  </ol>
+  <section data-tier="3">
+    <h3>Storage schema as written</h3>
+    <p>There is no SQL or ORM. Persistence is Unity's <code>JsonUtility</code> over private serializable classes, under <code>Application.persistentDataPath</code>.</p>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Persistence/FileRatingStore.cs:24-41</code></figcaption><pre><code>[Serializable]
+private sealed class SerializedRecord
+{
+public string id;
+public string displayName;
+public float rating;
+public int matches;
+public int wins;
+public int knockouts;
+}
+[Serializable]
+private sealed class SerializedTable
+{
+public List&lt;SerializedRecord&gt; records = new();
+}
+private const string FILE_NAME = &quot;porumble_ratings.json&quot;;</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Persistence/FilePredictionStore.cs:22-32</code></figcaption><pre><code>[Serializable]
+private sealed class SerializedBook
+{
+public int bank = PredictionModel.STARTING_BANK;
+public int placed;
+public int correct;
+public int bailouts;
+public int bestPayout;
+}
+private const string FILE_NAME = &quot;porumble_predictions.json&quot;;</code></pre></figure>
+<figure class="quote" data-tier="3"><figcaption><code class="cite">Assets/Scripts/Views/Persistence/FileMatchLogStore.cs:37-41</code></figcaption><pre><code>string file = Path.Combine(
+_folder,
+$&quot;matches_{DateTime.UtcNow:yyyyMMdd}_{_processId}.jsonl&quot;);
+File.AppendAllText(file, JsonUtility.ToJson(record) + &quot;\n&quot;);</code></pre></figure>
+    <p>Whole-file saves go through a write-beside-then-swap helper so a kill mid-save cannot leave a half-written file: <code class="cite" data-tier="3">Assets/Scripts/Views/Persistence/AtomicFile.cs:16-29</code>. A fourth output, per-match performance CSVs, is written to <code>persistentDataPath/perf</code> at <code class="cite" data-tier="3">Assets/Scripts/Views/Platform/PerformanceLogView.cs:197-215</code>.</p>
+    <h3>State management</h3>
+    <p><code>ReactiveProperty&lt;T&gt;</code> is hand-rolled in the Models assembly (<code class="cite" data-tier="3">Assets/Scripts/Models/Core/ReactiveProperty.cs:10-22</code>), which is what lets Models compile with no runtime library beyond the inference type reference. Model fields: <code class="cite" data-tier="3">Assets/Scripts/Models/Match/MatchModel.cs:13-48</code>, <code class="cite" data-tier="3">Assets/Scripts/Models/Boxer/BoxerModel.cs:6-133</code>, <code class="cite" data-tier="3">Assets/Scripts/Models/Match/RatingRecord.cs:4-22</code>, <code class="cite" data-tier="3">Assets/Scripts/Models/Match/PredictionModel.cs:25-62</code>, <code class="cite" data-tier="3">Assets/Scripts/Models/Match/MatchLogRecord.cs:11-57</code>. Rating lookup by contestant id: <code class="cite" data-tier="3">Assets/Scripts/Systems/Match/RatingSystem.cs:256-261</code>.</p>
+  </section>
+</section>
+
+<section data-tier="2">
+  <h2>Request path: one practice fight during training</h2>
+  <p class="eli5">Training uses the same rules with the broadcast crew sent home. The trainer is a separate program that watches and adjusts the brain.</p>
+<figure class="diagram" data-tier="2"><div class="scroll"><div class="mmd">sequenceDiagram
+  autonumber
+  participant Py as Python trainer (mlagents-learn)
+  participant Ag as Boxer controls (one per boxer)
+  participant Line as Assembly Line (MatchDirector)
+  participant Bx as Rules (BoxerSystem, CombatSystem)
+  participant Ref as Referee
+  loop every decision (every 5 physics steps)
+    Ag-&gt;&gt;Py: 15 numbers plus ray readings
+    Py--&gt;&gt;Ag: 4 dials and 2 punch switches
+    Ag-&gt;&gt;Bx: move, aim, punch
+    Bx--&gt;&gt;Ag: small rewards and costs
+  end
+  Line-&gt;&gt;Ref: fewer than two standing?
+  opt step 2495 reached with no winner
+    Line-&gt;&gt;Ref: ring the bell, most health wins
+  end
+  Ref--&gt;&gt;Line: match ended
+  Line-&gt;&gt;Ag: award win bonus (2 for a knockout, 1 on the bell)
+  Line-&gt;&gt;Ag: end episode
+  Line-&gt;&gt;Bx: reset the ring for the next fight</div></div><figcaption>A training episode. The bell must fall a few steps before the trainer's own cut-off, or the win reward would land in the next episode.</figcaption></figure>
+  <ol class="steps">
+    <li>Each boxer reports what it can sense to the trainer and receives an action back. <span class="where">AI</span></li>
+    <li>The action goes through the same rules as in the real game. <span class="where">Rules</span></li>
+    <li>If nobody wins in time, the bell falls five steps before the trainer's own limit so the result is recorded in the right fight. <span class="where">Rules</span></li>
+    <li>The winner is paid, every boxer's episode is closed, and the ring is reset immediately. <span class="where">AI</span></li>
+  </ol>
+  <p data-tier="3">Margin constant: <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:41</code>; cap resolution: <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:138-148</code>; <code>MaxStep: 2500</code> at <code class="cite" data-tier="3">Assets/Prefabs/Boxer.prefab:1591</code>; episode turnover: <code class="cite" data-tier="3">Assets/Scripts/Views/Composition/MatchDirector.cs:243-266</code>.</p>
+</section>
+<footer class="foot"><p>Generated 2026-10-10 from commit <code>253447b</code> (<code>253447bc8955412eb4fb876b341d2879c1340093</code>) on <code>main</code>, plus 35 uncommitted working-tree paths. Line numbers refer to the working tree as it stood on that date.</p></footer></main><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script><script>(function () {
+  var root = document.documentElement;
+  var LEVEL_KEY = 'porumble-docs-level';
+  var TAB_KEY = 'porumble-docs-tab';
+
+  function read(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function write(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* private window */ } }
+  function each(selector, fn) { Array.prototype.forEach.call(document.querySelectorAll(selector), fn); }
+
+  // Mermaid cannot measure a hidden diagram, so only what is on screen is drawn, and
+  // the rest is drawn when a tier or tab change reveals it.
+  function draw() {
+    if (!window.mermaid) { return; }
+    var style = getComputedStyle(root);
+    function token(name) { return style.getPropertyValue(name).trim(); }
+    var ink = token('--ink'), line = token('--muted'), node = token('--node'), surface = token('--surface');
+    window.mermaid.initialize({
+      startOnLoad: false, theme: 'base',
+      themeVariables: {
+        fontFamily: 'Barlow, Segoe UI, system-ui, sans-serif', fontSize: '15px',
+        background: surface, primaryColor: node, primaryTextColor: ink, primaryBorderColor: line,
+        secondaryColor: surface, tertiaryColor: surface, lineColor: line, textColor: ink,
+        mainBkg: node, nodeBorder: line, clusterBkg: surface, clusterBorder: line, titleColor: ink,
+        edgeLabelBackground: surface, actorBkg: node, actorBorder: line, actorTextColor: ink,
+        signalColor: ink, signalTextColor: ink, labelBoxBkgColor: node, labelBoxBorderColor: line,
+        labelTextColor: ink, loopTextColor: ink, noteBkgColor: token('--note'), noteTextColor: ink,
+        noteBorderColor: line, activationBkgColor: surface, activationBorderColor: line,
+        attributeBackgroundColorOdd: surface, attributeBackgroundColorEven: token('--bg')
+      },
+      flowchart: { useMaxWidth: true, htmlLabels: true },
+      sequence: { useMaxWidth: false, wrap: true, width: 150 },
+      er: { useMaxWidth: false }, state: { useMaxWidth: false }
+    });
+    var nodes = [];
+    each('.mmd:not([data-processed])', function (el) {
+      if (el.offsetParent === null) { return; }
+      if (!el.dataset.src) { el.dataset.src = el.textContent; }
+      nodes.push(el);
+    });
+    if (nodes.length) { window.mermaid.run({ nodes: nodes }).catch(function (e) { console.error(e); }); }
+  }
+
+  function redraw() {
+    each('.mmd[data-processed]', function (el) {
+      el.removeAttribute('data-processed');
+      el.textContent = el.dataset.src;
+    });
+    draw();
+  }
+
+  function setLevel(level) {
+    root.setAttribute('data-level', level);
+    write(LEVEL_KEY, level);
+    each('[data-set-level]', function (button) {
+      button.setAttribute('aria-pressed', String(button.dataset.setLevel === level));
+    });
+    draw();
+  }
+
+  function setTab(name) {
+    if (!document.getElementById('p-' + name)) { return; }
+    each('.panel', function (panel) { panel.hidden = panel.id !== 'p-' + name; });
+    each('[data-tab]', function (tab) {
+      tab.setAttribute('aria-selected', String(tab.dataset.tab === name));
+    });
+    write(TAB_KEY, name);
+    draw();
+  }
+
+  each('[data-set-level]', function (button) {
+    button.addEventListener('click', function () { setLevel(button.dataset.setLevel); });
+  });
+  each('[data-tab]', function (tab) {
+    tab.addEventListener('click', function () { setTab(tab.dataset.tab); window.scrollTo(0, 0); });
+  });
+
+  var saved = read(LEVEL_KEY);
+  setLevel(saved === '1' || saved === '3' ? saved : '2');
+
+  if (document.querySelector('.panel')) {
+    setTab('overview');
+    setTab(location.hash.slice(1) || read(TAB_KEY) || 'overview');
+  }
+
+  if (window.matchMedia) {
+    var scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (scheme.addEventListener) { scheme.addEventListener('change', redraw); }
+  }
+  new MutationObserver(redraw).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script></body></html>

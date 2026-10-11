@@ -30,6 +30,10 @@ namespace PoRumble.Views
         [Tooltip("The hand-written sparring partner.")]
         [SerializeField] private Color _scriptedColor = new(0.85f, 0.12f, 0.12f);
 
+        [Tooltip("The boxer a person is playing. Black: no contestant is, so it is the one " +
+                 "boxer in the ring that cannot be mistaken for another.")]
+        [SerializeField] private Color _playerColor = new(0.04f, 0.04f, 0.05f);
+
         [Header("Impact")]
         [Tooltip("Seconds the white hit flash takes to fade.")]
         [SerializeField] private float _flashSeconds = 0.11f;
@@ -178,6 +182,21 @@ namespace PoRumble.Views
         /// </summary>
         public void ApplyIdentity(FighterProfile profile)
         {
+            // The player's boxer is plain and black, whoever's seat it is: it has to be the one
+            // thing in a ring of nineteen that can be found without reading anything.
+            if (_isPlayer)
+            {
+                if (_headRenderer != null)
+                {
+                    _headRenderer.sprite = _defaultHeadSprite;
+                }
+
+                _aliveColor = _playerColor;
+                _headAliveColor = _playerColor;
+                Tint(_model == null || _model.IsAlive.Value);
+                return;
+            }
+
             bool hasFace = profile != null && profile.Face != null;
 
             if (_headRenderer != null)

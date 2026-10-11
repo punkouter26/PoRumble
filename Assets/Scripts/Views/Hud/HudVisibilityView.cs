@@ -124,8 +124,7 @@ namespace PoRumble.Views
                    || document.GetComponent<CommentaryView>() != null
                    || document.GetComponent<PlayerStatusHudView>() != null
                    || document.GetComponent<TouchControlsView>() != null
-                   || document.GetComponent<EliminationFeedView>() != null
-                   || document.GetComponent<FocusTagView>() != null;
+                   || document.GetComponent<EliminationFeedView>() != null;
         }
 
         private void OnDestroy() => _disposables.Dispose();

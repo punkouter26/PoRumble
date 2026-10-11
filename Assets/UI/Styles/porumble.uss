@@ -393,6 +393,15 @@
     transition-timing-function: ease-out;
 }
 
+/* The two ways in share one row, so the title screen is no taller than it was with one. */
+.menu__starts {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.menu__button--half { width: 49%; }
+
 .menu__button--primary {
     border-color: var(--state-charge);
     background-color: var(--button-primary);
@@ -844,6 +853,9 @@
     width: auto;
 }
 
+/* Wide enough for HIT POINTS on one line; the shared bar label is sized for a six-letter word. */
+.player-hud .bar__label { width: 150px; }
+
 .player-hud__bar--health { height: 32px; }
 .player-hud__bar--minor { height: 20px; }
 
@@ -1091,23 +1103,6 @@
 .touch-button--charge.touch-button--down { background-color: var(--touch-charge-down); }
 .touch-button--dodge.touch-button--down { background-color: var(--touch-surface-strong); }
 
-/* On a touchscreen the player's bars leave the panel altogether. Breath and the haymaker charge
-   are drawn as rings around PUNCH and POWER by TouchControlsView - where the thumbs already are -
-   and health is the player's own cell on the field strip, marked in blue. What stays here is
-   the two callouts, which are warnings rather than meters and have to be read mid-exchange:
-   centred just below the middle of the screen, clear of the stick and the button cluster. */
-.player-hud--touch {
-    bottom: auto;
-    top: 42%;
-    left: var(--band-edge);
-    right: var(--band-edge);
-    width: auto;
-    align-items: center;
-    background-color: rgba(0, 0, 0, 0);
-}
-
-.player-hud--touch .player-hud__title,
-.player-hud--touch .player-hud__bar-row { display: none; }
 
 /* ----------------------------------------------------------------- telemetry board */
 /* Top band, right column - the match panel holds the left. It used to be 480 fixed pixels
@@ -1638,29 +1633,7 @@
 .feed__toast--alert { color: var(--state-charge); }
 
 /* ----------------------------------------------------------------- follow tag */
-/* Over the head of whoever the camera is on. Positioned from C# at the point above the fighter;
-   the translate hangs the tag from that point, centred, so it never covers the fighter. */
-.focus-tag {
-    position: absolute;
-    translate: -50% -100%;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    padding-left: var(--space-1);
-    padding-right: var(--space-1);
-    letter-spacing: 2px;
-    color: var(--text-primary);
-    background-color: var(--surface-panel);
-    border-bottom-width: 3px;
-    border-bottom-color: var(--text-secondary);
-    border-top-left-radius: var(--radius);
-    border-top-right-radius: var(--radius);
-    opacity: 0;
-    transition-property: opacity;
-    transition-duration: var(--motion-base);
-}
 
-.focus-tag--on { opacity: 1; }
-.focus-tag--pinned { border-bottom-color: var(--state-stamina); }
 
 /* ----------------------------------------------------------------- tale of the tape */
 /* The bottom band during the intro and the countdown: clear of the full field board above and

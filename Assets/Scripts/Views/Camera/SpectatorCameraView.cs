@@ -108,6 +108,11 @@ namespace PoRumble.Views
         [Range(0f, 2f)]
         [SerializeField] private float _tensionDampingBoost = 0.8f;
 
+        [Header("Player")]
+        [Tooltip("Orthographic size while a person is playing. The camera sits dead on their " +
+                 "boxer, so this is how much ring they can see round themselves.")]
+        [SerializeField] private float _playerOrthographicSize = 9f;
+
         private MatchModel _match;
         private BoxerSpawnPoints _spawnPoints;
 
@@ -146,6 +151,19 @@ namespace PoRumble.Views
         {
             if (_match == null || _followTarget == null)
             {
+                return;
+            }
+
+            // A person playing is the centre of the screen, exactly, for as long as they are
+            // standing. Everything below is the broadcast camera, which takes over the moment
+            // they go down - and picks up from where this one was, so the hand-over is a move
+            // rather than a cut.
+            int humanId = _spawnPoints != null ? _spawnPoints.HumanBoxerId : -1;
+            BoxerModel player = FindAlive(_match.Boxers, humanId);
+
+            if (player != null)
+            {
+                FollowPlayer(player);
                 return;
             }
 
@@ -215,6 +233,29 @@ namespace PoRumble.Views
         /// out past what the ring-fit rule allows. Driving the size would have to repeat all
         /// of that, and would get it subtly wrong in portrait.
         /// </summary>
+        /// <summary>
+        /// Pins the camera to the player. The position is not damped and not held inside the
+        /// ropes: either would slide the boxer off centre, and off centre in a ring of nineteen
+        /// is how a player loses track of which one they are. Only the zoom eases.
+        /// </summary>
+        private void FollowPlayer(BoxerModel player)
+        {
+            float desiredSize = Mathf.Clamp(_playerOrthographicSize, _minOrthographicSize, _maxOrthographicSize);
+
+            _smoothedCenter = player.Position;
+            _smoothedSize = _initialised
+                ? Mathf.Lerp(_smoothedSize, desiredSize, 1f - Mathf.Exp(-_zoomDamping * Time.unscaledDeltaTime))
+                : desiredSize;
+            _initialised = true;
+
+            _followTarget.position = new Vector3(_smoothedCenter.x, _smoothedCenter.y, _followTarget.position.z);
+
+            if (_camera != null)
+            {
+                _camera.Lens.OrthographicSize = _smoothedSize;
+            }
+        }
+
         private float ResolvePaddingScale()
         {
             if (_director == null)

@@ -85,8 +85,10 @@ namespace PoRumble.Views
         /// the gaps, but seating has to line up with <see cref="_views"/> exactly.
         /// </summary>
         private readonly List<BoxerAgentView> _seatAgents = new();
+        private readonly CompositeDisposable _disposables = new();
         private IObjectResolver _resolver;
         private RosterModel _roster;
+        private MatchModel _match;
         private PolicyCheckpointValidator _checkpoints;
         private bool _built;
 
@@ -100,13 +102,55 @@ namespace PoRumble.Views
         public bool CloseRingInTraining => _closeRingInTraining;
 
         /// <summary>Boxer the keyboard drives, or -1. The player HUD needs to know who to watch.</summary>
-        public int HumanBoxerId => _humanBoxerId;
+        /// <summary>
+        /// The seat a person is playing, or -1. The title screen's choice when one has been
+        /// made; otherwise whatever the scene authored, which is how a test scene can still
+        /// hard-seat a player.
+        /// </summary>
+        public int HumanBoxerId =>
+            _match != null && _match.HumanBoxerId.Value != MatchModel.NO_HUMAN
+                ? _match.HumanBoxerId.Value
+                : _humanBoxerId;
+
+        /// <summary>
+        /// A seat for the player, drawn at random: whoever holds it sits this fight out, so
+        /// one-player mode is the person against a different fifteen of the card each time.
+        ///
+        /// Never the seat of <paramref name="keep"/>, the contestant the viewer has backed - a
+        /// bet on a fighter the draw then removed could only ever lose.
+        /// </summary>
+        public int RandomPlayerSeat(FighterProfile keep)
+        {
+            int kept = -1;
+
+            for (int seat = 0; seat < _views.Count; seat++)
+            {
+                if (keep != null && _roster.SeatOf(seat) == keep)
+                {
+                    kept = seat;
+                }
+            }
+
+            int choices = kept >= 0 ? _views.Count - 1 : _views.Count;
+
+            if (choices <= 0)
+            {
+                return 0;
+            }
+
+            int drawn = UnityEngine.Random.Range(0, choices);
+            return kept >= 0 && drawn >= kept ? drawn + 1 : drawn;
+        }
 
         [Inject]
-        public void Construct(IObjectResolver resolver, RosterModel roster)
+        public void Construct(IObjectResolver resolver, RosterModel roster, MatchModel match)
         {
             _resolver = resolver;
             _roster = roster;
+            _match = match;
+
+            // A no-op until the views exist; after that, every change of seat re-dresses the ring.
+            _match.HumanBoxerId.Subscribe(_ => ApplyHumanSeat()).AddTo(_disposables);
 
             // Published here rather than in BuildViews so the roster screen can list the card
             // before a single boxer exists.
@@ -160,7 +204,7 @@ namespace PoRumble.Views
                 {
                     agent.Bind(boxer);
 
-                    bool isHuman = boxer.Id == _humanBoxerId;
+                    bool isHuman = boxer.Id == HumanBoxerId;
                     agent.SetHumanControlled(isHuman);
 
                     // Marks the seat visually. Set here rather than in SeatRoster because
@@ -188,6 +232,40 @@ namespace PoRumble.Views
 
             SeatRoster();
         }
+
+        /// <summary>
+        /// Hands the controls to whoever now holds them, and takes them back from everyone else.
+        ///
+        /// Followed by a re-seat, because the seat's contestant decides what an agent runs and
+        /// what a boxer looks like, and both answers change with a person in the chair: the
+        /// agent stops asking a policy, and the boxer wears the player's colour.
+        /// </summary>
+        private void ApplyHumanSeat()
+        {
+            if (!_built)
+            {
+                return;
+            }
+
+            int humanId = HumanBoxerId;
+
+            for (int seat = 0; seat < _views.Count; seat++)
+            {
+                bool isHuman = seat == humanId;
+                BoxerAgentView agent = _seatAgents[seat];
+
+                if (agent != null)
+                {
+                    agent.SetHumanControlled(isHuman);
+                }
+
+                _views[seat].SetIsPlayer(isHuman);
+            }
+
+            SeatRoster();
+        }
+
+        private void OnDestroy() => _disposables.Dispose();
 
         /// <summary>
         /// Deals the selected contestants round the ring and dresses every boxer as whoever

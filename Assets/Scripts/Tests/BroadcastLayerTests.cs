@@ -75,12 +75,12 @@ namespace PoRumble.Tests
         }
 
         /// <summary>
-        /// The fighter backed on the title screen is the one the camera follows from the bell,
-        /// and nobody is followed without a pick. The pick is a contestant and the pin is a seat,
-        /// so this also holds that the lookup goes through the dealt seats.
+        /// The camera follows whoever has the most health left. It does not change subject on
+        /// every point, though: the fighter in shot keeps it until somebody is clearly ahead and
+        /// they have had their time, and loses it at once when they go down.
         /// </summary>
         [Test]
-        public void TheBackedFighterIsFollowedFromTheBell()
+        public void TheCameraFollowsTheHealthLeaderAndDoesNotChaseEveryPoint()
         {
             ContainerBuilder builder = new();
             MessagePipeOptions options = builder.RegisterMessagePipe();
@@ -94,25 +94,13 @@ namespace PoRumble.Tests
             IObjectResolver container = builder.Build();
 
             BoxerConfig config = ScriptableObject.CreateInstance<BoxerConfig>();
-            FighterProfile[] card =
-            {
-                ScriptableObject.CreateInstance<FighterProfile>(),
-                ScriptableObject.CreateInstance<FighterProfile>(),
-                ScriptableObject.CreateInstance<FighterProfile>()
-            };
-
-            RosterModel roster = new();
-            roster.SetAvailable(card);
-            roster.AssignSeats(card.Length);
-
             MatchModel match = new();
 
-            for (int boxerId = 0; boxerId < card.Length; boxerId++)
+            for (int boxerId = 0; boxerId < 3; boxerId++)
             {
                 match.AddBoxer(new BoxerModel(boxerId, config.MaxHealth));
             }
 
-            PredictionModel predictions = new();
             DirectorModel director = new();
             FightStatsSystem stats = new(
                 match, new FightStatsModel(),
@@ -124,31 +112,42 @@ namespace PoRumble.Tests
                 container.Resolve<ISubscriber<HaymakerThrownMessage>>(),
                 container.Resolve<ISubscriber<BoxerEliminatedMessage>>());
             DirectorSystem system = new(
-                match, director, new MatchFlowModel(), stats, config, roster, predictions,
+                match, director, new MatchFlowModel(), stats, config,
                 container.Resolve<ISubscriber<PunchLandedMessage>>(),
                 container.Resolve<ISubscriber<BoxerEliminatedMessage>>());
 
-            predictions.Pick.Value = card[2];
-            match.End(0);
-            match.BeginNewEpisode();
+            system.Tick(0.1f);
+            Assert.That(director.FocusId, Is.EqualTo(0), "level on health, the first fighter holds the camera");
+            Assert.That(director.PinnedId.Value, Is.EqualTo(DirectorModel.NOBODY), "nobody is pinned without being asked");
 
-            Assert.That(director.PinnedId.Value, Is.EqualTo(2), "the camera follows the seat the pick was dealt");
+            // One point behind is not a reason to move.
+            match.Boxers[0].ApplyDamage(1);
+            system.Tick(20f);
+            Assert.That(director.FocusId, Is.EqualTo(0));
 
-            predictions.Pick.Value = null;
-            match.End(0);
-            match.BeginNewEpisode();
+            // Clearly behind, and long enough in shot: the leader takes the camera.
+            match.Boxers[0].ApplyDamage(8);
+            system.Tick(0.5f);
+            Assert.That(director.FocusId, Is.EqualTo(1));
 
-            Assert.That(director.PinnedId.Value, Is.EqualTo(DirectorModel.NOBODY), "no pick, nobody pinned");
+            // The new subject is overtaken at once, but has only just arrived - it keeps the shot...
+            match.Boxers[1].ApplyDamage(6);
+            system.Tick(0.5f);
+            Assert.That(director.FocusId, Is.EqualTo(1));
+
+            // ...until it has had its time.
+            system.Tick(8f);
+            Assert.That(director.FocusId, Is.EqualTo(2));
+
+            // A subject who goes down is left at once, for whoever leads those still standing.
+            match.Boxers[2].Eliminate();
+            system.Tick(0.1f);
+            Assert.That(director.FocusId, Is.EqualTo(1));
 
             system.Dispose();
             stats.Dispose();
             container.Dispose();
             Object.DestroyImmediate(config);
-
-            for (int index = 0; index < card.Length; index++)
-            {
-                Object.DestroyImmediate(card[index]);
-            }
         }
 
         [Test]

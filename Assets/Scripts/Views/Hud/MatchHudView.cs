@@ -94,6 +94,7 @@ namespace PoRumble.Views
         private BoxerSpawnPoints _spawnPoints;
         private BoxerConfig _config;
         private DirectorModel _director;
+        private DiagnosticsModel _diagnostics;
         private DirectorSystem _directorSystem;
         private FightStatsModel _stats;
 
@@ -126,8 +127,10 @@ namespace PoRumble.Views
             DirectorModel director,
             DirectorSystem directorSystem,
             FightStatsModel stats,
+            DiagnosticsModel diagnostics,
             ISubscriber<MatchEndedMessage> endedSubscriber)
         {
+            _diagnostics = diagnostics;
             _director = director;
             _directorSystem = directorSystem;
             _stats = stats;
@@ -203,6 +206,40 @@ namespace PoRumble.Views
             _predictions.Pick.Subscribe(_ => RefreshStake()).AddTo(_disposables);
             _ratings.Revision.Subscribe(_ => RefreshResultBadges()).AddTo(_disposables);
             _director.PinnedId.Subscribe(OnPinnedChanged).AddTo(_disposables);
+            _match.HumanBoxerId.Subscribe(_ => RefreshPlayerRow()).AddTo(_disposables);
+            _diagnostics.IsVisible.Subscribe(_ => RefreshBoardVisibility()).AddTo(_disposables);
+        }
+
+        /// <summary>
+        /// The field board is part of the debug view: up only while DEBUG is, and never on the
+        /// title screen. Sixteen cells of health and odds across the top of the ring were in the
+        /// way of the fight they were reporting on.
+        /// </summary>
+        private void RefreshBoardVisibility()
+        {
+            if (_panel == null)
+            {
+                return;
+            }
+
+            bool shown = _diagnostics.IsVisible.Value && _flow.Phase.Value != MatchFlowPhase.Title;
+            _panel.EnableInClassList("match-hud--hidden", !shown);
+
+            // Out of the layout as well as out of sight: the rows take taps, and an invisible
+            // board that still pinned the camera to whoever was under a thumb would be a trap.
+            _panel.style.display = shown ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Marks the player's own row, and unmarks it when the demo takes the seat back.</summary>
+        private void RefreshPlayerRow()
+        {
+            IReadOnlyList<BoxerModel> boxers = _match.Boxers;
+            int humanId = _spawnPoints != null ? _spawnPoints.HumanBoxerId : MatchModel.NO_HUMAN;
+
+            for (int index = 0; index < _rows.Count && index < boxers.Count; index++)
+            {
+                _rows[index].EnableInClassList("match-hud__row--you", boxers[index].Id == humanId);
+            }
         }
 
         /// <summary>Marks the row of the fighter the camera has been told to follow.</summary>
@@ -262,7 +299,6 @@ namespace PoRumble.Views
             }
 
             IReadOnlyList<BoxerModel> boxers = _match.Boxers;
-            int humanId = _spawnPoints != null ? _spawnPoints.HumanBoxerId : -1;
 
             for (int boxerIndex = 0; boxerIndex < boxers.Count; boxerIndex++)
             {
@@ -270,8 +306,6 @@ namespace PoRumble.Views
 
                 _healthRowTemplate.CloneTree(roster);
                 VisualElement row = roster[roster.childCount - 1];
-
-                row.EnableInClassList("match-hud__row--you", boxer.Id == humanId);
 
                 _rows.Add(row);
                 _nameLabels.Add(row.Q<Label>("name"));
@@ -549,9 +583,10 @@ namespace PoRumble.Views
             // punch - beside a menu that owns the phase outright.
             if (_panel != null)
             {
-                _panel.EnableInClassList("match-hud--hidden", phase == MatchFlowPhase.Title);
                 _panel.EnableInClassList("match-hud--compact", live);
             }
+
+            RefreshBoardVisibility();
 
             // The stake line is the results card's to report once the fight is decided. A class
             // rather than an inline display, which would outrank the fight strip's own rule

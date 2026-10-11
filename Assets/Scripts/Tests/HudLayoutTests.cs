@@ -442,7 +442,7 @@ namespace PoRumble.Tests
             VisualElement bars = root.Q<VisualElement>("bars");
             VisualTreeAsset bar = LoadTemplate("StatBar.uxml");
 
-            string[] captions = { "HEALTH", "BREATH", "POWER" };
+            string[] captions = { "HIT POINTS", "ENERGY" };
 
             for (int index = 0; index < captions.Length; index++)
             {

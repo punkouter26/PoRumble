@@ -20,7 +20,7 @@
     <ui:VisualElement name="screen" class="menu-screen">
         <ui:VisualElement name="panel" class="menu" picking-mode="Ignore">
             <ui:Label name="title" text="PO RUMBLE" class="text text--display text--bold menu__title" picking-mode="Ignore" />
-            <ui:Label name="tagline" text="NINETEEN FIGHTERS. ONE LEFT STANDING." class="text text--xs text--muted menu__tagline" picking-mode="Ignore" />
+            <ui:Label name="tagline" text="SIXTEEN FIGHTERS. ONE LEFT STANDING." class="text text--xs text--muted menu__tagline" picking-mode="Ignore" />
 
             <ui:VisualElement name="modes" class="menu__modes" picking-mode="Ignore">
                 <ui:Label name="bank" class="text text--xs text--bold badge menu__bank" picking-mode="Ignore" />
@@ -29,7 +29,10 @@
             <ui:VisualElement name="grid" class="menu__grid" picking-mode="Ignore" />
 
             <ui:Label name="hint" class="text text--xs text--muted menu__hint" picking-mode="Ignore" />
-            <ui:Button name="fight" text="FIGHT" class="text text--lg text--bold menu__button menu__button--primary" />
+            <ui:VisualElement name="starts" class="menu__starts" picking-mode="Ignore">
+                <ui:Button name="play" text="1 PLAYER" class="text text--lg text--bold menu__button menu__button--half menu__button--primary" />
+                <ui:Button name="fight" text="DEMO" class="text text--lg text--bold menu__button menu__button--half" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

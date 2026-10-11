@@ -122,9 +122,18 @@ namespace PoRumble.Views
 
             Button fight = root.Q<Button>("fight");
 
+            // DEMO: nobody holds the controls and the whole card is AI.
             if (fight != null)
             {
-                fight.clicked += () => _flowSystem.TryStartFight();
+                fight.clicked += () => _flowSystem.TryStartFight(MatchModel.NO_HUMAN);
+            }
+
+            Button play = root.Q<Button>("play");
+
+            if (play != null)
+            {
+                play.clicked += () => _flowSystem.TryStartFight(
+                    _spawnPoints.RandomPlayerSeat(_predictions.Pick.Value));
             }
 
             BuildTiles(root.Q<VisualElement>("grid"));
@@ -387,12 +396,12 @@ namespace PoRumble.Views
             {
                 _builder.Append("YOUR ").Append(PredictionSystem.STAKE).Append(" IS ON ")
                         .Append(pick.DisplayName).Append("   WINS ").Append(PayoutFor(pick))
-                        .Append(" IF THEY WIN - THE CAMERA FOLLOWS THEM");
+                        .Append(" IF THEY WIN");
             }
             else if (_roster.Entrants.Count > 0)
             {
                 _builder.Append("TAP A FIGHTER TO BET ").Append(PredictionSystem.STAKE)
-                        .Append(" ON THEM AND FOLLOW THEM");
+                        .Append(" ON THEM");
             }
             else
             {

@@ -28,7 +28,42 @@ every one of them.
 | `SecondFightFeed` | `PictureInPictureView` | **Inactive.** The corner feed on the second fight, filmed by `CameraRig/SecondFightCamera` (also inactive) |
 | `DamageMap` | `DamageMapView` | The fight map — the canvas lit where the damage was done, on the results screen |
 
+## The Field Board Is a Debug View (2026-10-10)
+
+The strip of every fighter's health and win chance across the top of the ring is now part of
+DEBUG: `MatchHudView.RefreshBoardVisibility` shows it only while `DiagnosticsModel.IsVisible` is
+set, and never on the title screen. It is taken out of the layout as well as hidden, because its
+rows take taps (a tap pins the camera) and an invisible board would still answer them. The
+chrome bar still carries the clock and the count of fighters left.
+
+The "FOLLOWING <name>" tag over the camera's subject is gone, with `FocusTagView` and its layout.
+
 ## The Camera Director
+
+**The subject is the health leader (2026-10-10).** `DirectorSystem.ResolveLeader` follows the
+standing fighter with the most health, and `Follow` frames them with their best-scoring opponent.
+Both are sticky: the leader keeps the camera until they are down, or until someone leads them by
+`LEADER_SWITCH_MARGIN` (4) after `MIN_PAIR_SECONDS`; the opponent is held the same way. A bet no
+longer pins the camera - `PinPick` is gone - though tapping a row on the debug board still does.
+
+**Calmed on 2026-10-10**, after a sixteen-way demo proved hard to watch: the camera took every
+reason to move, and sixteen fighters supply one several times a second. The timings below this
+note that disagree with these are the old ones.
+
+| What | Was | Now | Where |
+|---|---|---|---|
+| Shortest shot | 1.6 s | 4 s | `DirectorSystem.MIN_SHOT_SECONDS` |
+| Shortest stay with one pair | none | 8 s, unless one of them goes down | `MIN_PAIR_SECONDS` |
+| How much better a rival pair must score | 0.12 | 0.25 | `PAIR_SWITCH_MARGIN` |
+| Haymaker cuts | every one | only with four or fewer standing, 10 s apart | `HAYMAKER_CUT_GAP_SECONDS`, `LATE_FIGHT_SURVIVORS` |
+| Knockout cuts | every one | 8 s apart while more than four stand; every one after | `KNOCKOUT_CUT_GAP_SECONDS` |
+| Impact cut hold | 1.15 s | 1.8 s | `IMPACT_SHOT_SECONDS` |
+| Camera travel / zoom damping | 2.5 / 1.8 | 1.1 / 0.8 | `SpectatorCameraView` in `Game` |
+| Speed-up at full tension | 0.8 | 0.25 | `_tensionDampingBoost` in `Game` |
+| Blend into the impact camera | hard cut | 0.9 s ease | `CinemachineBrain.DefaultBlend` in `Game` |
+
+Measured over a 104-second demo: 18 shot changes, 3 of them impact cuts, and 15 changes of pair -
+one move about every six seconds. One-player mode is untouched: its camera is pinned to the player.
 
 `DirectorSystem` picks a pair and a shot; two views act on the decision and neither makes one
 of its own. `TensionMath.ScorePair` is the rule, and it is pure and static for the same reason
